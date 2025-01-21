@@ -1,0 +1,10 @@
+data/*
+.DS_Store
+**/.DS_Store
+.idea/
+__pycache__/
+/.ipynb_checkpoints/
+/venv
+/edm_training_log
+/edm_weights
+/checkpoint
