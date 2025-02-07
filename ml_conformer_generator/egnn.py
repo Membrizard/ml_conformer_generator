@@ -103,7 +103,7 @@ class EquivariantUpdate(nn.Module):
         coords_range=10.0,
     ):
         super(EquivariantUpdate, self).__init__()
-        # self.tanh = tanh
+
         self.coords_range = coords_range
         input_edge = hidden_nf * 2 + edges_in_d
         layer = nn.Linear(hidden_nf, 1, bias=False)
@@ -121,15 +121,6 @@ class EquivariantUpdate(nn.Module):
     def coord_model(self, h, coord, edge_index, coord_diff, edge_attr, edge_mask):
         row, col = edge_index
         input_tensor = torch.cat([h[row], h[col], edge_attr], dim=1)
-
-        # tanh is False by default
-        # if self.tanh:
-        #     trans = (
-        #         coord_diff
-        #         * torch.tanh(self.coord_mlp(input_tensor))
-        #         * self.coords_range
-        #     )
-        # else:
 
         trans = coord_diff * self.coord_mlp(input_tensor)
 
@@ -216,7 +207,6 @@ class EquivariantBlock(nn.Module):
         self.to(self.device)
 
     def forward(self, h, x, edge_index, node_mask=None, edge_mask=None, edge_attr=None):
-        # Edit Emiel: Remove velocity as input
         distances, coord_diff = coord2diff(x, edge_index, self.norm_constant)
         if self.sin_embedding is not None:
             distances = self.sin_embedding(distances)
