@@ -1,3 +1,4 @@
+import rdkit.Chem
 import torch
 import random
 
@@ -21,8 +22,8 @@ class MLConformerGenerator(torch.nn.Module):
 
     def __init__(
         self,
-        weights_path,
-        device,
+        weights_path=None,
+        device: torch.device = "cpu",
         dimension: int = DIMENSION,
         num_bond_types: int = NUM_BOND_TYPES,
     ):
@@ -71,7 +72,19 @@ class MLConformerGenerator(torch.nn.Module):
             device=device,
         )
 
-        # self.load_state_dict()
+        self.generative_model.load_state_dict(
+            torch.load(
+                "./weights/final_edm_moi.weights",
+                map_location=device,
+            )
+        )
+
+        self.adj_mat_seer.load_state_dict(
+            torch.load(
+                "./weights/final_adj_mat_seer.weights",
+                map_location=device,
+            )
+        )
 
         self.generative_model.to(device)
         self.adj_mat_seer.to(device)
@@ -134,16 +147,18 @@ class MLConformerGenerator(torch.nn.Module):
             fix_noise=fix_noise,
         )
 
-        mols = samples_to_rdkit_mol(positions=x, one_hot=h, node_mask=node_mask, atom_decoder=self.atom_decoder)
+        mols = samples_to_rdkit_mol(
+            positions=x, one_hot=h, node_mask=node_mask, atom_decoder=self.atom_decoder
+        )
 
         return mols
 
     @torch.no_grad()
     def generate_conformers(
         self,
-        reference_conformer,
+        reference_conformer: rdkit.Chem.Mol,
         n_samples: int,
-        variance: int,
+        variance: int = 2,
         fix_noise: bool = False,
         optimise_geometry: bool = True,
     ):
@@ -165,14 +180,21 @@ class MLConformerGenerator(torch.nn.Module):
             fix_noise=fix_noise,
         )
 
-        el_batch, dm_batch, b_adj_mat_batch, canonicalised_samples = prepare_adj_mat_seer_input(
+        (
+            el_batch,
+            dm_batch,
+            b_adj_mat_batch,
+            canonicalised_samples,
+        ) = prepare_adj_mat_seer_input(
             mols=edm_samples,
             n_samples=n_samples,
             dimension=self.dimension,
             device=self.device,
         )
 
-        adj_mat_batch = self.adj_mat_seer(elements=el_batch, dist_mat=dm_batch, adj_mat=b_adj_mat_batch)
+        adj_mat_batch = self.adj_mat_seer(
+            elements=el_batch, dist_mat=dm_batch, adj_mat=b_adj_mat_batch
+        )
 
         # Append generated bonds and standardise existing samples
         optimised_conformers = []

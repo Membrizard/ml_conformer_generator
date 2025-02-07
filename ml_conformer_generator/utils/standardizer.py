@@ -1,4 +1,5 @@
 #
+#  Based on ChEMBL_StructurePipeline project
 #  Copyright (c) 2019 Greg Landrum
 #  All rights reserved.
 #
@@ -6,6 +7,8 @@
 #  The contents are covered by the terms of the MIT license
 #  which is included in the file LICENSE, found at the root
 #  of the source tree.
+
+
 import os
 from rdkit import Chem
 from rdkit.Chem.MolStandardize import rdMolStandardize
@@ -208,7 +211,7 @@ _salts_file = os.path.join(_data_dir, "salts.smi")
 
 def md_minimize_energy(mol):
     # Prepare the MMFF properties and force field
-    mmff_props = AllChem.MMFFGetMoleculeProperties(mol, mmffVariant='MMFF94')
+    mmff_props = AllChem.MMFFGetMoleculeProperties(mol, mmffVariant="MMFF94")
     forcefield = AllChem.MMFFGetMoleculeForceField(mol, mmff_props, confId=0)
 
     # Add position constraints to every heavy atom with a moderately large force constant
@@ -223,7 +226,6 @@ def md_minimize_energy(mol):
 
 
 def standardize_mol(mol, optimize_geometry: bool = True):
-
     try:
         # Remove small fragments
         m = rdMolStandardize.FragmentParent(mol)
@@ -246,6 +248,3 @@ def standardize_mol(mol, optimize_geometry: bool = True):
         std_mol = None
 
     return std_mol
-
-
-

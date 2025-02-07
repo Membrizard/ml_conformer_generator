@@ -1,22 +1,25 @@
+# """
+# Based on
+# Grant, J.A., Pickup, B.T. (1997). Gaussian shape methods.
+# In: van Gunsteren, W.F., Weiner, P.K., Wilkinson, A.J. (eds)
+# Computer Simulation of Biomolecular Systems.
+# Computer Simulations of Biomolecular Systems, vol 3. Springer, Dordrecht.
+# https://doi.org/10.1007/978-94-017-1120-3_5
+# """
+
 import numpy as np
 import torch
 
-"""
-Based on
-Grant, J.A., Pickup, B.T. (1997). Gaussian shape methods.
-In: van Gunsteren, W.F., Weiner, P.K., Wilkinson, A.J. (eds)
-Computer Simulation of Biomolecular Systems. 
-Computer Simulations of Biomolecular Systems, vol 3. Springer, Dordrecht.
-https://doi.org/10.1007/978-94-017-1120-3_5
-"""
+ATOM_RADIUS = 1.60
+AMPLITUDE = 2.70
 
 
 def get_shape_quadrupole_for_molecule(
     coordinates: torch.Tensor,
-    amplitude: float = 2.70,
-    generic_atom_radius: float = 1.60,
+    amplitude: float = AMPLITUDE,
+    generic_atom_radius: float = ATOM_RADIUS,
     n_terms: int = 6,
-    neighbour_threshold: float = 1.5 * 1.60,
+    neighbour_threshold: float = 2 * AMPLITUDE,
 ):
     """
     Calculates shape quadrupole for a molecule in a principal frame
@@ -201,7 +204,7 @@ def get_shape_quadrupole_for_molecule(
 def product_of_n_gaussians(
     centers: torch.Tensor,
     alpha: float,
-    amplitude: float = 2.70,
+    amplitude: float = AMPLITUDE,
 ) -> tuple:
     """
     Calculates product of n Gaussians within a batch with the same amplitude and alpha, but different centers.
@@ -320,7 +323,7 @@ def build_neighbor_sets(adj_mat: torch.Tensor):
     return neigh_masks
 
 
-def get_alpha(atom_radius: float = 1.6, gaussian_amplitude: float = 2.70):
+def get_alpha(atom_radius: float = ATOM_RADIUS, gaussian_amplitude: float = AMPLITUDE):
     # Calculate alpha
     lyambda_ = 4 * np.pi / 3 / gaussian_amplitude
     k_a = np.pi / lyambda_ ** (2 / 3)
@@ -395,14 +398,16 @@ def ij_2nd_moment_integral(
 # --------------------------------------------------------------------------
 # Tanimoto score
 
+
 class Grid:
-    def __init__(self,
-                 min_coords,
-                 max_coords,
-                 bounds_scale: float = 6,
-                 max_sigma=1.60,
-                 n: int = 4,
-                 ):
+    def __init__(
+        self,
+        min_coords,
+        max_coords,
+        bounds_scale: float = 6,
+        max_sigma: float = ATOM_RADIUS,
+        n: int = 4,
+    ):
         min_coords = min_coords - bounds_scale * max_sigma
         max_coords = max_coords + bounds_scale * max_sigma
 
@@ -410,7 +415,7 @@ class Grid:
         ys = torch.linspace(min_coords[1], max_coords[1], n)
         zs = torch.linspace(min_coords[2], max_coords[2], n)
 
-        x_g, y_g, z_g = torch.meshgrid(xs, ys, zs, indexing='ij')
+        x_g, y_g, z_g = torch.meshgrid(xs, ys, zs, indexing="ij")
 
         # Riemann sum
         dx = (max_coords[0] - min_coords[0]) / (n - 1)
@@ -423,14 +428,15 @@ class Grid:
         self.size = n
 
 
-def torch_evaluate_density_on_grid(coordinates,
-                                   grid: Grid,
-                                   alpha: float,
-                                   amplitude: float = 2.70,
-                                   ):
+def torch_evaluate_density_on_grid(
+    coordinates,
+    grid: Grid,
+    alpha: float,
+    amplitude: float = AMPLITUDE,
+):
     grid_points = grid.points
     dist_sq = torch.cdist(grid_points, coordinates) ** 2
-    gaussian_vals = amplitude * torch.exp(- dist_sq * alpha)
+    gaussian_vals = amplitude * torch.exp(-dist_sq * alpha)
     density = 1 - torch.prod(1 - gaussian_vals, dim=-1)
 
     return density
@@ -448,15 +454,21 @@ def rotate_coord(coord, angles):
 
     # Rotate the structure around the origin
 
-    out = torch.matmul(
-        torch.matmul(torch.matmul(coord, rot_x), rot_y), rot_z
-    )
+    out = torch.matmul(torch.matmul(torch.matmul(coord, rot_x), rot_y), rot_z)
     return out
 
 
-def tanimoto_score(ref_coord, cand_coord, atom_radius, amplitude, n: int = 20):
+ALPHA = get_alpha(atom_radius=ATOM_RADIUS, gaussian_amplitude=AMPLITUDE)
 
-    alpha = get_alpha(atom_radius=atom_radius, gaussian_amplitude=amplitude)
+
+def tanimoto_score(
+    ref_coord,
+    cand_coord,
+    alpha: float = ALPHA,
+    amplitude: float = AMPLITUDE,
+    n: int = 20,
+):
+    # alpha = get_alpha(atom_radius=atom_radius, gaussian_amplitude=amplitude)
 
     cat_coord = torch.cat((ref_coord, cand_coord), dim=0)
 

@@ -1,8 +1,37 @@
+import rdkit.Chem
 import torch
+from rdkit.Geometry import Point3D
+from rdkit import Chem
+from rdkit.Chem import rdFingerprintGenerator
+from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 
-from .shape_similarity import get_shape_quadrupole_for_molecule
+from .shape_similarity import (
+    get_shape_quadrupole_for_molecule,
+    tanimoto_score,
+    rotate_coord,
+)
 
-def characterise_samples(reference, samples):
+FP_SIZE = 2048
+GENERATOR = rdFingerprintGenerator.GetMorganGenerator(
+    radius=2, fpSize=FP_SIZE, includeChirality=False, useBondTypes=True
+)
+
+
+def evaluate_samples(
+    reference: rdkit.Chem.Mol,
+    samples: list[rdkit.Chem.Mol],
+    generator: rdFingerprintGenerator = GENERATOR,
+):
+    """
+    Calculate chemical and shape similarity of the generated samples to reference
+    :param reference: reference mol
+    :param samples: a list of generated mols
+    :param generator: fingerprint generator
+    :return: molblock of a reference in a principal frame, a list of sample conformers, aligned with reference,
+             along with chemical and shape tanimoto scores.
+    """
+
+    fp_ref = generator.GetFingerprint(reference)
     conf = reference.GetConformer()
     ref_coord = torch.tensor(conf.GetPositions(), dtype=torch.float32)
 
@@ -10,9 +39,61 @@ def characterise_samples(reference, samples):
     virtual_com = torch.mean(ref_coord, dim=0)
     ref_coord = ref_coord - virtual_com
 
-    r_s_mom, sq_ref_coord = get_shape_quadrupole_for_molecule(coordinates=ref_coord,
-                                                              amplitude=p,
-                                                              generic_atom_radius=atom_radius,
-                                                              n_terms=6,
-                                                              neighbour_threshold=2 * atom_radius)
-    return None
+    r_s_mom, sq_ref_coord = get_shape_quadrupole_for_molecule(coordinates=ref_coord)
+    pf_reference = set_conformer_positions(reference, sq_ref_coord)
+    ref_mol_block = Chem.MolToMolBlock(pf_reference)
+
+    pi = torch.pi
+    rotations = [
+        torch.tensor([pi, 0, 0]),
+        torch.tensor([0, pi, 0]),
+        torch.tensor([0, 0, pi]),
+    ]
+
+    results = []
+    for sample in samples:
+        # Calculate chemical similarity Tanimoto score
+        fp_sample = generator.GetFingerprint(sample)
+
+        chemical_tanimoto = TanimotoSimilarity(fp_ref, fp_sample)
+
+        sample_conf = sample.GetConformer()
+        sample_coord = torch.tensor(sample_conf.GetPositions(), dtype=torch.float32)
+
+        # Move Center to COM
+        s_virtual_com = torch.mean(sample_coord, dim=0)
+        sample_coord = sample_coord - s_virtual_com
+        s_s_mom, sq_sample_coord = get_shape_quadrupole_for_molecule(
+            coordinates=sample_coord
+        )
+
+        shape_tanimoto = 0
+        best_coord = None
+
+        # Calculate Best shape similarity Tanimoto score
+        for angles in rotations:
+            rot_coord = rotate_coord(coord=sample_coord, angles=angles)
+            score = tanimoto_score(ref_coord=sq_ref_coord, cand_coord=sq_sample_coord)
+            if score > shape_tanimoto:
+                shape_tanimoto = score
+                best_coord = rot_coord
+
+        aligned_sample = set_conformer_positions(sample, best_coord)
+
+        results.append(
+            {
+                "mol_block": Chem.MolToMolBlock(aligned_sample),
+                "shape_tanimoto": shape_tanimoto,
+                "chemical_tanimoto": chemical_tanimoto,
+            }
+        )
+    return ref_mol_block, results
+
+
+def set_conformer_positions(mol, coord):
+    conf = mol.GetConformer()
+    for i, point in enumerate(coord):
+        x, y, z = point.tolist()
+        conf.SetAtomPosition(i, Point3D(x, y, z))
+
+    return mol
