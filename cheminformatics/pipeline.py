@@ -21,7 +21,7 @@ def evaluate_samples(
     reference: rdkit.Chem.Mol,
     samples: list[rdkit.Chem.Mol],
     generator: rdFingerprintGenerator = GENERATOR,
-):
+)-> tuple:
     """
     Calculate chemical and shape similarity of the generated samples to reference
     :param reference: reference mol
@@ -53,6 +53,7 @@ def evaluate_samples(
     results = []
     for sample in samples:
         # Calculate chemical similarity Tanimoto score
+        print(sample)
         fp_sample = generator.GetFingerprint(sample)
 
         chemical_tanimoto = TanimotoSimilarity(fp_ref, fp_sample)
