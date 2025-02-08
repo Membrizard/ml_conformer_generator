@@ -74,14 +74,14 @@ class MLConformerGenerator(torch.nn.Module):
 
         self.generative_model.load_state_dict(
             torch.load(
-                "./weights/final_edm_moi.weights",
+                "./ml_conformer_generator/weights/final_edm_moi.weights",
                 map_location=device,
             )
         )
 
         self.adj_mat_seer.load_state_dict(
             torch.load(
-                "./weights/final_adj_mat_seer.weights",
+                "./ml_conformer_generator/weights/final_adj_mat_seer.weights",
                 map_location=device,
             )
         )
@@ -156,21 +156,39 @@ class MLConformerGenerator(torch.nn.Module):
     @torch.no_grad()
     def generate_conformers(
         self,
-        reference_conformer: rdkit.Chem.Mol,
-        n_samples: int,
+        reference_conformer: rdkit.Chem.Mol = None,
+        n_samples: int = 10,
         variance: int = 2,
+        reference_context: torch.Tensor = None,
+        n_atoms: int = None,
         fix_noise: bool = False,
         optimise_geometry: bool = True,
     ):
-        ref_n_atoms = reference_conformer.GetNumAtoms()
-        conf = reference_conformer.GetConformer()
-        ref_coord = torch.tensor(conf.GetPositions(), dtype=torch.float32)
+        if reference_conformer:
+            ref_n_atoms = reference_conformer.GetNumAtoms()
+            conf = reference_conformer.GetConformer()
+            ref_coord = torch.tensor(conf.GetPositions(), dtype=torch.float32)
 
-        # move coord to center
-        virtual_com = torch.mean(ref_coord, dim=0)
-        ref_coord = ref_coord - virtual_com
+            # move coord to center
+            virtual_com = torch.mean(ref_coord, dim=0)
+            ref_coord = ref_coord - virtual_com
 
-        ref_context, aligned_coord = get_context_shape(ref_coord)
+            ref_context, aligned_coord = get_context_shape(ref_coord)
+
+        elif reference_context:
+            if n_atoms:
+                ref_n_atoms = n_atoms
+            else:
+                raise ValueError(
+                    "Reference Number of Atoms should be provided, when generating samples using context."
+                )
+
+            ref_context = reference_context
+
+        else:
+            raise ValueError(
+                "Either a reference RDkit Mol object or context as torch.Tensor should be provided for generation."
+            )
 
         edm_samples = self.edm_samples(
             reference_context=ref_context,
@@ -202,6 +220,7 @@ class MLConformerGenerator(torch.nn.Module):
         for i, adj_mat in enumerate(adj_mat_batch):
             f_mol = redefine_bonds(canonicalised_samples[i], adj_mat)
             std_mol = standardize_mol(mol=f_mol, optimize_geometry=optimise_geometry)
-            optimised_conformers.append(std_mol)
+            if std_mol:
+                optimised_conformers.append(std_mol)
 
         return optimised_conformers
