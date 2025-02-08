@@ -3,7 +3,7 @@
 #  Copyright (c) 2019 Greg Landrum
 #  All rights reserved.
 #
-#  This file is part of the ChEMBL_StructurePipeline project.
+#  This file is based on a part of the ChEMBL_StructurePipeline project.
 #  The contents are covered by the terms of the MIT license
 #  which is included in the file LICENSE, found at the root
 #  of the source tree.
