@@ -68,13 +68,13 @@ def evaluate_samples(
             coordinates=sample_coord
         )
 
-        shape_tanimoto = 0
-        best_coord = None
+        shape_tanimoto = tanimoto_score(ref_coord=sq_ref_coord, cand_coord=sq_sample_coord)
+        best_coord = sq_sample_coord
 
         # Calculate Best shape similarity Tanimoto score
         for angles in rotations:
-            rot_coord = rotate_coord(coord=sample_coord, angles=angles)
-            score = tanimoto_score(ref_coord=sq_ref_coord, cand_coord=sq_sample_coord)
+            rot_coord = rotate_coord(coord=sq_sample_coord, angles=angles)
+            score = tanimoto_score(ref_coord=sq_ref_coord, cand_coord=rot_coord)
             if score > shape_tanimoto:
                 shape_tanimoto = score
                 best_coord = rot_coord

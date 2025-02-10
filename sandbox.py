@@ -1,97 +1,62 @@
-import torch
-from ml_conformer_generator import EGNNDynamics, EquivariantDiffusion
+from rdkit import Chem
 
-device = "cpu"
+m_b = """
+ChemDraw09092416342D
+
+0 0 0 0 0 0 V3000
+M V30 BEGIN CTAB
+M V30 COUNTS 20 23 0 0 1
+M V30 BEGIN ATOM
+M V30 1 C 1.322579 -2.268751 0.000000 0
+M V30 2 C 1.322579 -1.443751 0.000000 0
+M V30 3 C 2.037006 -1.031250 0.000000 0
+M V30 4 C 2.037006 -0.206250 0.000000 0
+M V30 5 C 1.322579 0.206250 0.000000 0
+M V30 6 C 1.322579 1.031251 0.000000 0
+M V30 7 C 2.037006 1.443751 0.000000 0
+M V30 8 C 0.608151 1.443751 0.000000 0
+M V30 9 O 0.608151 2.268751 0.000000 0
+M V30 10 O -0.106276 1.031251 0.000000 0
+M V30 11 C -0.106276 0.206250 0.000000 0
+M V30 12 O -0.900912 -0.016615 0.000000 0
+M V30 13 C -1.212006 -0.780886 0.000000 0
+M V30 14 C -2.037006 -0.780886 0.000000 0
+M V30 15 C -0.799505 -1.495313 0.000000 0
+M V30 16 C 0.018047 -1.607605 0.000000 0
+M V30 17 C 0.608151 -1.031250 0.000000 0
+M V30 18 C 0.608151 -0.206250 0.000000 0
+M V30 19 O 0.190495 -0.819844 0.000000 0
+M V30 20 O -0.517630 -1.043854 0.000000 0
+M V30 END ATOM
+M V30 BEGIN BOND
+M V30 1 1 2 1 CFG=1
+M V30 2 1 2 3
+M V30 3 1 3 4
+M V30 4 1 4 5
+M V30 5 1 5 6
+M V30 6 1 6 7 CFG=3
+M V30 7 1 6 8
+M V30 8 1 8 9 CFG=3
+M V30 9 1 8 10
+M V30 10 1 11 10 CFG=1
+M V30 11 1 11 12
+M V30 12 1 12 13
+M V30 13 1 13 14
+M V30 14 1 13 15
+M V30 15 1 15 16
+M V30 16 1 17 16 CFG=3
+M V30 17 1 2 17
+M V30 18 1 17 18
+M V30 19 1 5 18
+M V30 20 1 11 18
+M V30 21 1 18 19 CFG=1
+M V30 22 1 19 20
+M V30 23 1 13 20
+M V30 END BOND
+M V30 END CTAB
+M END
+"""
+
+mol = Chem.mol
 
 
-def generate_sample(
-    device,
-    generative_model,
-    reference_context,
-    context_norms: dict = CONTEXT_NORMS,
-    n_samples=100,
-    max_n_nodes=39,
-    min_n_nodes=25,
-    fix_noise=False,
-):
-    # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
-    nodesxsample = []
-
-    for n in range(n_samples):
-        nodesxsample.append(random.randint(min_n_nodes, max_n_nodes))
-
-    print(f"Generating {len(nodesxsample)} Samples")
-
-    nodesxsample = torch.tensor(nodesxsample)
-
-    batch_size = nodesxsample.size(0)
-
-    node_mask = torch.zeros(batch_size, max_n_nodes)
-    for i in range(batch_size):
-        node_mask[i, 0 : nodesxsample[i]] = 1
-
-    # Compute edge_mask
-
-    edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
-    diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
-    edge_mask *= diag_mask
-    edge_mask = edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1).to(device)
-    node_mask = node_mask.unsqueeze(2).to(device)
-
-    normed_context = (
-        (reference_context - context_norms["mean"]) / context_norms["mad"]
-    ).to(device)
-
-    batch_context = normed_context.unsqueeze(0).repeat(batch_size, 1)
-
-    batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
-
-    x, h = generative_model.sample(
-        batch_size,
-        max_n_nodes,
-        node_mask,
-        edge_mask,
-        batch_context,
-        fix_noise=fix_noise,
-    )
-
-    mols = samples_to_rdkit_mol(x, h, node_mask)
-
-    return mols
-
-
-net_dynamics = EGNNDynamics(
-    in_node_nf=9,  # -> Number of possible atom types + 1 - C, N, O, F, P, S, Cl, Br + 1
-    context_node_nf=3,  # -> 3 diagonal components of the principal Moment of Inertia Tensor
-    hidden_nf=20,  # -> default 420
-    device=device,
-)
-
-generative_model = EquivariantDiffusion(
-    dynamics=net_dynamics,
-    in_node_nf=8,  # -> Number of possible atom types - C, N, O, F, P, S, Cl, Br
-    timesteps=4,  # -> default number of timesteps is 1000
-    noise_precision=1e-5,
-)
-
-generative_model.to(device)
-
-generative_model.load_state_dict(
-    torch.load(
-        "checkpoint/EDM_MODEL_1001.weights",
-        map_location=device,
-    )
-)
-
-generative_model.eval()
-
-samples = generate_sample(
-    device,
-    generative_model,
-    ref_context,
-    context_norms=CONTEXT_NORMS,
-    n_samples=2,
-    min_n_nodes=ref_n_atoms - 2,
-    max_n_nodes=ref_n_atoms + 2,
-    fix_noise=False,
-)
