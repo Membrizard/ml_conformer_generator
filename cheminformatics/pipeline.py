@@ -70,7 +70,6 @@ def evaluate_samples(
         )
 
         shape_tanimoto = tanimoto_score(ref_coord=sq_ref_coord, cand_coord=sq_sample_coord)
-        print(f"Our Tanimoto -  {shape_tanimoto}")
         best_coord = sq_sample_coord
 
         # Calculate Best shape similarity Tanimoto score

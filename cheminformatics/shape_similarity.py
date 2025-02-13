@@ -466,7 +466,7 @@ def tanimoto_score(
     cand_coord,
     alpha: float = ALPHA,
     amplitude: float = AMPLITUDE,
-    n: int = 20,
+    n: int = 40,
 ):
     # alpha = get_alpha(atom_radius=atom_radius, gaussian_amplitude=amplitude)
 
