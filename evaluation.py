@@ -45,7 +45,7 @@ valid_samples = 0  # number of valid samples generated
 
 for i, reference in enumerate(references):
     print(f"Analysing samples for reference compound {i + 1} of {n_ref}")
-
+    reference = Chem.RemoveHs(reference)
     ref_n_atoms = reference.GetNumAtoms()
 
     samples = generator.generate_conformers(reference_conformer=reference, n_samples=n_samples, variance=max_variance)

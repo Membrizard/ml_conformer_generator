@@ -54,7 +54,6 @@ def evaluate_samples(
     results = []
     for sample in samples:
         # Calculate chemical similarity Tanimoto score
-        print(sample)
         fp_sample = generator.GetFingerprint(sample)
 
         chemical_tanimoto = TanimotoSimilarity(fp_ref, fp_sample)
