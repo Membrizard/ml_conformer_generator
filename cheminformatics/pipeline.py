@@ -81,8 +81,8 @@ def evaluate_samples(
                 best_coord = rot_coord
 
         aligned_sample = set_conformer_positions(sample, best_coord)
-        print(f"Our Tanimoto - {shape_tanimoto}")
-        print(f"RDkit Tanimoto - {rdShapeHelpers.ShapeTanimotoDist(pf_reference, aligned_sample)}")
+        # print(f"Our Tanimoto - {shape_tanimoto}")
+        # print(f"RDkit Tanimoto - {rdShapeHelpers.ShapeTanimotoDist(pf_reference, aligned_sample)}")
 
         results.append(
             {
