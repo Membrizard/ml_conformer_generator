@@ -52,7 +52,7 @@ for i, reference in enumerate(references):
     _, std_samples = evaluate_samples(reference, samples)
 
     valid_samples += len(std_samples)
-
+    print(f" {valid_samples} valid samples out of {n_samples} requested")
     # Log fraction of valid molecules
     if ref_n_atoms in node_dist_dict.keys():
         ref_mol_size_valid[ref_n_atoms] += len(std_samples) / n_samples
