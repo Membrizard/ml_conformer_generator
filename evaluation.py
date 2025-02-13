@@ -29,9 +29,6 @@ expected_n_samples = n_samples * n_ref
 node_dist_dict = dict()  # n_atoms : number of samples generated for mols with the given n_atoms
 variance_dist_dict = dict()  # n_atom variance from ref n_atoms : number of samples with such variance
 
-# variance_context_errors = dict()  # n_atom variance from ref n_atoms : error in context
-# ref_mol_size_context_errors = dict()  # n_atoms: error in context
-
 variance_shape_tanimoto_scores = dict()  # n_atom variance from ref n_atoms : shape tanimoto
 ref_mol_size_shape_tanimoto_scores = dict()  # n_atoms: shape tanimoto
 
@@ -50,14 +47,14 @@ for i, reference in enumerate(references):
 
     samples = generator.generate_conformers(reference_conformer=reference, n_samples=n_samples, variance=max_variance)
     _, std_samples = evaluate_samples(reference, samples)
-
-    valid_samples += len(std_samples)
-    print(f" {valid_samples} valid samples out of {n_samples} requested")
+    n_std_samples = len(std_samples)
+    valid_samples += n_std_samples
+    print(f" {n_std_samples} valid samples out of {n_samples} requested")
     # Log fraction of valid molecules
     if ref_n_atoms in node_dist_dict.keys():
-        ref_mol_size_valid[ref_n_atoms] += len(std_samples) / n_samples
+        ref_mol_size_valid[ref_n_atoms] += n_std_samples / n_samples
     else:
-        ref_mol_size_valid[ref_n_atoms] = len(std_samples) / n_samples
+        ref_mol_size_valid[ref_n_atoms] = n_std_samples / n_samples
 
     for std_sample in std_samples:
 
@@ -65,39 +62,30 @@ for i, reference in enumerate(references):
 
         # Check for sample uniqueness
 
-        if exact_match(sample_mol, source_path):
+        if not exact_match(sample_mol, source_path):
             chem_unique_samples += 1
 
         sample_num_atoms = sample_mol.GetNumAtoms()
         variance = ref_n_atoms - sample_num_atoms  # -> Can be negative intentionally
-        # sample_conformer = sample_mol.GetConformer()
-        # sample_coord = torch.tensor(sample_conformer.GetPositions(), dtype=torch.float32)
-        #
-        # sample_context, _ = get_context_shape(sample_coord)
-        # context_error = torch.abs(reference_context - sample_context)
 
         # Log the error in context generation and tanimoto scores for ref_n_atoms
         if ref_n_atoms in node_dist_dict.keys():
             node_dist_dict[ref_n_atoms] += 1
-            # ref_mol_size_context_errors[ref_n_atoms] += context_error
             ref_mol_size_shape_tanimoto_scores[ref_n_atoms] += std_sample['shape_tanimoto']
             ref_mol_size_chem_tanimoto_scores[ref_n_atoms] += std_sample['chemical_tanimoto']
 
         else:
             node_dist_dict[ref_n_atoms] = 1
-            # ref_mol_size_context_errors[ref_n_atoms] = context_error
             ref_mol_size_shape_tanimoto_scores[ref_n_atoms] = std_sample['shape_tanimoto']
             ref_mol_size_chem_tanimoto_scores[ref_n_atoms] = std_sample['chemical_tanimoto']
 
         # Log the error in context generation and tanimoto scores for variance
         if variance in variance_dist_dict.keys():
             variance_dist_dict[variance] += 1
-            # variance_context_errors[variance] += context_error
             variance_shape_tanimoto_scores[variance] += std_sample['shape_tanimoto']
             variance_chem_tanimoto_scores[variance] += std_sample['chemical_tanimoto']
         else:
             variance_dist_dict[variance] = 1
-            # variance_context_errors[variance] = context_error
             variance_shape_tanimoto_scores[variance] = std_sample['shape_tanimoto']
             variance_chem_tanimoto_scores[variance] = std_sample['chemical_tanimoto']
 
@@ -107,12 +95,10 @@ chem_unique_samples_rate = chem_unique_samples / valid_samples
 # Calculate mean Error and Tanimoto score values, for ref_mol_size and variance
 
 for key in node_dist_dict.keys():
-    # ref_mol_size_context_errors[key] = ref_mol_size_context_errors[key] / node_dist_dict[key]
     ref_mol_size_shape_tanimoto_scores[key] = ref_mol_size_shape_tanimoto_scores[key] / node_dist_dict[key]
     ref_mol_size_chem_tanimoto_scores[key] = ref_mol_size_chem_tanimoto_scores[key] / node_dist_dict[key]
 
 for key in variance_dist_dict.keys():
-    # variance_context_errors[key] = variance_context_errors[key] / variance_dist_dict[key]
     variance_shape_tanimoto_scores[key] = variance_shape_tanimoto_scores[key] / variance_dist_dict[key]
     variance_chem_tanimoto_scores[key] = variance_chem_tanimoto_scores[key] / variance_dist_dict[key]
 
@@ -124,10 +110,6 @@ with open("generation_performance_report.txt", "w+") as f:
     f.write(
         f"From them, Chemically Unique in reference to training Dataset - {round(chem_unique_samples_rate, 4) * 100}%\n")
 
-    # f.write("\nErrors in Context of Generated Molecules vs number of atoms in reference:\n\n")
-    # for key in sorted(ref_mol_size_context_errors.keys()):
-    #     f.write(f"{key}:  {ref_mol_size_context_errors[key]}\n")
-
     f.write("\nShape Tanimoto Scores of Generated Molecules vs number of atoms in reference:\n\n")
     for key in sorted(ref_mol_size_shape_tanimoto_scores.keys()):
         f.write(f"{key}:  {ref_mol_size_shape_tanimoto_scores[key]}\n")
@@ -135,10 +117,6 @@ with open("generation_performance_report.txt", "w+") as f:
     f.write("\nChemical Tanimoto Scores of Generated Molecules vs number of atoms in reference:\n\n")
     for key in sorted(ref_mol_size_chem_tanimoto_scores.keys()):
         f.write(f"{key}:  {ref_mol_size_chem_tanimoto_scores[key]}\n")
-
-    # f.write("\nErrors in Context of Generated Molecules vs variation of number of atoms from reference:\n\n")
-    # for key in sorted(variance_context_errors.keys()):
-    #     f.write(f"{key}:  {variance_context_errors[key]}\n")
 
     f.write("\nShape Tanimoto Scores of Generated Molecules vs variation of number of atoms from reference:\n\n")
     for key in sorted(variance_shape_tanimoto_scores.keys()):
