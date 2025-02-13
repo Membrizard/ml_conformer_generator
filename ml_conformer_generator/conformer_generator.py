@@ -239,6 +239,8 @@ class MLConformerGenerator(torch.nn.Module):
             elements=el_batch, dist_mat=dm_batch, adj_mat=b_adj_mat_batch
         )
 
+        adj_mat_batch = adj_mat_batch.to("cpu")
+
         # Append generated bonds and standardise existing samples
         optimised_conformers = []
 
