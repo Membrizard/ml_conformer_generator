@@ -93,13 +93,13 @@ for i, reference in enumerate(references):
         if variance in variance_dist_dict.keys():
             variance_dist_dict[variance] += 1
             # variance_context_errors[variance] += context_error
-            variance_shape_tanimoto_scores[ref_n_atoms] += std_sample['shape_tanimoto']
-            variance_chem_tanimoto_scores[ref_n_atoms] += std_sample['chemical_tanimoto']
+            variance_shape_tanimoto_scores[variance] += std_sample['shape_tanimoto']
+            variance_chem_tanimoto_scores[variance] += std_sample['chemical_tanimoto']
         else:
             variance_dist_dict[variance] = 1
             # variance_context_errors[variance] = context_error
-            variance_shape_tanimoto_scores[ref_n_atoms] = std_sample['shape_tanimoto']
-            variance_chem_tanimoto_scores[ref_n_atoms] = std_sample['chemical_tanimoto']
+            variance_shape_tanimoto_scores[variance] = std_sample['shape_tanimoto']
+            variance_chem_tanimoto_scores[variance] = std_sample['chemical_tanimoto']
 
 valid_samples_rate = valid_samples / expected_n_samples
 chem_unique_samples_rate = chem_unique_samples / valid_samples
