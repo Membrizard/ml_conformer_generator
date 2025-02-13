@@ -19,7 +19,7 @@ def exact_match(mol, source):
 device = "cuda"
 generator = MLConformerGenerator(device=device)
 source_path = "./data/full_15_39_atoms_conf_chembl.inchi"
-n_samples = 100
+n_samples = 20
 max_variance = 5
 
 references = Chem.SDMolSupplier("./data/ccdc_validation_set.sdf")
