@@ -14,7 +14,6 @@ from networkx import get_edge_attributes
 
 from .config import DIMENSION, NUM_BOND_TYPES
 
-# elements_decoder = {x: i for i, x in enumerate(sorted(PERMITTED_ELEMENTS))}
 
 # allowable node and edge features
 allowable_features = {

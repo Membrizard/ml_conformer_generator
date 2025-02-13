@@ -4,6 +4,7 @@ from rdkit.Geometry import Point3D
 from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
+from rdkit.Chem import rdShapeHelpers
 
 from .shape_similarity import (
     get_shape_quadrupole_for_molecule,
@@ -21,13 +22,13 @@ def evaluate_samples(
     reference: rdkit.Chem.Mol,
     samples: list[rdkit.Chem.Mol],
     generator: rdFingerprintGenerator = GENERATOR,
-)-> tuple:
+) -> tuple[str, list[dict]]:
     """
     Calculate chemical and shape similarity of the generated samples to reference
     :param reference: reference mol
     :param samples: a list of generated mols
     :param generator: fingerprint generator
-    :return: molblock of a reference in a principal frame, a list of sample conformers, aligned with reference,
+    :return: molblock of a reference in a principal frame, a list of sample conformers molblocks, aligned with reference,
              along with chemical and shape tanimoto scores.
     """
 
@@ -69,6 +70,7 @@ def evaluate_samples(
         )
 
         shape_tanimoto = tanimoto_score(ref_coord=sq_ref_coord, cand_coord=sq_sample_coord)
+        print(f"Our Tanimoto -  {shape_tanimoto}")
         best_coord = sq_sample_coord
 
         # Calculate Best shape similarity Tanimoto score
@@ -80,6 +82,8 @@ def evaluate_samples(
                 best_coord = rot_coord
 
         aligned_sample = set_conformer_positions(sample, best_coord)
+        print(f"Our Tanimoto - {shape_tanimoto}")
+        print(f"RDkit Tanimoto - {rdShapeHelpers.ShapeTanimotoDist(pf_reference, aligned_sample)}")
 
         results.append(
             {

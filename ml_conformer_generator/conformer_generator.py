@@ -49,6 +49,9 @@ class MLConformerGenerator(torch.nn.Module):
             7: "Br",
         }
 
+        self.min_n_nodes = 15
+        self.max_n_nodes = 39
+
         net_dynamics = EGNNDynamics(
             in_node_nf=9,
             context_node_nf=3,
@@ -89,25 +92,36 @@ class MLConformerGenerator(torch.nn.Module):
         self.generative_model.to(device)
         self.adj_mat_seer.to(device)
 
+        self.generative_model.eval()
+        self.adj_mat_seer.eval()
+
+    @torch.no_grad()
     def edm_samples(
         self,
         reference_context,
         n_samples=100,
-        max_n_nodes=39,
+        max_n_nodes=32,
         min_n_nodes=25,
         fix_noise=False,
     ):
         """
         Generates initial samples using generative diffusion model
-        :param reference_context:
-        :param n_samples:
+        :param reference_context: reference context - tensor of shape (3)
+        :param n_samples: number of samples to be generated
         :param max_n_nodes:
         :param min_n_nodes:
         :param fix_noise:
-        :return:
+        :return: a list of generated samples, without atom adjacency as RDkit Mol objects
         """
         # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
         nodesxsample = []
+
+        # Make sure that number of atoms of generated samples is within requested range
+        if min_n_nodes < self.min_n_nodes:
+            min_n_nodes = self.min_n_nodes
+
+        if max_n_nodes > self.max_n_nodes:
+            max_n_nodes = self.max_n_nodes
 
         for n in range(n_samples):
             nodesxsample.append(random.randint(min_n_nodes, max_n_nodes))
@@ -163,7 +177,18 @@ class MLConformerGenerator(torch.nn.Module):
         n_atoms: int = None,
         fix_noise: bool = False,
         optimise_geometry: bool = True,
-    ):
+    ) -> list[rdkit.Chem.Mol]:
+        """
+
+        :param reference_conformer:
+        :param n_samples:
+        :param variance:
+        :param reference_context:
+        :param n_atoms:
+        :param fix_noise:
+        :param optimise_geometry:
+        :return: A list of valid standardised generated molecules as RDkit Mol objects.
+        """
         if reference_conformer:
             ref_n_atoms = reference_conformer.GetNumAtoms()
             conf = reference_conformer.GetConformer()
