@@ -48,3 +48,13 @@ Docker / HTTP
 
 To start in dev, go to frontend/speck/fronted and run `npm run start`
 after that dev speck will run on http://localhost:3001
+
+After that run streamlit app from ./frontend 
+```
+cd ./frontend
+streamlit run app_ui.py
+```
+
+OK. We've set up a speck stramlit object. Now we will need to implement alignment to reference.
+For that we will add custom styles to Speck module with 'Ref' key for atoms.
+We will also need to rewrite xyz interpretation, in a way that we will explicitly specify the bonds to avoid fake bonds presence

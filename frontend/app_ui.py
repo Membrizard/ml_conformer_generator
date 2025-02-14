@@ -1,5 +1,5 @@
 import streamlit as st
-from stspeck import Speck
+from stspeck import speck
 
 from streamlit.components.v1 import html
 import streamlit.components.v1 as components
@@ -81,4 +81,4 @@ Coordinates from ORCA-job ./DSI-PABA-Me-FTIR/DSI-PABA-Me
 #     bonds = st.selectbox("Select bonds", [True, False])
 viewer = st.container(height=600)
 with viewer:
-   res = Speck(H2O, height="600px")
+   res = speck(H2O, height="600px", aoRes=512)

@@ -118,3 +118,5 @@ module.exports[115] = module.exports['Uup'] = {'symbol': 'Uup', 'name':         
 module.exports[116] = module.exports['Uuh'] = {'symbol': 'Uuh', 'name':           'Uuh', 'mass': 292.00000000, 'radius':  1.7500, 'color': [0.922, 0.000, 0.149], 'number': 116};
 module.exports[117] = module.exports['Uus'] = {'symbol': 'Uus', 'name':           'Uus', 'mass': 294.00000000, 'radius':  1.6500, 'color': [0.922, 0.000, 0.149], 'number': 117};
 module.exports[118] = module.exports['Uuo'] = {'symbol': 'Uuo', 'name':           'Uuo', 'mass': 296.00000000, 'radius':  1.5700, 'color': [0.922, 0.000, 0.149], 'number': 118};
+// Adding Special atom type for the reference
+module.exports[119] = module.exports['Ref'] = {'symbol': 'Ref', 'name':           'Ref', 'mass': 12.00000000, 'radius':  0.01, 'color': [0.922, 0.000, 0.149], 'number': 119};
