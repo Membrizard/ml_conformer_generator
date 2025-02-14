@@ -9,11 +9,12 @@ molecules, which are then passed through a standardisation pipeline.
 The EDM and GCN models were trained on a 1.6M compounds having 15-39 heavy atoms selected from the ChEMBL database.
 The solution may use the following elements for the molecule generation: H, C, N, O, F, P, S, Cl, Br
 
-The standardiser pipeline uses the following steps for 
+The standardiser pipeline uses the following steps:
+- 
+- Molecular Dynamics optimisation with MMFF
 
 The evaluation pipeline assesses the shape similarity of the generated molecules to a reference. 
-The assesment is based on a shape tanimoto similarity score [], calculated based on intersection
-of Gaussian Molecular volumes of the reference and candidate molecules.
+The assesment is based on a shape tanimoto similarity score [], calculated using RDkit Shape Tanimoto Distance.
 
 
 
@@ -42,3 +43,8 @@ _, std_samples = evaluate_samples(reference, samples)
 CMD interface
 
 Docker / HTTP
+
+#### Frontend Shit
+
+To start in dev, go to frontend/speck/fronted and run `npm run start`
+after that dev speck will run on http://localhost:3001
