@@ -3,7 +3,7 @@ from cheminformatics import evaluate_samples
 from rdkit import Chem
 
 
-def no_exact_match(mol, source):
+def exact_match(mol, source):
     sample_inchi = Chem.MolToInchi(mol)
 
     with open(source, "r") as f:
@@ -11,15 +11,15 @@ def no_exact_match(mol, source):
         for line in lines:
             cid, inchi = line.replace("\n", "").split('\t')
             if sample_inchi == inchi:
-                return False
+                return True
 
-    return True
+    return False
 
 
 device = "cuda"
 generator = MLConformerGenerator(device=device)
 source_path = "./data/full_15_39_atoms_conf_chembl.inchi"
-n_samples = 20
+n_samples = 100
 max_variance = 5
 
 references = Chem.SDMolSupplier("./data/100_ccdc_validation_set.sdf")
@@ -58,11 +58,11 @@ for i, reference in enumerate(references):
 
     for std_sample in std_samples:
 
-        sample_mol = Chem.MolFromMolBlock(std_sample['mol_block'])
+        sample_mol = Chem.MolFromMolBlock(std_sample['mol_block'], removeHs=True)
 
         # Check for sample uniqueness
-        no_match = no_exact_match(sample_mol, source_path)
-        if no_match:
+        match = exact_match(sample_mol, source_path)
+        if not match:
             chem_unique_samples += 1
 
         sample_num_atoms = sample_mol.GetNumAtoms()
