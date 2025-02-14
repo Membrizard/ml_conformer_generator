@@ -13,6 +13,25 @@ var newSystem = module.exports.new = function() {
     }
 };
 
+var addAtom = module.exports.addAtom = function(s, symbol, x, y, z) {
+    s.atoms.push({
+        symbol: symbol,
+        x: x,
+        y: y,
+        z: z,
+    });
+};
+
+// Our function to Add bonds explicitly [Not Finished]
+var addBond = module.exports.addBond = function(s, symbol, x, y, z) {
+    s.atoms.push({
+        symbol: symbol,
+        x: x,
+        y: y,
+        z: z,
+    });
+};
+
 var calculateBonds = module.exports.calculateBonds = function(s, v) {
     var elems = elements;
     if (v != undefined)
@@ -67,16 +86,6 @@ var calculateBonds = module.exports.calculateBonds = function(s, v) {
     });
     s.bonds = bonds;
 }
-
-
-var addAtom = module.exports.addAtom = function(s, symbol, x, y, z) {
-    s.atoms.push({
-        symbol: symbol,
-        x: x,
-        y: y,
-        z: z,
-    });
-};
 
 var getCentroid = module.exports.getCentroid = function(s) {
     var xsum = 0;

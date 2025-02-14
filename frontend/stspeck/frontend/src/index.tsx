@@ -177,28 +177,28 @@ let rightc = document.createElement("div");
 rightc.style.padding = "2px"
 rightc.append(right)
 
-// let sti = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-// sti.setAttribute('width', "16");
-// sti.setAttribute('height', "16");
-// sti.setAttribute('viewBox', "0 0 16 16");
-// sti.setAttribute('fill', "#AAAAAA");
-// sti.setAttribute('stroke', "#AAAAAA");
-// sti.addEventListener('mouseover', function () {
-//     sti.setAttribute('fill', "#666666");
-//     sti.setAttribute('stroke', "#666666");
-// });
-// sti.addEventListener('mouseout', function () {
-//     sti.setAttribute('fill', "#AAAAAA");
-//     sti.setAttribute('stroke', "#AAAAAA");
-// });
-// sti.innerHTML = '<g><circle cx="4" cy="4" r="2"/><circle cx="10" cy="2" r="1"/><circle cx="10" cy="12" r="3"/><path d="M 5 5 l 3 4 M 6 3 l 3 -1" ></path></g>';
-// sti.addEventListener('click', function () {
-//     stickball();
-//     updateModel()
-// });
-// let stic = document.createElement("div");
-// stic.style.padding = "2px"
-// stic.append(sti)
+let sti = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+sti.setAttribute('width', "16");
+sti.setAttribute('height', "16");
+sti.setAttribute('viewBox', "0 0 16 16");
+sti.setAttribute('fill', "#AAAAAA");
+sti.setAttribute('stroke', "#AAAAAA");
+sti.addEventListener('mouseover', function () {
+    sti.setAttribute('fill', "#666666");
+    sti.setAttribute('stroke', "#666666");
+});
+sti.addEventListener('mouseout', function () {
+    sti.setAttribute('fill', "#AAAAAA");
+    sti.setAttribute('stroke', "#AAAAAA");
+});
+sti.innerHTML = '<g><circle cx="4" cy="4" r="2"/><circle cx="10" cy="2" r="1"/><circle cx="10" cy="12" r="3"/><path d="M 5 5 l 3 4 M 6 3 l 3 -1" ></path></g>';
+sti.addEventListener('click', function () {
+    stickball();
+    updateModel()
+});
+let stic = document.createElement("div");
+stic.style.padding = "2px"
+stic.append(sti)
 
 
 // let too = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -275,8 +275,9 @@ container.append(canvas)
 
 // topbar.append(infoc)
 
+
 topbar.append(licc)
-// topbar.append(stic)
+topbar.append(stic)
 // topbar.append(tooc)
 topbar.append(filc)
 
@@ -338,22 +339,22 @@ let setColorSchema = function (schema: string) {
     }
 }
 
-let switchColorSchema = function () {
-    let update_color = false;
-    let first_color = "";
-    for (let color in speckColors) {
-        if (first_color === "")
-            first_color = color;
-        if (update_color) {
-            setColorSchema(color);
-            return;
-        }
-        if (color === current_schema) {
-            update_color = true;
-        }
-    }
-    setColorSchema(first_color);
-}
+// let switchColorSchema = function () {
+//     let update_color = false;
+//     let first_color = "";
+//     for (let color in speckColors) {
+//         if (first_color === "")
+//             first_color = color;
+//         if (update_color) {
+//             setColorSchema(color);
+//             return;
+//         }
+//         if (color === current_schema) {
+//             update_color = true;
+//         }
+//     }
+//     setColorSchema(first_color);
+// }
 
 let stickball = function () {
     needReset = true;
@@ -465,6 +466,32 @@ let rightview = function () {
 }
 
 let xyz = function (data: string) {
+    var lines = data.split('\n');
+    var natoms = parseInt(lines[0]);
+    var nframes = Math.floor(lines.length / (natoms + 2));
+    var trajectory = []
+    for (var i = 0; i < nframes; i++) {
+        var atoms = [];
+        type ATOM = {
+            [key: string]: any;
+        };
+        for (var j = 0; j < natoms; j++) {
+            var line = lines[i * (natoms + 2) + j + 2].split(/\s+/);
+            var atom: ATOM = {};
+            var k = 0;
+            while (line[k] === "") k++;
+            atom.symbol = line[k++];
+            atom.position = [parseFloat(line[k++]), parseFloat(line[k++]), parseFloat(line[k++])];
+            atoms.push(atom);
+        }
+        trajectory.push(atoms);
+    }
+    return trajectory;
+}
+
+// Our function to set bonds explicitly [Not Finished]
+
+let mol_block = function (data: string) {
     var lines = data.split('\n');
     var natoms = parseInt(lines[0]);
     var nframes = Math.floor(lines.length / (natoms + 2));
