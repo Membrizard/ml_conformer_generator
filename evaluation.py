@@ -118,6 +118,10 @@ with open("generation_performance_report.txt", "w+") as f:
     for key in sorted(ref_mol_size_chem_tanimoto_scores.keys()):
         f.write(f"{key}:  {ref_mol_size_chem_tanimoto_scores[key]}\n")
 
+    f.write("\nNote: The abnormalities in variance of the number of atoms may be present\n "
+            "due to striping of small unconnected fragments of the generated molecules by the"
+            " cheminformatics standardisation pipline\n")
+
     f.write("\nShape Tanimoto Scores of Generated Molecules vs variation of number of atoms from reference:\n\n")
     for key in sorted(variance_shape_tanimoto_scores.keys()):
         f.write(f"{key}:  {variance_shape_tanimoto_scores[key]}\n")
