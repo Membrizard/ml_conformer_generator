@@ -39,7 +39,7 @@ topbar.style.top = "0px"
 topbar.style.height = "30px"
 topbar.style.right = "0px"
 topbar.style.position = "absolute"
-topbar.style.background = "rgba(255,255,255,0.9)"
+topbar.style.background = "rgb(14, 17, 23)"
 topbar.style.flexDirection = "row";
 topbar.style.alignContent = "flex-end";
 topbar.style.display = "flex";
@@ -177,52 +177,52 @@ let rightc = document.createElement("div");
 rightc.style.padding = "2px"
 rightc.append(right)
 
-let sti = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-sti.setAttribute('width', "16");
-sti.setAttribute('height', "16");
-sti.setAttribute('viewBox', "0 0 16 16");
-sti.setAttribute('fill', "#AAAAAA");
-sti.setAttribute('stroke', "#AAAAAA");
-sti.addEventListener('mouseover', function () {
-    sti.setAttribute('fill', "#666666");
-    sti.setAttribute('stroke', "#666666");
-});
-sti.addEventListener('mouseout', function () {
-    sti.setAttribute('fill', "#AAAAAA");
-    sti.setAttribute('stroke', "#AAAAAA");
-});
-sti.innerHTML = '<g><circle cx="4" cy="4" r="2"/><circle cx="10" cy="2" r="1"/><circle cx="10" cy="12" r="3"/><path d="M 5 5 l 3 4 M 6 3 l 3 -1" ></path></g>';
-sti.addEventListener('click', function () {
-    stickball();
-    updateModel()
-});
-let stic = document.createElement("div");
-stic.style.padding = "2px"
-stic.append(sti)
+// let sti = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+// sti.setAttribute('width', "16");
+// sti.setAttribute('height', "16");
+// sti.setAttribute('viewBox', "0 0 16 16");
+// sti.setAttribute('fill', "#AAAAAA");
+// sti.setAttribute('stroke', "#AAAAAA");
+// sti.addEventListener('mouseover', function () {
+//     sti.setAttribute('fill', "#666666");
+//     sti.setAttribute('stroke', "#666666");
+// });
+// sti.addEventListener('mouseout', function () {
+//     sti.setAttribute('fill', "#AAAAAA");
+//     sti.setAttribute('stroke', "#AAAAAA");
+// });
+// sti.innerHTML = '<g><circle cx="4" cy="4" r="2"/><circle cx="10" cy="2" r="1"/><circle cx="10" cy="12" r="3"/><path d="M 5 5 l 3 4 M 6 3 l 3 -1" ></path></g>';
+// sti.addEventListener('click', function () {
+//     stickball();
+//     updateModel()
+// });
+// let stic = document.createElement("div");
+// stic.style.padding = "2px"
+// stic.append(sti)
 
 
-let too = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-too.setAttribute('width', "16");
-too.setAttribute('height', "16");
-too.setAttribute('viewBox', "0 0 16 16");
-too.setAttribute('fill', "#AAAAAA");
-too.setAttribute('stroke', "#AAAAAA");
-too.addEventListener('mouseover', function () {
-    too.setAttribute('fill', "#666666");
-    too.setAttribute('stroke', "#666666");
-});
-too.addEventListener('mouseout', function () {
-    too.setAttribute('fill', "#AAAAAA");
-    too.setAttribute('stroke', "#AAAAAA");
-});
-too.innerHTML = '<g><circle cx="4" cy="4" r="1"/><circle cx="10" cy="2" r="1"/><circle cx="10" cy="12" r="1"/><path d="M 4 5 l 5 6 M 5 3 l 4 -1" ></path></g>';
-too.addEventListener('click', function () {
-    toon();
-    updateModel()
-});
-let tooc = document.createElement("div");
-tooc.style.padding = "2px"
-tooc.append(too)
+// let too = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+// too.setAttribute('width', "16");
+// too.setAttribute('height', "16");
+// too.setAttribute('viewBox', "0 0 16 16");
+// too.setAttribute('fill', "#AAAAAA");
+// too.setAttribute('stroke', "#AAAAAA");
+// too.addEventListener('mouseover', function () {
+//     too.setAttribute('fill', "#666666");
+//     too.setAttribute('stroke', "#666666");
+// });
+// too.addEventListener('mouseout', function () {
+//     too.setAttribute('fill', "#AAAAAA");
+//     too.setAttribute('stroke', "#AAAAAA");
+// });
+// too.innerHTML = '<g><circle cx="4" cy="4" r="1"/><circle cx="10" cy="2" r="1"/><circle cx="10" cy="12" r="1"/><path d="M 4 5 l 5 6 M 5 3 l 4 -1" ></path></g>';
+// too.addEventListener('click', function () {
+//     toon();
+//     updateModel()
+// });
+// let tooc = document.createElement("div");
+// tooc.style.padding = "2px"
+// tooc.append(too)
 
 let lic = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 lic.setAttribute('width', "16");
@@ -276,9 +276,9 @@ container.append(canvas)
 // topbar.append(infoc)
 
 topbar.append(licc)
-topbar.append(stic)
+// topbar.append(stic)
 // topbar.append(tooc)
-// topbar.append(filc)
+topbar.append(filc)
 
 topbar.append(frontc)
 topbar.append(topc)
@@ -374,14 +374,14 @@ let stickball = function () {
     view.outline = 0;
 }
 
-let toon = function () {
-    stickball()
-    view.atomScale = 0.1;
-    view.relativeAtomScale = 0;
-    view.bondScale = 1;
-    view.bonds = true;
-    view.bondThreshold = 1.2;
-}
+// let toon = function () {
+//     stickball()
+//     view.atomScale = 0.1;
+//     view.relativeAtomScale = 0;
+//     view.bondScale = 1;
+//     view.bonds = true;
+//     view.bondThreshold = 1.2;
+// }
 
 let fill = function () {
     stickball()
