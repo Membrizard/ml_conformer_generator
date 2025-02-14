@@ -1,3 +1,5 @@
+import time
+
 from ml_conformer_generator import MLConformerGenerator
 from cheminformatics import evaluate_samples
 from rdkit import Chem
@@ -20,9 +22,9 @@ device = "cuda"
 generator = MLConformerGenerator(device=device)
 source_path = "./data/full_15_39_atoms_conf_chembl.inchi"
 n_samples = 100
-max_variance = 5
+max_variance = 2
 
-references = Chem.SDMolSupplier("./data/100_ccdc_validation_set.sdf")
+references = Chem.SDMolSupplier("./data/1000_ccdc_validation_set.sdf")
 n_ref = len(references)
 expected_n_samples = n_samples * n_ref
 
@@ -46,8 +48,11 @@ for i, reference in enumerate(references):
     ref_n_atoms = reference.GetNumAtoms()
 
     samples = generator.generate_conformers(reference_conformer=reference, n_samples=n_samples, variance=max_variance)
+    start = time.time()
     _, std_samples = evaluate_samples(reference, samples)
+
     n_std_samples = len(std_samples)
+    print(f"Tanimoto similarity for {n_std_samples} calculated in {time.time() - start} sec")
     valid_samples += n_std_samples
     print(f" {n_std_samples} valid samples out of {n_samples} requested")
     # Log fraction of valid molecules
