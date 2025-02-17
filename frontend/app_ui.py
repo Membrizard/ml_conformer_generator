@@ -78,14 +78,28 @@ Coordinates from ORCA-job ./DSI-PABA-Me-FTIR/DSI-PABA-Me
 #     ao = st.selectbox("Select ao", [0, 0.1, 0.2, 0.5, 0.8, 1])
 #     bonds = st.selectbox("Select bonds", [True, False])
 viewer = st.container(height=600)
+view_ref = st.toggle(label="Display reference", value=True)
 with viewer:
-   mol = Chem.MolFromSmiles('C1=CC(=CC=C1C(=O)O)N')
-   mol = Chem.AddHs(mol)
-   rdDistGeom.EmbedMolecule(mol, forceTol=0.001, randomSeed=12)
+   if view_ref:
+      mol = Chem.MolFromSmiles('C1=CC(=CC=C1C(=O)O)N')
+      mol = Chem.AddHs(mol)
+      rdDistGeom.EmbedMolecule(mol, forceTol=0.001, randomSeed=12)
 
-   ref = Chem.MolFromSmiles('C1CC(CC(C1)N)C(=O)O')
-   ref = Chem.AddHs(ref)
-   rdDistGeom.EmbedMolecule(ref, forceTol=0.001, randomSeed=12)
+      ref = Chem.MolFromSmiles('C1CC(CC(C1)N)C(=O)O')
+      ref = Chem.AddHs(ref)
+      rdDistGeom.EmbedMolecule(ref, forceTol=0.001, randomSeed=12)
 
-   json_mol = prepare_speck_model(mol, ref)
-   res = speck(data=json_mol, height="600px", aoRes=512)
+      json_mol = prepare_speck_model(mol, ref)
+      res = speck(data=json_mol, height="600px", aoRes=512)
+
+   else:
+      mol = Chem.MolFromSmiles('C1=CC(=CC=C1C(=O)O)N')
+      mol = Chem.AddHs(mol)
+      rdDistGeom.EmbedMolecule(mol, forceTol=0.001, randomSeed=12)
+
+      # ref = Chem.MolFromSmiles('C1CC(CC(C1)N)C(=O)O')
+      # ref = Chem.AddHs(ref)
+      # rdDistGeom.EmbedMolecule(ref, forceTol=0.001, randomSeed=12)
+
+      json_mol = prepare_speck_model(mol)
+      res = speck(data=json_mol, height="600px", aoRes=512)
