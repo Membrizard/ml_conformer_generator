@@ -1,6 +1,6 @@
 import os
 
-try :
+try:
     import streamlit.components.v1 as components
 
     # Create a _RELEASE constant. We'll set this to False while we're developing
@@ -94,14 +94,14 @@ try :
             relativeAtomScale=kwargs.get('relativeAtomScale', 1.00),
             bondScale=kwargs.get('bondScale', 0.72),
             brightness=kwargs.get('brightness', 0.5),
-            outline=kwargs.get('outline', 1),
-            spf=kwargs.get('spf', 0),
+            outline=kwargs.get('outline', 0),
+            spf=kwargs.get('spf', 32),
             bondThreshold=kwargs.get('bondThreshold', 1.2),
             bondShade=kwargs.get('bondShade', 0.5),
             atomShade=kwargs.get('atomShade', 0.5),
             dofStrength=kwargs.get('dofStrength', 0.0),
             dofPosition=kwargs.get('dofPosition', 0.5),            
-            ao=kwargs.get('ao', 0),
+            ao=kwargs.get('ao', 0.75),
             aoRes=kwargs.get('aoRes', 512),
             width=kwargs.get('width', "100%"),
             height=kwargs.get('height', "200px"),

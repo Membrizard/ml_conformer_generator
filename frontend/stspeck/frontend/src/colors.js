@@ -1,8 +1,9 @@
 module.exports = {};
 
-var reference_struct_colors = [[1.000, 1.000, 1.000],
+var reference_struct_colors = [
                                [1.000, 0.000, 1.000],
                                [0.596, 0.921, 0.204],
+                               [1.000, 1.000, 1.000],
                                ]
 
 var standard_schema = {
