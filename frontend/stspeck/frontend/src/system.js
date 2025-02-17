@@ -35,6 +35,8 @@ var addBond = module.exports.addBond = function(s, idxA, idxB) {
         var d = glm.vec3.distance(l, m);
 
         s.bonds.push({
+                        begin : idxA,
+                        end: idxB,
                         posA: {
                             x: atom_a.x,
                             y: atom_a.y,
@@ -61,6 +63,27 @@ var addBond = module.exports.addBond = function(s, idxA, idxB) {
                        cutoff: 0
                     });
 };
+
+var updateBondsColor = module.exports.updateBondsColor = function(s, v) {
+    var elems = v.elements;
+    for (var i = 0; i < s.bonds.length; i++) {
+        var atom_a = s.atoms[s.bonds[i].begin]
+        var atom_b = s.atoms[s.bonds[i].end]
+        var ea = elems[atom_a.symbol];
+        var eb = elems[atom_b.symbol];
+        s.bonds[i].colA = {
+                            r: ea.color[0],
+                            g: ea.color[1],
+                            b: ea.color[2]
+                        }
+        s.bonds[i].colB = {
+                            r: eb.color[0],
+                            g: eb.color[1],
+                            b: eb.color[2]
+                        }
+
+    };
+}
 
 //var calculateBonds = module.exports.calculateBonds = function(s, v) {
 //    var elems = elements;
