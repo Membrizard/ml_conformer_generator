@@ -1,10 +1,7 @@
 import streamlit as st
 from stspeck import speck
+from utils import prepare_speck_model
 
-from streamlit.components.v1 import html
-import streamlit.components.v1 as components
-import ipywidgets as widgets
-from ipywidgets import embed
 
 import requests
 
@@ -14,6 +11,7 @@ import base64
 
 from rdkit import Chem
 from rdkit.Chem import Draw
+from rdkit.Chem import rdDistGeom
 
 
 # Page setup
@@ -81,4 +79,13 @@ Coordinates from ORCA-job ./DSI-PABA-Me-FTIR/DSI-PABA-Me
 #     bonds = st.selectbox("Select bonds", [True, False])
 viewer = st.container(height=600)
 with viewer:
-   res = speck(H2O, height="600px", aoRes=512)
+   mol = Chem.MolFromSmiles('C1=CC(=CC=C1C(=O)O)N')
+   mol = Chem.AddHs(mol)
+   rdDistGeom.EmbedMolecule(mol, forceTol=0.001, randomSeed=12)
+
+   ref = Chem.MolFromSmiles('C1CC(CC(C1)N)C(=O)O')
+   ref = Chem.AddHs(ref)
+   rdDistGeom.EmbedMolecule(ref, forceTol=0.001, randomSeed=12)
+
+   json_mol = prepare_speck_model(mol, ref)
+   res = speck(data=json_mol, height="600px", aoRes=512)

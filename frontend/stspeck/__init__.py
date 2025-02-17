@@ -48,13 +48,12 @@ try :
 
     def speck(data, **kwargs):
 
-
         """Create a new instance of "stspeck".
 
         Parameters
         ----------
-        data : str
-            xyz model, default(True)
+        data : dict[str, list]
+            json of the molecule, default(True)
         bonds : bool
             Enable visualizations of bonds?, default(True)
         atomScale : float
