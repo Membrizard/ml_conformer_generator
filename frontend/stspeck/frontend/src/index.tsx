@@ -388,7 +388,7 @@ let fill = function () {
     stickball()
     view.atomScale = 0.6;
     view.relativeAtomScale = 1.0;
-    view.bonds = false;
+//     view.bonds = false;
 }
 
 let licorice = function () {
@@ -434,10 +434,37 @@ let loadStructure = function (tdata: string) {
 }
 
 
+// Our function to load bonds directly to the view from json
+let loadStructureFromJson = function (json_data: any) {
+    system = undefined;
+//     var json_data = mol_json(str_data);
+
+    system = speckSystem.new();
+    var atoms = json_data.atoms
+    var bonds = json_data.bonds
+    for (var i = 0; i < atoms.length; i++) {
+//             var a = data[i];
+//             var x = atoms[i].position[0];
+//             var y = atoms[i].position[1];
+//             var z = atoms[i].position[2];
+            speckSystem.addAtom(system, atoms[i].symbol, atoms[i].x, atoms[i].y, atoms[i].z);
+        }
+        center();
+    for (var j = 0; j < bonds.length; j++) {
+//             var a = data[i];
+            var idxA = bonds[j].begin_atom;
+            var idxB = bonds[j].end_atom;
+            speckSystem.addBond(system, idxA, idxB);
+        }
+        center();
+   }
+
+
+
 let center = function () {
     if (system) {
         speckSystem.center(system);
-        speckSystem.calculateBonds(system, view);
+//         speckSystem.calculateBonds(system, view);
         renderer.setSystem(system, view);
         speckView.center(view, system);
         needReset = true;
@@ -466,32 +493,6 @@ let rightview = function () {
 }
 
 let xyz = function (data: string) {
-    var lines = data.split('\n');
-    var natoms = parseInt(lines[0]);
-    var nframes = Math.floor(lines.length / (natoms + 2));
-    var trajectory = []
-    for (var i = 0; i < nframes; i++) {
-        var atoms = [];
-        type ATOM = {
-            [key: string]: any;
-        };
-        for (var j = 0; j < natoms; j++) {
-            var line = lines[i * (natoms + 2) + j + 2].split(/\s+/);
-            var atom: ATOM = {};
-            var k = 0;
-            while (line[k] === "") k++;
-            atom.symbol = line[k++];
-            atom.position = [parseFloat(line[k++]), parseFloat(line[k++]), parseFloat(line[k++])];
-            atoms.push(atom);
-        }
-        trajectory.push(atoms);
-    }
-    return trajectory;
-}
-
-// Our function to set bonds explicitly [Not Finished]
-
-let mol_block = function (data: string) {
     var lines = data.split('\n');
     var natoms = parseInt(lines[0]);
     var nframes = Math.floor(lines.length / (natoms + 2));
@@ -569,7 +570,7 @@ function onRender(event: Event): void {
     view.aoRes = data.args['aoRes'];
     reflow()
     loop();
-    loadStructure(data.args["data"]);
+    loadStructureFromJson(data.args["data"]);
     // We tell Streamlit to update our frameHeight after each render event, in
     // case it has changed. (This isn't strictly necessary for the example
     // because our height stays fixed, but this is a low-cost function, so

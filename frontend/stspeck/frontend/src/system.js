@@ -23,69 +23,99 @@ var addAtom = module.exports.addAtom = function(s, symbol, x, y, z) {
 };
 
 // Our function to Add bonds explicitly [Not Finished]
-var addBond = module.exports.addBond = function(s, symbol, x, y, z) {
-    s.atoms.push({
-        symbol: symbol,
-        x: x,
-        y: y,
-        z: z,
-    });
+var addBond = module.exports.addBond = function(s, idxA, idxB) {
+        var elems = elements;
+        var atom_a = s.atoms[idxA]
+        var atom_b = s.atoms[idxB]
+        var ea = elems[atom_a.symbol]
+        var eb = elems[atom_b.symbol]
+
+        var l = glm.vec3.fromValues(atom_a.x, atom_a.y, atom_a.z);
+        var m = glm.vec3.fromValues(atom_b.x, atom_b.y, atom_b.z);
+        var d = glm.vec3.distance(l, m);
+
+        s.bonds.push({
+                        posA: {
+                            x: atom_a.x,
+                            y: atom_a.y,
+                            z: atom_a.z
+                        },
+                        posB: {
+                            x: atom_b.x,
+                            y: atom_b.y,
+                            z: atom_b.z
+                        },
+                        radA: ea.radius,
+                        radB: eb.radius,
+                        colA: {
+                            r: ea.color[0],
+                            g: ea.color[1],
+                            b: ea.color[2]
+                        },
+                        colB: {
+                            r: eb.color[0],
+                            g: eb.color[1],
+                            b: eb.color[2]
+                        },
+                       // cutoff: d/(ea.radius+eb.radius)
+                       cutoff: 0
+                    });
 };
 
-var calculateBonds = module.exports.calculateBonds = function(s, v) {
-    var elems = elements;
-    if (v != undefined)
-        elems = v.elements;
-    var bonds = [];
-    var sorted = s.atoms.slice();
-    sorted.sort(function(a, b) {
-        return a.z - b.z;
-    });
-    for (var i = 0; i < sorted.length; i++) {
-        var a = sorted[i];
-        var j = i + 1;
-        while(j < sorted.length && sorted[j].z < sorted[i].z + 2.5 * 2 * consts.MAX_ATOM_RADIUS) {
-            var b = sorted[j];
-            var l = glm.vec3.fromValues(a.x, a.y, a.z);
-            var m = glm.vec3.fromValues(b.x, b.y, b.z);
-            var d = glm.vec3.distance(l, m);
-            var ea = elems[a.symbol];
-            var eb = elems[b.symbol];
-            if (d < 2.5*(ea.radius+eb.radius)) {
-                bonds.push({
-                    posA: {
-                        x: a.x,
-                        y: a.y,
-                        z: a.z
-                    },
-                    posB: {
-                        x: b.x,
-                        y: b.y,
-                        z: b.z
-                    },
-                    radA: ea.radius,
-                    radB: eb.radius,
-                    colA: {
-                        r: ea.color[0],
-                        g: ea.color[1],
-                        b: ea.color[2]
-                    },
-                    colB: {
-                        r: eb.color[0],
-                        g: eb.color[1],
-                        b: eb.color[2]
-                    },
-                    cutoff: d/(ea.radius+eb.radius)
-                });
-            }
-            j++;
-        }
-    }
-    bonds.sort(function(a, b) {
-        return a.cutoff - b.cutoff;
-    });
-    s.bonds = bonds;
-}
+//var calculateBonds = module.exports.calculateBonds = function(s, v) {
+//    var elems = elements;
+//    if (v != undefined)
+//        elems = v.elements;
+//    var bonds = [];
+//    var sorted = s.atoms.slice();
+//    sorted.sort(function(a, b) {
+//        return a.z - b.z;
+//    });
+//    for (var i = 0; i < sorted.length; i++) {
+//        var a = sorted[i];
+//        var j = i + 1;
+//        while(j < sorted.length && sorted[j].z < sorted[i].z + 2.5 * 2 * consts.MAX_ATOM_RADIUS) {
+//            var b = sorted[j];
+//            var l = glm.vec3.fromValues(a.x, a.y, a.z);
+//            var m = glm.vec3.fromValues(b.x, b.y, b.z);
+//            var d = glm.vec3.distance(l, m);
+//            var ea = elems[a.symbol];
+//            var eb = elems[b.symbol];
+//            if (d < 2.5*(ea.radius+eb.radius)) {
+//                bonds.push({
+//                    posA: {
+//                        x: a.x,
+//                        y: a.y,
+//                        z: a.z
+//                    },
+//                    posB: {
+//                        x: b.x,
+//                        y: b.y,
+//                        z: b.z
+//                    },
+//                    radA: ea.radius,
+//                    radB: eb.radius,
+//                    colA: {
+//                        r: ea.color[0],
+//                        g: ea.color[1],
+//                        b: ea.color[2]
+//                    },
+//                    colB: {
+//                        r: eb.color[0],
+//                        g: eb.color[1],
+//                        b: eb.color[2]
+//                    },
+//                    cutoff: d/(ea.radius+eb.radius)
+//                });
+//            }
+//            j++;
+//        }
+//    }
+//    bonds.sort(function(a, b) {
+//        return a.cutoff - b.cutoff;
+//    });
+//    s.bonds = bonds;
+//}
 
 var getCentroid = module.exports.getCentroid = function(s) {
     var xsum = 0;
