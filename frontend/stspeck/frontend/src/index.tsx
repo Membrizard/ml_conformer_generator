@@ -327,10 +327,11 @@ let setAtomsColor = function (atoms: any) {
         }
     }
     if (needReset) {
-//         speckSystem.calculateBonds(system, view);
+        speckSystem.updateBondsColor(system, view);
         renderer.setSystem(system, view);
     }
 }
+
 
 let setColorSchema = function (schema: string) {
     if (schema in speckColors) {
