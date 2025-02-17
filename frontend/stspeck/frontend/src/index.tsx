@@ -91,25 +91,25 @@ let camerac = document.createElement("div");
 camerac.style.padding = "2px"
 camerac.append(camera)
 
-// let palette = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-// palette.setAttribute('width', "16");
-// palette.setAttribute('height', "16");
-// palette.setAttribute('viewBox', "0 0 16 16");
-// palette.setAttribute('fill', "#AAAAAA");
-// palette.addEventListener('mouseover', function () {
-//     palette.setAttribute('fill', "#666666");
-// });
-// palette.addEventListener('mouseout', function () {
-//     palette.setAttribute('fill', "#AAAAAA");
-// });
-// palette.innerHTML = '<g><path d="M 7.984375 0.015625 C 3.601562 0.015625 0 3.617188 0 8 C 0 12.382812 3.601562 15.984375 7.984375 15.984375 C 8.742188 15.984375 9.320312 15.402344 9.320312 14.648438 C 9.320312 14.300781 9.175781 13.980469 8.96875 13.75 C 8.738281 13.519531 8.617188 13.226562 8.617188 12.851562 C 8.617188 12.09375 9.199219 11.515625 9.953125 11.515625 L 11.550781 11.515625 C 13.992188 11.515625 15.992188 9.511719 15.992188 7.070312 C 15.972656 3.210938 12.367188 0.015625 7.984375 0.015625 Z M 3.105469 8 C 2.351562 8 1.773438 7.417969 1.773438 6.664062 C 1.773438 5.914062 2.351562 5.332031 3.105469 5.332031 C 3.859375 5.332031 4.441406 5.914062 4.441406 6.664062 C 4.441406 7.417969 3.863281 8 3.105469 8 Z M 5.777344 4.457031 C 5.023438 4.457031 4.445312 3.875 4.445312 3.121094 C 4.445312 2.367188 5.023438 1.789062 5.777344 1.789062 C 6.53125 1.789062 7.113281 2.367188 7.113281 3.121094 C 7.085938 3.878906 6.535156 4.457031 5.777344 4.457031 Z M 10.195312 4.457031 C 9.4375 4.457031 8.859375 3.875 8.859375 3.121094 C 8.859375 2.367188 9.441406 1.789062 10.195312 1.789062 C 10.945312 1.789062 11.527344 2.367188 11.527344 3.121094 C 11.527344 3.878906 10.945312 4.457031 10.195312 4.457031 Z M 12.863281 8 C 12.105469 8 11.527344 7.417969 11.527344 6.664062 C 11.527344 5.914062 12.109375 5.332031 12.863281 5.332031 C 13.617188 5.332031 14.195312 5.914062 14.195312 6.664062 C 14.195312 7.417969 13.617188 8 12.863281 8 Z M 12.863281 8"/></g>';
-// palette.addEventListener('click', function () {
-//     switchColorSchema();
-// //     infoc.innerHTML = 'Colors: <BR>' + current_schema;
-// });
-// let palettec = document.createElement("div");
-// palettec.style.padding = "2px"
-// palettec.append(palette)
+let palette = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+palette.setAttribute('width', "16");
+palette.setAttribute('height', "16");
+palette.setAttribute('viewBox', "0 0 16 16");
+palette.setAttribute('fill', "#AAAAAA");
+palette.addEventListener('mouseover', function () {
+    palette.setAttribute('fill', "#666666");
+});
+palette.addEventListener('mouseout', function () {
+    palette.setAttribute('fill', "#AAAAAA");
+});
+palette.innerHTML = '<g><path d="M 7.984375 0.015625 C 3.601562 0.015625 0 3.617188 0 8 C 0 12.382812 3.601562 15.984375 7.984375 15.984375 C 8.742188 15.984375 9.320312 15.402344 9.320312 14.648438 C 9.320312 14.300781 9.175781 13.980469 8.96875 13.75 C 8.738281 13.519531 8.617188 13.226562 8.617188 12.851562 C 8.617188 12.09375 9.199219 11.515625 9.953125 11.515625 L 11.550781 11.515625 C 13.992188 11.515625 15.992188 9.511719 15.992188 7.070312 C 15.972656 3.210938 12.367188 0.015625 7.984375 0.015625 Z M 3.105469 8 C 2.351562 8 1.773438 7.417969 1.773438 6.664062 C 1.773438 5.914062 2.351562 5.332031 3.105469 5.332031 C 3.859375 5.332031 4.441406 5.914062 4.441406 6.664062 C 4.441406 7.417969 3.863281 8 3.105469 8 Z M 5.777344 4.457031 C 5.023438 4.457031 4.445312 3.875 4.445312 3.121094 C 4.445312 2.367188 5.023438 1.789062 5.777344 1.789062 C 6.53125 1.789062 7.113281 2.367188 7.113281 3.121094 C 7.085938 3.878906 6.535156 4.457031 5.777344 4.457031 Z M 10.195312 4.457031 C 9.4375 4.457031 8.859375 3.875 8.859375 3.121094 C 8.859375 2.367188 9.441406 1.789062 10.195312 1.789062 C 10.945312 1.789062 11.527344 2.367188 11.527344 3.121094 C 11.527344 3.878906 10.945312 4.457031 10.195312 4.457031 Z M 12.863281 8 C 12.105469 8 11.527344 7.417969 11.527344 6.664062 C 11.527344 5.914062 12.109375 5.332031 12.863281 5.332031 C 13.617188 5.332031 14.195312 5.914062 14.195312 6.664062 C 14.195312 7.417969 13.617188 8 12.863281 8 Z M 12.863281 8"/></g>';
+palette.addEventListener('click', function () {
+    switchColorSchema();
+//     infoc.innerHTML = 'Colors: <BR>' + current_schema;
+});
+let palettec = document.createElement("div");
+palettec.style.padding = "2px"
+palettec.append(palette)
 
 let front = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 front.setAttribute('width', "16");
@@ -285,7 +285,7 @@ topbar.append(frontc)
 topbar.append(topc)
 topbar.append(rightc)
 
-// topbar.append(palettec)
+topbar.append(palettec)
 topbar.append(camerac)
 
 topbar.append(autoscalec)
@@ -327,7 +327,7 @@ let setAtomsColor = function (atoms: any) {
         }
     }
     if (needReset) {
-        speckSystem.calculateBonds(system, view);
+//         speckSystem.calculateBonds(system, view);
         renderer.setSystem(system, view);
     }
 }
@@ -339,28 +339,28 @@ let setColorSchema = function (schema: string) {
     }
 }
 
-// let switchColorSchema = function () {
-//     let update_color = false;
-//     let first_color = "";
-//     for (let color in speckColors) {
-//         if (first_color === "")
-//             first_color = color;
-//         if (update_color) {
-//             setColorSchema(color);
-//             return;
-//         }
-//         if (color === current_schema) {
-//             update_color = true;
-//         }
-//     }
-//     setColorSchema(first_color);
-// }
+let switchColorSchema = function () {
+    let update_color = false;
+    let first_color = "";
+    for (let color in speckColors) {
+        if (first_color === "")
+            first_color = color;
+        if (update_color) {
+            setColorSchema(color);
+            return;
+        }
+        if (color === current_schema) {
+            update_color = true;
+        }
+    }
+    setColorSchema(first_color);
+}
 
 let stickball = function () {
     needReset = true;
     view.atomScale = 0.24;
-    view.relativeAtomScale = 0.64;
-    view.bondScale = 0.5;
+    view.relativeAtomScale = 1;
+    view.bondScale = 0.72;
     view.bonds = true;
     view.bondThreshold = 1.2;
     view.brightness = 0.5;
@@ -388,7 +388,6 @@ let fill = function () {
     stickball()
     view.atomScale = 0.6;
     view.relativeAtomScale = 1.0;
-//     view.bonds = false;
 }
 
 let licorice = function () {
@@ -417,41 +416,17 @@ let updateModel = function () {
     })
 }
 
-let loadStructure = function (tdata: string) {
-    system = undefined;
-    var data = xyz(tdata)[0];
-    if (data) {
-        system = speckSystem.new();
-        for (var i = 0; i < data.length; i++) {
-            var a = data[i];
-            var x = a.position[0];
-            var y = a.position[1];
-            var z = a.position[2];
-            speckSystem.addAtom(system, a.symbol, x, y, z);
-        }
-        center();
-    }
-}
-
-
 // Our function to load bonds directly to the view from json
 let loadStructureFromJson = function (json_data: any) {
     system = undefined;
-//     var json_data = mol_json(str_data);
-
     system = speckSystem.new();
     var atoms = json_data.atoms
     var bonds = json_data.bonds
     for (var i = 0; i < atoms.length; i++) {
-//             var a = data[i];
-//             var x = atoms[i].position[0];
-//             var y = atoms[i].position[1];
-//             var z = atoms[i].position[2];
             speckSystem.addAtom(system, atoms[i].symbol, atoms[i].x, atoms[i].y, atoms[i].z);
         }
         center();
     for (var j = 0; j < bonds.length; j++) {
-//             var a = data[i];
             var idxA = bonds[j].begin_atom;
             var idxB = bonds[j].end_atom;
             speckSystem.addBond(system, idxA, idxB);
@@ -460,11 +435,9 @@ let loadStructureFromJson = function (json_data: any) {
    }
 
 
-
 let center = function () {
     if (system) {
         speckSystem.center(system);
-//         speckSystem.calculateBonds(system, view);
         renderer.setSystem(system, view);
         speckView.center(view, system);
         needReset = true;
@@ -492,29 +465,29 @@ let rightview = function () {
     }
 }
 
-let xyz = function (data: string) {
-    var lines = data.split('\n');
-    var natoms = parseInt(lines[0]);
-    var nframes = Math.floor(lines.length / (natoms + 2));
-    var trajectory = []
-    for (var i = 0; i < nframes; i++) {
-        var atoms = [];
-        type ATOM = {
-            [key: string]: any;
-        };
-        for (var j = 0; j < natoms; j++) {
-            var line = lines[i * (natoms + 2) + j + 2].split(/\s+/);
-            var atom: ATOM = {};
-            var k = 0;
-            while (line[k] === "") k++;
-            atom.symbol = line[k++];
-            atom.position = [parseFloat(line[k++]), parseFloat(line[k++]), parseFloat(line[k++])];
-            atoms.push(atom);
-        }
-        trajectory.push(atoms);
-    }
-    return trajectory;
-}
+// let xyz = function (data: string) {
+//     var lines = data.split('\n');
+//     var natoms = parseInt(lines[0]);
+//     var nframes = Math.floor(lines.length / (natoms + 2));
+//     var trajectory = []
+//     for (var i = 0; i < nframes; i++) {
+//         var atoms = [];
+//         type ATOM = {
+//             [key: string]: any;
+//         };
+//         for (var j = 0; j < natoms; j++) {
+//             var line = lines[i * (natoms + 2) + j + 2].split(/\s+/);
+//             var atom: ATOM = {};
+//             var k = 0;
+//             while (line[k] === "") k++;
+//             atom.symbol = line[k++];
+//             atom.position = [parseFloat(line[k++]), parseFloat(line[k++]), parseFloat(line[k++])];
+//             atoms.push(atom);
+//         }
+//         trajectory.push(atoms);
+//     }
+//     return trajectory;
+// }
 
 
 let reflow = function () {
