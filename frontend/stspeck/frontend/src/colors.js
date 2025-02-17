@@ -1,6 +1,9 @@
 module.exports = {};
 
-var reference_struct_colors = [[1, 1, 1], [1.000, 0.051, 0.051],[1.000, 1.000, 0.188]]
+var reference_struct_colors = [[1.000, 1.000, 1.000],
+                               [1.000, 0.000, 1.000],
+                               [0.596, 0.921, 0.204],
+                               ]
 
 var standard_schema = {
   'Ac' : [0.439, 0.671, 0.980],
@@ -112,19 +115,7 @@ var standard_schema = {
   'Yb' : [0.000, 0.749, 0.220],
   'Zn' : [0.490, 0.502, 0.690],
   'Zr' : [0.580, 0.878, 0.878],
-// Set color for reference structure
-  'Ref': [1, 1, 1],
 }
-
-
-
-//module.exports['speck'] = standard_schema
-//
-//var schema_2 = Object.assign({}, standard_schema)
-//
-//schema_2['Ref'] = [1.000, 0.051, 0.051]
-//
-//module.exports['speck_ref_2'] = schema_2
 
 for (var i = 0; i < reference_struct_colors.length; i++) {
     var name = 'speck_' + i
