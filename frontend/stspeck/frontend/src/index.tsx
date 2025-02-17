@@ -9,8 +9,8 @@ const speckColors = require('./colors.js');
 
 let system = speckSystem.new();
 let view = speckView.new();
-view.resolution.x = 200;
-view.resolution.y = 200;
+view.resolution.x = 512;
+view.resolution.y = 512;
 view.bonds = true;
 view.atomScale = 0.24;
 view.relativeAtomScale = 0.64;
@@ -27,6 +27,7 @@ view.dofPosition = 0.5;
 var renderer: any = null;
 let needReset = false;
 let current_schema = "speck";
+var view_position = "front";
 
 
 let container = document.createElement("div");
@@ -54,7 +55,6 @@ infoc.style.color = "#AAA";
 
 
 let autoscale = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-autoscale.innerHTML = '<g fill="none" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><path d="m16.5 5.5v-3c0-1.1045695-.8954305-2-2-2h-3"/><path d="m8.5 10.5v-4"/><path d="m6.5 8.5h4"/><path d="m16.5 11.5v3c0 1.1045695-.8954305 2-2 2h-3m-6-16h-3c-1.1045695 0-2 .8954305-2 2v3m5 11h-3c-1.1045695 0-2-.8954305-2-2v-3"/></g>'
 
 autoscale.setAttribute('width', "16");
 autoscale.setAttribute('height', "16");
@@ -69,6 +69,7 @@ autoscale.addEventListener('mouseout', function () {
     autoscale.setAttribute('stroke', "#AAAAAA");
 });
 // autoscale.innerHTML = '<g><path d="M 1 5 v -4 h 4 M 15 5 v -4 h -4 M 1 11 v 4 h 4 M 11 15 h 4 v -4 M 5 8 l 3 -3 l 3 3 l -3 3 l -3 -3"></path></g>';
+autoscale.innerHTML = '<g fill="none" stroke-width="2" fill-rule="evenodd" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><path d="m16.5 5.5v-3c0-1.1045695-.8954305-2-2-2h-3"/><path d="m8.5 10.5v-4"/><path d="m6.5 8.5h4"/><path d="m16.5 11.5v3c0 1.1045695-.8954305 2-2 2h-3m-6-16h-3c-1.1045695 0-2 .8954305-2 2v3m5 11h-3c-1.1045695 0-2-.8954305-2-2v-3"/></g>'
 
 autoscale.addEventListener('click', function () {
     center();
@@ -122,9 +123,9 @@ palettec.style.padding = "2px"
 palettec.append(palette)
 
 let front = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-front.setAttribute('width', "16");
-front.setAttribute('height', "16");
-front.setAttribute('viewBox', "0 0 16 16");
+front.setAttribute('width', "20");
+front.setAttribute('height', "20");
+front.setAttribute('viewBox', "0 0 24 24");
 front.setAttribute('fill', "#AAAAAA");
 front.setAttribute('stroke', "#AAAAAA");
 front.addEventListener('mouseover', function () {
@@ -135,10 +136,10 @@ front.addEventListener('mouseout', function () {
     front.setAttribute('fill', "#AAAAAA");
     front.setAttribute('stroke', "#AAAAAA");
 });
-front.innerHTML = '<g><path d="M 0 5 h 10 v 10 h -10 v -10" fill="none"/><path d="M 4 0 h 10 l -4 4 h -10 l -4 4" stroke="none"/><path d="M 11 5 l 4 -4 v 10 l -4 4 v -10" stroke="none"/></g>';
-
+// front.innerHTML = '<g><path d="M 0 5 h 10 v 10 h -10 v -10" fill="none"/><path d="M 4 0 h 10 l -4 4 h -10 l -4 4" stroke="none"/><path d="M 11 5 l 4 -4 v 10 l -4 4 v -10" stroke="none"/></g>';
+front.innerHTML = '<svg stroke-width = "0.5"><path d="M11.2797426,15.9868494 L10.1464466,14.8535534 C9.95118446,14.6582912 9.95118446,14.3417088 10.1464466,14.1464466 C10.3417088,13.9511845 10.6582912,13.9511845 10.8535534,14.1464466 L12.8535534,16.1464466 C13.0488155,16.3417088 13.0488155,16.6582912 12.8535534,16.8535534 L10.8535534,18.8535534 C10.6582912,19.0488155 10.3417088,19.0488155 10.1464466,18.8535534 C9.95118446,18.6582912 9.95118446,18.3417088 10.1464466,18.1464466 L11.3044061,16.9884871 C10.3667147,16.9573314 9.46306739,16.8635462 8.61196501,16.7145167 C9.33747501,19.2936084 10.6229353,21 12,21 C14.0051086,21 15.8160018,17.3821896 15.9868494,12.7202574 L14.8535534,13.8535534 C14.6582912,14.0488155 14.3417088,14.0488155 14.1464466,13.8535534 C13.9511845,13.6582912 13.9511845,13.3417088 14.1464466,13.1464466 L16.1464466,11.1464466 C16.3417088,10.9511845 16.6582912,10.9511845 16.8535534,11.1464466 L18.8535534,13.1464466 C19.0488155,13.3417088 19.0488155,13.6582912 18.8535534,13.8535534 C18.6582912,14.0488155 18.3417088,14.0488155 18.1464466,13.8535534 L16.9884871,12.6955939 C16.8167229,17.8651676 14.7413901,22 12,22 C9.97580598,22 8.3147521,19.7456544 7.515026,16.484974 C4.2543456,15.6852479 2,14.024194 2,12 C2,9.97580598 4.2543456,8.3147521 7.515026,7.515026 C8.3147521,4.2543456 9.97580598,2 12,2 C13.5021775,2 14.8263891,3.23888365 15.7433738,5.30744582 C15.8552836,5.55989543 15.7413536,5.8552671 15.4889039,5.96717692 C15.2364543,6.07908673 14.9410827,5.96515672 14.8291729,5.71270711 C14.0550111,3.96632921 13.0221261,3 12,3 C10.6229353,3 9.33747501,4.70639159 8.61196501,7.28548333 C9.67174589,7.09991387 10.812997,7 12,7 C17.4892085,7 22,9.13669069 22,12 C22,13.5021775 20.7611164,14.8263891 18.6925542,15.7433738 C18.4401046,15.8552836 18.1447329,15.7413536 18.0328231,15.4889039 C17.9209133,15.2364543 18.0348433,14.9410827 18.2872929,14.8291729 C20.0336708,14.0550111 21,13.0221261 21,12 C21,9.89274656 17.0042017,8 12,8 C10.6991081,8 9.46636321,8.12791023 8.35424759,8.35424759 C8.12791023,9.46636321 8,10.6991081 8,12 C8,13.3008919 8.12791023,14.5336368 8.35424759,15.6457524 C9.25899447,15.8298862 10.2435788,15.9488767 11.2797426,15.9868494 Z M7.28548333,8.61196501 C4.70639159,9.33747501 3,10.6229353 3,12 C3,13.3770647 4.70639159,14.662525 7.28548333,15.388035 C7.09991387,14.3282541 7,13.187003 7,12 C7,10.812997 7.09991387,9.67174589 7.28548333,8.61196501 L7.28548333,8.61196501 Z"/></svg>'
 front.addEventListener('click', function () {
-    rotate();
+      rotate();
 });
 let frontc = document.createElement("div");
 frontc.style.padding = "2px"
@@ -477,26 +478,34 @@ let rightview = function () {
 }
 
 let rotate = function () {
-  
-    let view_position = 'front'
-    if (system) {
+      if (system) {
         if (view_position === 'front') {
         speckView.rotateX(view, Math.PI / 2);
         center();
         view_position = 'top';
+        return
         };
         if (view_position === 'top') {
         speckView.rotateY(view, -Math.PI / 2);
         center();
         view_position = 'right';
+        return
         };
         if (view_position === 'right') {
-        speckView.rotateX(view, Math.PI / 2);
+        speckView.rotateY(view, Math.PI / 2);
+        center();
+        view_position = 'back';
+        return
+        }
+        if (view_position === 'back') {
+        speckView.rotateX(view, 0);
         center();
         view_position = 'front';
+        return
         }
     }
 }
+
 
 // let xyz = function (data: string) {
 //     var lines = data.split('\n');
