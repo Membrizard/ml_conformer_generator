@@ -65,7 +65,9 @@ var addBond = module.exports.addBond = function(s, idxA, idxB) {
 };
 
 var updateBondsColor = module.exports.updateBondsColor = function(s, v) {
-    var elems = v.elements;
+    var elems = elements;
+    if (v != undefined)
+       elems = v.elements;
     for (var i = 0; i < s.bonds.length; i++) {
         var atom_a = s.atoms[s.bonds[i].begin]
         var atom_b = s.atoms[s.bonds[i].end]
