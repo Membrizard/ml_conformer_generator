@@ -45,9 +45,7 @@ try:
     # our component's API: we can pre-process its input args, post-process its
     # output value, and add a docstring for users.
 
-
     def speck(data, **kwargs):
-
         """Create a new instance of "stspeck".
 
         Parameters
@@ -88,24 +86,24 @@ try:
         # "default" is a special argument that specifies the initial return
         # value of the component before the user has interacted with it.
         component_value = _component_func(
-            data=data, 
-            bonds=kwargs.get('bonds', True),
-            atomScale=kwargs.get('atomScale', 0.24),
-            relativeAtomScale=kwargs.get('relativeAtomScale', 1.00),
-            bondScale=kwargs.get('bondScale', 0.72),
-            brightness=kwargs.get('brightness', 0.5),
-            outline=kwargs.get('outline', 0),
-            spf=kwargs.get('spf', 32),
-            bondThreshold=kwargs.get('bondThreshold', 1.2),
-            bondShade=kwargs.get('bondShade', 0.5),
-            atomShade=kwargs.get('atomShade', 0.5),
-            dofStrength=kwargs.get('dofStrength', 0.0),
-            dofPosition=kwargs.get('dofPosition', 0.5),            
-            ao=kwargs.get('ao', 0.75),
-            aoRes=kwargs.get('aoRes', 512),
-            width=kwargs.get('width', "100%"),
-            height=kwargs.get('height', "200px"),
-            key=kwargs.get('key', None)
+            data=data,
+            bonds=kwargs.get("bonds", True),
+            atomScale=kwargs.get("atomScale", 0.24),
+            relativeAtomScale=kwargs.get("relativeAtomScale", 1.00),
+            bondScale=kwargs.get("bondScale", 0.72),
+            brightness=kwargs.get("brightness", 0.5),
+            outline=kwargs.get("outline", 0),
+            spf=kwargs.get("spf", 32),
+            bondThreshold=kwargs.get("bondThreshold", 1.2),
+            bondShade=kwargs.get("bondShade", 0.5),
+            atomShade=kwargs.get("atomShade", 0.5),
+            dofStrength=kwargs.get("dofStrength", 0.0),
+            dofPosition=kwargs.get("dofPosition", 0.5),
+            ao=kwargs.get("ao", 0.75),
+            aoRes=kwargs.get("aoRes", 512),
+            width=kwargs.get("width", "100%"),
+            height=kwargs.get("height", "200px"),
+            key=kwargs.get("key", None),
         )
 
         # We could modify the value returned from the component if we wanted.
