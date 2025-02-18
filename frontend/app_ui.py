@@ -13,6 +13,37 @@ from rdkit import Chem
 from rdkit.Chem import Draw
 from rdkit.Chem import rdDistGeom
 
+if 'generated_mols' not in st.session_state:
+    st.session_state.generated_mols = None
+
+if 'current_mol' not in st.session_state:
+    st.session_state.current_mol = None
+
+if 'current_ref' not in st.session_state:
+    st.session_state.current_ref = None
+
+if 'viewer_update' not in st.session_state:
+    st.session_state.viewer_update = False
+
+
+def generate_samples_button():
+    mols = generate_mock_results()
+    # Save generated molecules in session
+    st.session_state.generated_mols = mols
+
+    mock_ref = Chem.MolFromSmiles("C1CC(CC(C1)N)C(=O)O")
+    mock_ref = Chem.AddHs(mock_ref)
+    rdDistGeom.EmbedMolecule(mock_ref, forceTol=0.001, randomSeed=12)
+    # Save aligned reference molecule in session
+    st.session_state.current_ref = mock_ref
+    return None
+
+
+def view_mol_button(mol_in_viewer):
+    st.session_state.current_mol = mol_in_viewer
+    st.session_state.viewer_update = True
+    return None
+
 
 def generate_mock_results():
     mock_mols = Chem.SDMolSupplier('./example_structures/example.sdf')
@@ -64,13 +95,13 @@ def display_search_results(mols: list[dict], c_key: str = "results", height: int
     :param cards_per_row:
     :return:
     """
-    # rdkit = []
 
     def s_f(x):
         return x['shape_tanimoto']
 
     mols.sort(key=s_f, reverse=True)
     with st.container(height=height, key=c_key, border=False):
+
         for n_row, mol in enumerate(mols):
             i = n_row % cards_per_row
             if i == 0:
@@ -78,11 +109,11 @@ def display_search_results(mols: list[dict], c_key: str = "results", height: int
                 # draw the card
             with cols[n_row % cards_per_row]:
                 r_mol = Chem.MolFromMolBlock(mol["mol_block"])
-                # rdkit.append(r_mol)
                 fl_mol = Chem.MolFromSmiles(Chem.MolToSmiles(r_mol))
                 svg_string = draw_compound_image(fl_mol)
 
                 st.caption(f"Shape Similarity -  {round(float(mol['shape_tanimoto']), 2)}")
+                st.button(label="mol", key=f'mol_{n_row}', on_click=view_mol_button, args=[r_mol])
                 st.write(svg_string, unsafe_allow_html=True)
 
     return None
@@ -103,18 +134,49 @@ footer {visibility: hidden;}
 
 """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+# Slider styling
+st.markdown(
+    """
+    <style>
+    .stSlider [data-baseweb=slider]{
+        width: 60%;
+        padding: 0px 0px 0px 20px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Customize button style
+
+# if st.button("Click me"):
+#     st.write("Clicked")
+#
 # st.markdown(
 #     """
 #     <style>
-#     .stSlider [data-baseweb=slider]{
-#         width: 60%;
+#     button {
+#         background: none!important;
+#         border: none;
+#         padding: 0!important;
+#         color: black !important;
+#         text-decoration: none;
+#         cursor: pointer;
+#         border: none !important;
+#     }
+#     button:hover {
+#         text-decoration: none;
+#         color: black !important;
+#     }
+#     button:focus {
+#         outline: none !important;
+#         box-shadow: none !important;
+#         color: black !important;
 #     }
 #     </style>
 #     """,
 #     unsafe_allow_html=True,
 # )
-
-
 
 
 app_header = st.container(height=120)
@@ -143,16 +205,7 @@ with input_column:
             value=60,
         )
 
-        if 'generated_mols' not in st.session_state:
-            st.session_state.generated_mols = None
-
-
-        def click_button():
-            mols = generate_mock_results()
-            st.session_state.generated_mols = mols
-            return None
-
-        generate_samples = st.button('Generate', on_click=click_button, type='primary')
+        generate_samples = st.button('Generate', on_click=generate_samples_button, type='primary')
         # view_ref = st.toggle(label="Display Reference Structure", value=True)
         # hydrogens = st.toggle(label="Display Hydrogens", value=True)
 
@@ -176,28 +229,29 @@ with viewer_column:
         # viewer_controls = st.container(height=180)
 
     with viewer_container:
-        if view_ref:
-            mol = Chem.MolFromSmiles("C1=CC(=CC=C1C(=O)O)N")
-            mol = Chem.AddHs(mol)
-            rdDistGeom.EmbedMolecule(mol, forceTol=0.001, randomSeed=12)
+        if st.session_state.viewer_update:
+            if view_ref:
+                # mol = Chem.MolFromSmiles("C1=CC(=CC=C1C(=O)O)N")
+                # mol = Chem.AddHs(mol)
+                # rdDistGeom.EmbedMolecule(mol, forceTol=0.001, randomSeed=12)
+                #
+                # ref = Chem.MolFromSmiles("C1CC(CC(C1)N)C(=O)O")
+                # ref = Chem.AddHs(ref)
+                # rdDistGeom.EmbedMolecule(ref, forceTol=0.001, randomSeed=12)
+                mol = st.session_state.current_mol
+                ref = st.session_state.current_ref
 
-            ref = Chem.MolFromSmiles("C1CC(CC(C1)N)C(=O)O")
-            ref = Chem.AddHs(ref)
-            rdDistGeom.EmbedMolecule(ref, forceTol=0.001, randomSeed=12)
+                json_mol = prepare_speck_model(mol, ref)
+                res = speck(data=json_mol, height="400px", aoRes=512)
 
-            json_mol = prepare_speck_model(mol, ref)
-            res = speck(data=json_mol, height="400px", aoRes=512)
+            else:
+                # mol = Chem.MolFromSmiles("C1=CC(=CC=C1C(=O)O)N")
+                # mol = Chem.AddHs(mol)
+                # rdDistGeom.EmbedMolecule(mol, forceTol=0.001, randomSeed=12)
 
-        else:
-            mol = Chem.MolFromSmiles("C1=CC(=CC=C1C(=O)O)N")
-            mol = Chem.AddHs(mol)
-            rdDistGeom.EmbedMolecule(mol, forceTol=0.001, randomSeed=12)
+                mol = st.session_state.current_mol
 
-            # ref = Chem.MolFromSmiles('C1CC(CC(C1)N)C(=O)O')
-            # ref = Chem.AddHs(ref)
-            # rdDistGeom.EmbedMolecule(ref, forceTol=0.001, randomSeed=12)
-
-            json_mol = prepare_speck_model(mol)
-            res = speck(data=json_mol, height="400px", aoRes=512)
+                json_mol = prepare_speck_model(mol)
+                res = speck(data=json_mol, height="400px", aoRes=512)
 
 
