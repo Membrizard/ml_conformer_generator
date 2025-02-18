@@ -20,8 +20,8 @@ def generate_mock_results():
 
     for mol in mock_mols:
         results.append({'mol_block': Chem.MolToMolBlock(mol),
-                       'shape_tanimoto': random.uniform(0, 1),
-                       'chemical_tanimoto': random.uniform(0, 1)})
+                        'shape_tanimoto': random.uniform(0, 1),
+                        'chemical_tanimoto': random.uniform(0, 1)})
     return results
 
 
@@ -57,15 +57,20 @@ def render_error():
     return None
 
 
-def display_search_results(mols: list[dict], c_key: str = "results", cards_per_row: int = 3):
+def display_search_results(mols: list[dict], c_key: str = "results", height: int=400, cards_per_row: int = 3):
     """
     :param mols:
     :param с_key:
     :param cards_per_row:
     :return:
     """
+    # rdkit = []
 
-    with st.container(height=600, key=c_key, border=False):
+    def s_f(x):
+        return x['shape_tanimoto']
+
+    mols.sort(key=s_f, reverse=True)
+    with st.container(height=height, key=c_key, border=False):
         for n_row, mol in enumerate(mols):
             i = n_row % cards_per_row
             if i == 0:
@@ -73,6 +78,7 @@ def display_search_results(mols: list[dict], c_key: str = "results", cards_per_r
                 # draw the card
             with cols[n_row % cards_per_row]:
                 r_mol = Chem.MolFromMolBlock(mol["mol_block"])
+                # rdkit.append(r_mol)
                 fl_mol = Chem.MolFromSmiles(Chem.MolToSmiles(r_mol))
                 svg_string = draw_compound_image(fl_mol)
 
@@ -85,7 +91,7 @@ def display_search_results(mols: list[dict], c_key: str = "results", cards_per_r
 # Page setup
 st.set_page_config(
     page_title="ML Conformer Generator",
-    page_icon="./frontend/assets/quantori_favicon.ico",
+    # page_icon="./frontend/assets/quantori_favicon.ico",
     layout="wide",
 )
 
@@ -107,6 +113,9 @@ st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 #     """,
 #     unsafe_allow_html=True,
 # )
+
+
+
 
 app_header = st.container(height=120)
 with app_header:
@@ -133,9 +142,25 @@ with input_column:
             step=10,
             value=60,
         )
-        generate_samples = st.button("Generate", type="primary")
+
+        if 'generated_mols' not in st.session_state:
+            st.session_state.generated_mols = None
+
+
+        def click_button():
+            mols = generate_mock_results()
+            st.session_state.generated_mols = mols
+            return None
+
+        generate_samples = st.button('Generate', on_click=click_button, type='primary')
         # view_ref = st.toggle(label="Display Reference Structure", value=True)
         # hydrogens = st.toggle(label="Display Hydrogens", value=True)
+
+with output_column:
+    if st.session_state.generated_mols:
+        download_sdf = st.download_button('Download', data="")
+        display_search_results(st.session_state.generated_mols, height=460)
+
 
 with viewer_column:
     viewer_container = st.container(height=420, border=False)
@@ -153,7 +178,7 @@ with viewer_column:
     with viewer_container:
         if view_ref:
             mol = Chem.MolFromSmiles("C1=CC(=CC=C1C(=O)O)N")
-
+            mol = Chem.AddHs(mol)
             rdDistGeom.EmbedMolecule(mol, forceTol=0.001, randomSeed=12)
 
             ref = Chem.MolFromSmiles("C1CC(CC(C1)N)C(=O)O")
@@ -175,8 +200,4 @@ with viewer_column:
             json_mol = prepare_speck_model(mol)
             res = speck(data=json_mol, height="400px", aoRes=512)
 
-with output_column:
-    download_sdf = st.download_button('Download', data="")
-    results, ruler = st.columns([4, 1])
-    mols = generate_mock_results()
-    display_search_results(mols)
+
