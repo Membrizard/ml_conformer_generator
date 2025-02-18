@@ -2,7 +2,12 @@ import random
 import re
 import streamlit as st
 from stspeck import speck
-from utils import prepare_speck_model, generate_samples_button, generate_mock_results, display_search_results
+from utils import (
+    apply_custom_styling,
+    prepare_speck_model,
+    generate_samples_button,
+    display_search_results,
+)
 
 
 import requests
@@ -33,35 +38,15 @@ st.set_page_config(
     layout="wide",
 )
 
-hide_streamlit_style = """
-<style>
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
-</style>
-
-"""
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-# Slider styling
-st.markdown(
-    """
-    <style>
-    .stSlider [data-baseweb=slider]{
-        width: 60%;
-        padding: 0px 0px 0px 20px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
+apply_custom_styling()
 
 app_header = st.container(height=120)
+
 with app_header:
     st.write("ml conformer generator")
     st.write("generate molecules...")
 
 input_column, viewer_column, output_column = st.columns([1, 1, 1])
-
 
 with input_column:
     controls = st.container(height=600)
@@ -105,7 +90,6 @@ with viewer_column:
 
     with viewer_container:
         if st.session_state.viewer_update:
-
             mol = st.session_state.current_mol
             ref = st.session_state.current_ref
 
@@ -119,11 +103,9 @@ with viewer_column:
 
             # Handle reference structure
             if view_ref:
-
                 json_mol = prepare_speck_model(mol, ref)
                 res = speck(data=json_mol, height="400px", aoRes=512)
 
             else:
-
                 json_mol = prepare_speck_model(mol)
                 res = speck(data=json_mol, height="400px", aoRes=512)
