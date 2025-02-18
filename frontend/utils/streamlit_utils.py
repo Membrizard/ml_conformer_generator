@@ -5,6 +5,9 @@ import streamlit as st
 from rdkit import Chem
 from rdkit.Chem import rdDistGeom
 from rdkit.Chem import Draw
+import streamlit.components.v1 as components
+
+# Make colored bars using matplotlib cmap and tanimoto score
 
 
 # Buttons' functions
@@ -95,12 +98,14 @@ def display_search_results(
                 st.caption(
                     f"Shape Similarity -  {round(float(mol['shape_tanimoto']), 2)}"
                 )
+                st.markdown('<span id="button-after"></span>', unsafe_allow_html=True)
                 st.button(
                     label="mol",
                     key=f"mol_{n_row}",
                     on_click=view_mol_button,
                     args=[r_mol],
                 )
+                # svg_with_tooltip()
                 st.write(svg_string, unsafe_allow_html=True)
 
     return None
@@ -114,33 +119,88 @@ def render_error():
     )
     return None
 
-# Customize button style
 
-# if st.button("Click me"):
-#     st.write("Clicked")
-#
-# st.markdown(
-#     """
-#     <style>
-#     button {
-#         background: none!important;
-#         border: none;
-#         padding: 0!important;
-#         color: black !important;
-#         text-decoration: none;
-#         cursor: pointer;
-#         border: none !important;
-#     }
-#     button:hover {
-#         text-decoration: none;
-#         color: black !important;
-#     }
-#     button:focus {
-#         outline: none !important;
-#         box-shadow: none !important;
-#         color: black !important;
-#     }
-#     </style>
-#     """,
-#     unsafe_allow_html=True,
-# )
+# Customize Style
+
+
+def apply_custom_styling():
+    hide_streamlit_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    </style>
+    """
+
+    sliders = """"
+        <style>
+        .stSlider [data-baseweb=slider]{
+            width: 60%;
+            padding: 0px 0px 0px 20px;
+        }
+        </style>
+        """
+
+    buttons = """
+        <style>
+        .element-container:has(style){
+            display: none;
+        }
+        #button-after {
+            display: none;
+        }
+        .element-container:has(#button-after) {
+            display: none;
+        }
+        .element-container:has(#button-after) + div button {
+            background-color: orange;
+            }
+        </style>
+        """
+
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+    st.markdown(sliders, unsafe_allow_html=True)
+    st.markdown(buttons, unsafe_allow_html=True)
+
+    return None
+
+
+def svg_with_tooltip():
+    tooltip_css = """
+    <style>
+        .tooltip {
+          position: relative;
+          display: inline-block;
+          border-bottom: 1px dotted black;
+        }
+        
+        .tooltip .tooltiptext {
+          visibility: hidden;
+          width: 120px;
+          background-color: black;
+          color: #fff;
+          text-align: center;
+          border-radius: 6px;
+          padding: 5px 0;
+          
+          /* Position the tooltip */
+          position: absolute;
+          z-index: 1;
+          top: 0%;
+          left: 50%;
+          margin-left: -60px;
+        }
+        
+        .tooltip:hover .tooltiptext {
+          visibility: visible;
+        }
+    </style>
+    """
+
+    html_content = """
+    <div class="tooltip">Hover over me
+        <span class="tooltiptext">Tooltip text</span>
+    </div>
+    """
+
+    components.html(tooltip_css + html_content)
+    return None
