@@ -1,5 +1,6 @@
 import random
 import re
+import base64
 
 import streamlit as st
 from rdkit import Chem
@@ -151,6 +152,10 @@ def apply_custom_styling():
     .stNumberInput [data-baseweb=input]{
                 width: 20%;
             }
+    .stImage {
+                height: 100%;
+                padding: 0px 0px 0px 0px;
+            }
             
     .stDownloadButton [data-testid=stDownloadButton]{
             padding: 400px 0px 0px 0px;
@@ -174,4 +179,16 @@ def apply_custom_styling():
 
     st.html(custom_style)
 
+    return None
+
+
+def header_image(image_path: str = "./assets/header_background.png"):
+    file_ = open(image_path, "rb")
+    contents = file_.read()
+    data_url = base64.b64encode(contents).decode("utf-8")
+    file_.close()
+
+    st.html(
+        f'<img src="data:image/gif;base64,{data_url}" style="margin: -20% 0 -20% 0; width: 100%; height: 178px; object-fit: cover; object-position: 0 32%;">',
+    )
     return None

@@ -1,12 +1,16 @@
 import random
 import re
+import base64
 import streamlit as st
+import streamlit.components.v1 as components
+
 from stspeck import speck
 from utils import (
     apply_custom_styling,
     prepare_speck_model,
     generate_samples_button,
     display_search_results,
+    header_image,
 )
 
 # Prepare session state values
@@ -32,92 +36,95 @@ st.set_page_config(
 apply_custom_styling()
 
 app_header = st.container(height=120)
-
 with app_header:
-    st.write("ml conformer generator")
-    st.write("generate molecules...")
+    title_c, img_c = st.columns([1, 1])
+    with title_c:
+        st.write("ml conformer generator")
+        st.write("generate molecules...")
+    with img_c:
+        header_image("./assets/header_background.png")
 
-input_column, viewer_column, output_column = st.columns([1, 1, 1])
+app_container = st.container(height=None, border=True, )
+with app_container:
 
-with input_column:
-    controls = st.container(height=620, border=True)
-    with controls:
-        st.header("Input")
+    input_column, viewer_column, output_column = st.columns([1, 1, 1])
+
+    with input_column:
+        controls = st.container(height=620, border=False)
+        with controls:
+            st.header("Input")
+            st.divider()
+            option = st.selectbox(
+                "Reference Structure Examples",
+                ("structure_1", "structure_2", "structure_3"),
+            )
+
+            mol_block = st.text_area("Reference Structure: Mol, XYZ or PDB block ", height=200)
+            n_samples_slider_c, _, variance_c = st.columns([3, 1, 3])
+
+            with n_samples_slider_c:
+                n_samples = st.slider(
+                    "Number of Molecules to generate",
+                    min_value=20,
+                    max_value=100,
+                    step=10,
+                    value=60,
+                )
+            with variance_c:
+                variance = st.number_input("Variance in Number of Atoms ±", min_value=0, max_value=5, value=2)
+
+            _, generate_button_c = st.columns([1.4, 1])
+            with generate_button_c:
+                generate_samples = st.button(
+                    "Generate", on_click=generate_samples_button, type="primary"
+                )
+
+    with output_column:
+        header_c, button_c = st.columns([2.5, 1])
+        with header_c:
+            st.header("Output")
+        with button_c:
+            st.write('')
+            download_sdf = st.download_button("Download", data="")
+            # with header_c:
+            #     st.header("Output")
+            # with button_c:
+            #     download_sdf = st.download_button("Download", data="")
         st.divider()
-        option = st.selectbox(
-            "Reference Structure Examples",
-            ("structure_1", "structure_2", "structure_3"),
-        )
+        if st.session_state.generated_mols:
 
-        mol_block = st.text_area("Reference Mol, XYZ or PDB block ", height=200)
-        n_samples_slider_c, _, variance_c = st.columns([3, 1, 3])
+            display_search_results(st.session_state.generated_mols, height=460)
 
-        with n_samples_slider_c:
-            n_samples = st.slider(
-                "Number of Molecules to generate",
-                min_value=20,
-                max_value=100,
-                step=10,
-                value=60,
-            )
-        with variance_c:
-            variance = st.number_input("Variance in Number of Atoms ±", min_value=0, max_value=5, value=2)
+    with viewer_column:
+        viewer_container = st.container(height=420, border=False)
+        viewer_options = st.container(height=100, border=False)
 
-        _, generate_button_c = st.columns([1.4, 1])
-        with generate_button_c:
-            generate_samples = st.button(
-                "Generate", on_click=generate_samples_button, type="primary"
-            )
+        with viewer_options:
+            st.write("Viewer Options")
+            ref_col, hyd_col = st.columns([1, 1])
+            with ref_col:
+                view_ref = st.toggle(label="Reference Structure", value=False)
+            with hyd_col:
+                hydrogens = st.toggle(label="Hydrogens", value=True)
 
-with output_column:
-    # output_header_c = st.container(height=100, border=False)
+        with viewer_container:
+            if st.session_state.viewer_update:
+                mol = st.session_state.current_mol
+                ref = st.session_state.current_ref
 
-    header_c, button_c = st.columns([3, 1])
-    with header_c:
-        st.header("Output")
-    with button_c:
-        st.write('')
-        download_sdf = st.download_button("Download", data="")
-        # with header_c:
-        #     st.header("Output")
-        # with button_c:
-        #     download_sdf = st.download_button("Download", data="")
-    st.divider()
-    if st.session_state.generated_mols:
+                # # Handle Hydrogens
+                # if hydrogens:
+                #     mol = Chem.AddHs(st.session_state.current_mol)
+                #     ref = Chem.AddHs(st.session_state.current_ref)
+                # else:
+                #     mol = Chem.RemoveHs(st.session_state.current_mol)
+                #     ref = Chem.RemoveHs(st.session_state.current_ref)
 
-        display_search_results(st.session_state.generated_mols, height=460)
+                # Handle reference structure
+                if view_ref:
+                    json_mol = prepare_speck_model(mol, ref)
+                    res = speck(data=json_mol, height="400px", aoRes=512)
 
-
-with viewer_column:
-    viewer_container = st.container(height=420, border=False)
-    viewer_options = st.container(height=100, border=False)
-
-    with viewer_options:
-        st.write("Viewer Options")
-        ref_col, hyd_col = st.columns([1, 1])
-        with ref_col:
-            view_ref = st.toggle(label="Reference Structure", value=True)
-        with hyd_col:
-            hydrogens = st.toggle(label="Hydrogens", value=True)
-
-    with viewer_container:
-        if st.session_state.viewer_update:
-            mol = st.session_state.current_mol
-            ref = st.session_state.current_ref
-
-            # # Handle Hydrogens
-            # if hydrogens:
-            #     mol = Chem.AddHs(st.session_state.current_mol)
-            #     ref = Chem.AddHs(st.session_state.current_ref)
-            # else:
-            #     mol = Chem.RemoveHs(st.session_state.current_mol)
-            #     ref = Chem.RemoveHs(st.session_state.current_ref)
-
-            # Handle reference structure
-            if view_ref:
-                json_mol = prepare_speck_model(mol, ref)
-                res = speck(data=json_mol, height="400px", aoRes=512)
-
-            else:
-                json_mol = prepare_speck_model(mol)
-                res = speck(data=json_mol, height="400px", aoRes=512)
+                else:
+                    json_mol = prepare_speck_model(mol)
+                    res = speck(data=json_mol, height="400px", aoRes=512)
