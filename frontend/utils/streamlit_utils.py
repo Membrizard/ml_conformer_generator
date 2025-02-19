@@ -143,6 +143,7 @@ def apply_custom_styling():
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
+    hr {margin: 0px}
     .stSlider [data-baseweb=slider]{
             width: 100%;
             padding: 0px 0px 0px 0px;
