@@ -6,6 +6,7 @@ from .streamlit_utils import (
     draw_compound_image,
     view_mol_button,
     display_search_results,
+    header_image,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "draw_compound_image",
     "view_mol_button",
     "display_search_results",
+    "header_image",
 ]
