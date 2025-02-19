@@ -16,7 +16,8 @@ The standardiser pipeline uses the following steps:
 The evaluation pipeline assesses the shape similarity of the generated molecules to a reference. 
 The assesment is based on a shape tanimoto similarity score [], calculated using RDkit Shape Tanimoto Distance.
 
-
+- Add information on the inference time
+- Add information on inputs/outputs and architecture
 
 #### Usage
 

@@ -8,9 +8,22 @@ from rdkit.Chem import Draw
 import streamlit.components.v1 as components
 
 # Make colored bars using matplotlib cmap and tanimoto score
+SVG_PALETTE = {
+
+    1: (0.830, 0.830, 0.830),  # H
+    6: (0.830, 0.830, 0.830),  # C
+    7: (0.200, 0.600, 0.973),  # N
+    8: (1.000, 0.400, 0.400),  # O
+    9: (0.000, 0.800, 0.267),  # F
+    15: (1.000, 0.502, 0.000),  # P
+    16: (1.000, 1.000, 0.188),  # S
+    17: (0.750, 1.000, 0.000),  # Cl
+    35: (0.902, 0.361, 0.000),  # Br
+
+}
 
 
-# Buttons' functions
+# Functions for buttons
 def generate_samples_button():
     mols = generate_mock_results()
     # Save generated molecules in session
@@ -55,10 +68,13 @@ def draw_compound_image(compound: Chem.Mol):
 
     pattern = re.compile("<\?xml.*\?>")
     # Create a drawer object
-    d2d = Draw.rdMolDraw2D.MolDraw2DSVG(90, 90)
+    d2d = Draw.rdMolDraw2D.MolDraw2DSVG(160, 160)
     # Specify the drawing options
     dopts = d2d.drawOptions()
-    dopts.useBWAtomPalette()
+    dopts.setAtomPalette(SVG_PALETTE)
+    dopts.bondLineWidth = 1
+    dopts.bondColor = (0, 0, 0)
+    dopts.clearBackground = False
     # dopts.addAtomIndices = True
     # Generate and save an image
 
@@ -66,12 +82,12 @@ def draw_compound_image(compound: Chem.Mol):
     d2d.FinishDrawing()
     svg = d2d.GetDrawingText().replace("svg:", "")
     svg = re.sub(pattern, "", svg)
-    svg = "<div>" + svg + "</div>"
+    svg = "<div class='molecule_svg'>" + svg + "</div>"
     return svg
 
 
 def display_search_results(
-    mols: list[dict], c_key: str = "results", height: int = 400, cards_per_row: int = 3
+    mols: list[dict], c_key: str = "results", height: int = 400, cards_per_row: int = 2,
 ):
     """
     :param mols:
@@ -105,7 +121,7 @@ def display_search_results(
                     on_click=view_mol_button,
                     args=[r_mol],
                 )
-                # svg_with_tooltip()
+                # svg_with_tooltip(svg_string)
                 st.write(svg_string, unsafe_allow_html=True)
 
     return None
@@ -164,43 +180,32 @@ def apply_custom_styling():
     return None
 
 
-def svg_with_tooltip():
+def svg_with_tooltip(svg_content):
     tooltip_css = """
     <style>
-        .tooltip {
-          position: relative;
-          display: inline-block;
-          border-bottom: 1px dotted black;
-        }
+         .molecule_svg {
+            overflow: hidden;
+            width: 90px; 
+            height: 90px;
+        #   border-style: solid;        
+        #   position: relative;
+            padding: 0 0 0 0;
+          }
         
-        .tooltip .tooltiptext {
-          visibility: hidden;
-          width: 120px;
-          background-color: black;
-          color: #fff;
-          text-align: center;
-          border-radius: 6px;
-          padding: 5px 0;
-          
-          /* Position the tooltip */
-          position: absolute;
-          z-index: 1;
-          top: 0%;
-          left: 50%;
-          margin-left: -60px;
+        .molecule_svg svg {
+          transition: transform 0.3s ease;
+          transform-origin: center center;
+          width: 100%; 
+          height: 100%; 
+          object-fit: cover;
         }
-        
-        .tooltip:hover .tooltiptext {
-          visibility: visible;
-        }
+
     </style>
     """
 
-    html_content = """
-    <div class="tooltip">Hover over me
-        <span class="tooltiptext">Tooltip text</span>
-    </div>
-    """
+    # html_content = """
+    # <div class="zoom"></div>
+    # """
 
-    components.html(tooltip_css + html_content)
+    components.html(tooltip_css + svg_content)
     return None
