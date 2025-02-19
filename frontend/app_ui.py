@@ -9,15 +9,6 @@ from utils import (
     display_search_results,
 )
 
-
-import requests
-
-import base64
-
-from rdkit import Chem
-from rdkit.Chem import Draw
-from rdkit.Chem import rdDistGeom
-
 # Prepare session state values
 if "generated_mols" not in st.session_state:
     st.session_state.generated_mols = None
@@ -49,30 +40,49 @@ with app_header:
 input_column, viewer_column, output_column = st.columns([1, 1, 1])
 
 with input_column:
-    controls = st.container(height=600)
+    controls = st.container(height=600, border=True)
     with controls:
+        st.header("Input")
         option = st.selectbox(
             "Reference Structure Examples",
             ("structure_1", "structure_2", "structure_3"),
         )
 
         mol_block = st.text_area("Reference Mol, XYZ or PDB block ", height=200)
+        n_samples_slider_c, _, variance_c = st.columns([3, 1, 3])
 
-        n_samples = st.slider(
-            "Number of Molecules to generate",
-            min_value=20,
-            max_value=100,
-            step=10,
-            value=60,
-        )
+        with n_samples_slider_c:
+            n_samples = st.slider(
+                "Number of Molecules to generate",
+                min_value=20,
+                max_value=100,
+                step=10,
+                value=60,
+            )
+        with variance_c:
+            variance = st.number_input("Variance in Number of Atoms ±", min_value=0, max_value=5, value=2)
 
-        generate_samples = st.button(
-            "Generate", on_click=generate_samples_button, type="primary"
-        )
+        _, generate_button_c = st.columns([1.4, 1])
+        with generate_button_c:
+            generate_samples = st.button(
+                "Generate", on_click=generate_samples_button, type="primary"
+            )
 
 with output_column:
-    if st.session_state.generated_mols:
+    # output_header_c = st.container(height=100, border=False)
+
+    header_c, button_c = st.columns([3, 1])
+    with header_c:
+        st.header("Output")
+    with button_c:
+        st.write('')
         download_sdf = st.download_button("Download", data="")
+        # with header_c:
+        #     st.header("Output")
+        # with button_c:
+        #     download_sdf = st.download_button("Download", data="")
+    if st.session_state.generated_mols:
+
         display_search_results(st.session_state.generated_mols, height=460)
 
 
