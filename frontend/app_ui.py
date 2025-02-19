@@ -40,9 +40,10 @@ with app_header:
 input_column, viewer_column, output_column = st.columns([1, 1, 1])
 
 with input_column:
-    controls = st.container(height=600, border=True)
+    controls = st.container(height=620, border=True)
     with controls:
         st.header("Input")
+        st.divider()
         option = st.selectbox(
             "Reference Structure Examples",
             ("structure_1", "structure_2", "structure_3"),
@@ -81,6 +82,7 @@ with output_column:
         #     st.header("Output")
         # with button_c:
         #     download_sdf = st.download_button("Download", data="")
+    st.divider()
     if st.session_state.generated_mols:
 
         display_search_results(st.session_state.generated_mols, height=460)
