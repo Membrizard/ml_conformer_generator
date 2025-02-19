@@ -23,7 +23,7 @@ var newView = module.exports.new = function() {
         bondScale: 0.5,
         rotation: glm.mat4.create(),
         ao: 0.75,
-        aoRes: 256,
+        aoRes: 512,
         brightness: 0.5,
         outline: 0.0,
         spf: 32,

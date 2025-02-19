@@ -322,7 +322,7 @@ let licorice = function () {
     stickball()
     view.ao = 0;
     view.spf = 0;
-    view.outline = 1;
+    view.outline = 0.5;
     view.bonds = true;
 }
 
