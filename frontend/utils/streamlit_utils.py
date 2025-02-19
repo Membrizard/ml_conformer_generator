@@ -75,14 +75,13 @@ def draw_compound_image(compound: Chem.Mol):
     dopts.bondLineWidth = 1
     dopts.bondColor = (0, 0, 0)
     dopts.clearBackground = False
-    # dopts.addAtomIndices = True
     # Generate and save an image
 
     d2d.DrawMolecule(compound)
     d2d.FinishDrawing()
     svg = d2d.GetDrawingText().replace("svg:", "")
     svg = re.sub(pattern, "", svg)
-    svg = "<div class='molecule_svg'>" + svg + "</div>"
+    svg = "<div>" + svg + "</div>"
     return svg
 
 
@@ -122,7 +121,7 @@ def display_search_results(
                     args=[r_mol],
                 )
                 # svg_with_tooltip(svg_string)
-                st.write(svg_string, unsafe_allow_html=True)
+                components.html(svg_string)
 
     return None
 
@@ -140,72 +139,38 @@ def render_error():
 
 
 def apply_custom_styling():
-    hide_streamlit_style = """
+    custom_style = """
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    </style>
-    """
-
-    sliders = """"
-        <style>
-        .stSlider [data-baseweb=slider]{
-            width: 60%;
-            padding: 0px 0px 0px 20px;
+    .stSlider [data-baseweb=slider]{
+            width: 100%;
+            padding: 0px 0px 0px 0px;
         }
-        </style>
-        """
-
-    buttons = """
-        <style>
-        .element-container:has(style){
+    .stNumberInput [data-baseweb=input]{
+                width: 20%;
+            }
+            
+    .stDownloadButton [data-testid=stDownloadButton]{
+            padding: 400px 0px 0px 0px;
+        }
+            
+    .element-container:has(style){
             display: none;
         }
         #button-after {
             display: none;
         }
-        .element-container:has(#button-after) {
+    .element-container:has(#button-after) {
             display: none;
         }
-        .element-container:has(#button-after) + div button {
+    .element-container:has(#button-after) + div button {
             background-color: orange;
             }
-        </style>
-        """
-
-    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-    st.markdown(sliders, unsafe_allow_html=True)
-    st.markdown(buttons, unsafe_allow_html=True)
-
-    return None
-
-
-def svg_with_tooltip(svg_content):
-    tooltip_css = """
-    <style>
-         .molecule_svg {
-            overflow: hidden;
-            width: 90px; 
-            height: 90px;
-        #   border-style: solid;        
-        #   position: relative;
-            padding: 0 0 0 0;
-          }
-        
-        .molecule_svg svg {
-          transition: transform 0.3s ease;
-          transform-origin: center center;
-          width: 100%; 
-          height: 100%; 
-          object-fit: cover;
-        }
-
     </style>
+    
     """
 
-    # html_content = """
-    # <div class="zoom"></div>
-    # """
+    st.html(custom_style)
 
-    components.html(tooltip_css + svg_content)
     return None
