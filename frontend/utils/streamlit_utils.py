@@ -145,9 +145,8 @@ def create_view_molecule_button(r_mol, score, key):
                 button {""" +
                     f'\nbackground-color: {rgb_string};\n' +
                     f'\ncolor: {l_color};\n' +
-                    """border-radius: 0px;
+                    """border-radius: 2px;
                     width: 100%;
-                    height: 16px;
                 }
                 """,
     ):
@@ -201,7 +200,7 @@ def header_image(image_path: str = "./assets/header_background.png"):
     file_.close()
 
     st.html(
-        f'<img src="data:image/gif;base64,{data_url}" style="margin: -20% 0 -20% 0; width: 100%; height: 178px; object-fit: cover; object-position: 0 32%;">',
+        f'<img src="data:image/gif;base64,{data_url}" style="margin: -15px 0 -15px 0; width: 100%; height: 120px; object-fit: cover; object-position: 0 34%;">',
     )
     return None
 
