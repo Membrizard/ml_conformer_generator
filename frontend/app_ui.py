@@ -12,15 +12,9 @@ from utils import (
     display_search_results,
     header_image,
     stylable_container,
+    container_css,
 )
-container_css = """
-            {
-                background-color: #0f1116;
-                border: 1.5px solid rgba(49, 51, 63);
-                border-radius: 2rem;
-                padding: calc(1em - 1px);
-            }
-            """
+
 # Prepare session state values
 if "generated_mols" not in st.session_state:
     st.session_state.generated_mols = None
