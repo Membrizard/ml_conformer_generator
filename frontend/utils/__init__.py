@@ -8,6 +8,7 @@ from .streamlit_utils import (
     display_search_results,
     header_image,
     stylable_container,
+    container_css,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "display_search_results",
     "header_image",
     "stylable_container",
+    "container_css",
 ]
