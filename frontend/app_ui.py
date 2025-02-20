@@ -115,6 +115,7 @@ with app_container:
             # with button_c:
             #     download_sdf = st.download_button("Download", data="")
         st.divider()
+        st.caption("Shape Similarity to Reference:")
         if st.session_state.generated_mols:
 
             display_search_results(st.session_state.generated_mols, height=460)
