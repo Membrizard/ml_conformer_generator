@@ -9,11 +9,10 @@ from rdkit.Chem import Draw
 import streamlit.components.v1 as components
 import matplotlib
 
-CMAP = matplotlib.cm.get_cmap('viridis')
+CMAP = matplotlib.cm.get_cmap("viridis")
 
 # Make colored bars using matplotlib cmap and tanimoto score
 SVG_PALETTE = {
-
     1: (0.830, 0.830, 0.830),  # H
     6: (0.830, 0.830, 0.830),  # C
     7: (0.200, 0.600, 0.973),  # N
@@ -23,7 +22,6 @@ SVG_PALETTE = {
     16: (1.000, 1.000, 0.188),  # S
     17: (0.750, 1.000, 0.000),  # Cl
     35: (0.902, 0.361, 0.000),  # Br
-
 }
 
 
@@ -90,7 +88,10 @@ def draw_compound_image(compound: Chem.Mol):
 
 
 def display_search_results(
-    mols: list[dict], c_key: str = "results", height: int = 400, cards_per_row: int = 2,
+    mols: list[dict],
+    c_key: str = "results",
+    height: int = 400,
+    cards_per_row: int = 2,
 ):
     """
     :param mols:
@@ -114,7 +115,7 @@ def display_search_results(
                 fl_mol = Chem.MolFromSmiles(Chem.MolToSmiles(r_mol))
                 svg_string = draw_compound_image(fl_mol)
 
-                create_view_molecule_button(r_mol, float(mol['shape_tanimoto']), n_row)
+                create_view_molecule_button(r_mol, float(mol["shape_tanimoto"]), n_row)
 
                 # st.button(
                 #     label="mol",
@@ -133,19 +134,18 @@ def create_view_molecule_button(r_mol, score, key):
     color = tuple(round(x * 255, 2) for x in CMAP(score))
 
     if score > 0.3:
-        l_color = '#262730'
+        l_color = "#262730"
     else:
-        l_color = '#d3d3d3'
+        l_color = "#d3d3d3"
 
     rgb_string = f"rgb{str(color[:-1])}"
-    print(rgb_string)
     with stylable_container(
-            key=f"molecule_button_{key}",
-            css_styles="""
-                button {""" +
-                    f'\nbackground-color: {rgb_string};\n' +
-                    f'\ncolor: {l_color};\n' +
-                    """border-radius: 2px;
+        key=f"molecule_button_{key}",
+        css_styles="""
+                button {"""
+        + f"\nbackground-color: {rgb_string};\n"
+        + f"\ncolor: {l_color};\n"
+        + """border-radius: 2px;
                     width: 100%;
                 }
                 """,
@@ -209,7 +209,7 @@ def stylable_container(key: str, css_styles: str | list[str]) -> "DeltaGenerator
     """
     Can be used to create buttons with custom styles!
 
-    
+
     From streamlit-extras v0.5.5 credit to Lukas Masuch
     Insert a container into your app which you can style using CSS.
     This is useful to style specific elements in your app.

@@ -13,7 +13,14 @@ from utils import (
     header_image,
     stylable_container,
 )
-
+container_css = """
+            {
+                background-color: #0f1116;
+                border: 1.5px solid rgba(49, 51, 63);
+                border-radius: 2rem;
+                padding: calc(1em - 1px);
+            }
+            """
 # Prepare session state values
 if "generated_mols" not in st.session_state:
     st.session_state.generated_mols = None
@@ -38,16 +45,9 @@ apply_custom_styling()
 
 # app_header = st.container(height=120)
 app_header = stylable_container(
-        key="container_with_border",
-        css_styles="""
-            {
-                background-color: #0f1116;
-                border: 1px solid rgba(49, 51, 63, 0.2);
-                border-radius: 0.5rem;
-                padding: calc(1em - 1px);
-            }
-            """,
-    )
+    key="app_header",
+    css_styles=container_css,
+)
 with app_header:
     title_c, img_c = st.columns([1, 1])
     with title_c:
@@ -58,19 +58,10 @@ with app_header:
 
 # app_container = st.container(height=None, border=True, )
 app_container = stylable_container(
-        key="container_with_border",
-        css_styles="""
-            {
-                background-color: #0f1116;
-                border: 1px solid rgba(49, 51, 63);
-                border-radius: 1rem;
-                padding: calc(1em - 1px);
-            }
-            """,
-    )
-
+    key="app",
+    css_styles=container_css,
+)
 with app_container:
-
     input_column, viewer_column, output_column = st.columns([1, 1, 1])
 
     with input_column:
@@ -83,19 +74,23 @@ with app_container:
                 ("structure_1", "structure_2", "structure_3"),
             )
 
-            mol_block = st.text_area("Reference Structure: Mol, XYZ or PDB block ", height=200)
+            mol_block = st.text_area(
+                "Reference Structure: Mol, XYZ or PDB block ", height=200
+            )
             n_samples_slider_c, _, variance_c = st.columns([3, 1, 3])
 
             with n_samples_slider_c:
                 n_samples = st.slider(
                     "Number of Molecules to generate",
                     min_value=20,
-                    max_value=100,
+                    max_value=60,
                     step=10,
-                    value=60,
+                    value=40,
                 )
             with variance_c:
-                variance = st.number_input("Variance in Number of Atoms ±", min_value=0, max_value=5, value=2)
+                variance = st.number_input(
+                    "Variance in Number of Atoms ±", min_value=0, max_value=5, value=2
+                )
 
             _, generate_button_c = st.columns([1.4, 1])
             with generate_button_c:
@@ -108,7 +103,7 @@ with app_container:
         with header_c:
             st.header("Output")
         with button_c:
-            st.write('')
+            st.write("")
             download_sdf = st.download_button("Download", data="")
             # with header_c:
             #     st.header("Output")
@@ -117,7 +112,6 @@ with app_container:
         st.divider()
         st.caption("Shape Similarity to Reference:")
         if st.session_state.generated_mols:
-
             display_search_results(st.session_state.generated_mols, height=460)
 
     with viewer_column:
@@ -153,3 +147,6 @@ with app_container:
                 else:
                     json_mol = prepare_speck_model(mol)
                     res = speck(data=json_mol, height="400px", aoRes=512)
+
+with st.expander("Description of the Model"):
+        st.caption("Description of the Model...")
