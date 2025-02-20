@@ -11,6 +11,15 @@ import matplotlib
 
 CMAP = matplotlib.cm.get_cmap("viridis")
 
+container_css = """
+            {
+                background-color: #0f1116;
+                border: 1.5px solid rgba(49, 51, 63);
+                border-radius: 2rem;
+                padding: calc(1em - 1px);
+            }
+            """
+
 # Make colored bars using matplotlib cmap and tanimoto score
 SVG_PALETTE = {
     1: (0.830, 0.830, 0.830),  # H
@@ -159,6 +168,7 @@ def create_view_molecule_button(r_mol, score, key):
 
 
 # Utility functions
+
 def render_error():
     st.markdown(
         "<h2 style='text-align: center;'>Oops. Something went wrong.</h1>",
