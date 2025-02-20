@@ -7,6 +7,9 @@ from rdkit import Chem
 from rdkit.Chem import rdDistGeom
 from rdkit.Chem import Draw
 import streamlit.components.v1 as components
+import matplotlib
+
+CMAP = matplotlib.cm.get_cmap('viridis')
 
 # Make colored bars using matplotlib cmap and tanimoto score
 SVG_PALETTE = {
@@ -111,20 +114,49 @@ def display_search_results(
                 fl_mol = Chem.MolFromSmiles(Chem.MolToSmiles(r_mol))
                 svg_string = draw_compound_image(fl_mol)
 
-                st.caption(
-                    f"Shape Similarity -  {round(float(mol['shape_tanimoto']), 2)}"
-                )
-                st.markdown('<span id="button-after"></span>', unsafe_allow_html=True)
-                st.button(
-                    label="mol",
-                    key=f"mol_{n_row}",
-                    on_click=view_mol_button,
-                    args=[r_mol],
-                )
-                # svg_with_tooltip(svg_string)
+                create_view_molecule_button(r_mol, float(mol['shape_tanimoto']), n_row)
+
+                # st.button(
+                #     label="mol",
+                #     key=f"mol_{n_row}",
+                #     on_click=view_mol_button,
+                #     args=[r_mol],
+                # )
                 components.html(svg_string)
+                st.divider()
 
     return None
+
+
+def create_view_molecule_button(r_mol, score, key):
+    score = round(score, 2)
+    color = tuple(round(x * 255, 2) for x in CMAP(score))
+
+    if score > 0.3:
+        l_color = '#262730'
+    else:
+        l_color = '#d3d3d3'
+
+    rgb_string = f"rgb{str(color[:-1])}"
+    print(rgb_string)
+    with stylable_container(
+            key=f"molecule_button_{key}",
+            css_styles="""
+                button {""" +
+                    f'\nbackground-color: {rgb_string};\n' +
+                    f'\ncolor: {l_color};\n' +
+                    """border-radius: 0px;
+                    width: 100%;
+                    height: 16px;
+                }
+                """,
+    ):
+        st.button(
+            label=f"{score}",
+            key=f"mol_{key}",
+            on_click=view_mol_button,
+            args=[r_mol],
+        )
 
 
 # Utility functions
@@ -144,7 +176,6 @@ def apply_custom_styling():
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    hr {margin: 0px}
     .stSlider [data-baseweb=slider]{
             width: 100%;
             padding: 0px 0px 0px 0px;
@@ -152,27 +183,8 @@ def apply_custom_styling():
     .stNumberInput [data-baseweb=input]{
                 width: 20%;
             }
-    .stImage {
-                height: 100%;
-                padding: 0px 0px 0px 0px;
-            }
-            
-    .stDownloadButton [data-testid=stDownloadButton]{
-            padding: 400px 0px 0px 0px;
-        }
-            
-    .element-container:has(style){
-            display: none;
-        }
-        #button-after {
-            display: none;
-        }
-    .element-container:has(#button-after) {
-            display: none;
-        }
-    .element-container:has(#button-after) + div button {
-            background-color: orange;
-            }
+    hr {margin: 0px}
+    
     </style>
     
     """
@@ -196,6 +208,9 @@ def header_image(image_path: str = "./assets/header_background.png"):
 
 def stylable_container(key: str, css_styles: str | list[str]) -> "DeltaGenerator":
     """
+    Can be used to create buttons with custom styles!
+
+    
     From streamlit-extras v0.5.5 credit to Lukas Masuch
     Insert a container into your app which you can style using CSS.
     This is useful to style specific elements in your app.

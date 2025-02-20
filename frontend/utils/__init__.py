@@ -7,6 +7,7 @@ from .streamlit_utils import (
     view_mol_button,
     display_search_results,
     header_image,
+    stylable_container,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "view_mol_button",
     "display_search_results",
     "header_image",
+    "stylable_container",
 ]
