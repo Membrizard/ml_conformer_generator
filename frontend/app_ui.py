@@ -11,6 +11,7 @@ from utils import (
     generate_samples_button,
     display_search_results,
     header_image,
+    stylable_container,
 )
 
 # Prepare session state values
@@ -35,7 +36,18 @@ st.set_page_config(
 
 apply_custom_styling()
 
-app_header = st.container(height=120)
+# app_header = st.container(height=120)
+app_header = stylable_container(
+        key="container_with_border",
+        css_styles="""
+            {
+                background-color: #0f1116;
+                border: 1px solid rgba(49, 51, 63, 0.2);
+                border-radius: 0.5rem;
+                padding: calc(1em - 1px);
+            }
+            """,
+    )
 with app_header:
     title_c, img_c = st.columns([1, 1])
     with title_c:
@@ -44,13 +56,25 @@ with app_header:
     with img_c:
         header_image("./assets/header_background.png")
 
-app_container = st.container(height=None, border=True, )
+# app_container = st.container(height=None, border=True, )
+app_container = stylable_container(
+        key="container_with_border",
+        css_styles="""
+            {
+                background-color: #0f1116;
+                border: 1px solid rgba(49, 51, 63);
+                border-radius: 1rem;
+                padding: calc(1em - 1px);
+            }
+            """,
+    )
+
 with app_container:
 
     input_column, viewer_column, output_column = st.columns([1, 1, 1])
 
     with input_column:
-        controls = st.container(height=620, border=False)
+        controls = st.container(height=630, border=False)
         with controls:
             st.header("Input")
             st.divider()
