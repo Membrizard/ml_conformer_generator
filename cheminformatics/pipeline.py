@@ -67,16 +67,13 @@ def evaluate_samples(
         s_s_mom, sq_sample_coord = get_shape_quadrupole_for_molecule(
             coordinates=sample_coord
         )
-        # sq_sample_mol = set_conformer_positions(sample, sq_sample_coord)
-        # shape_tanimoto = 1 - rdShapeHelpers.ShapeTanimotoDist(pf_reference, sq_sample_mol)
+
         shape_tanimoto = tanimoto_score(sq_ref_coord, sq_sample_coord)
         best_coord = sq_sample_coord
 
         # Calculate Best shape similarity Tanimoto score
         for angles in rotations:
             rot_coord = rotate_coord(coord=sq_sample_coord, angles=angles)
-            # sq_sample_mol = set_conformer_positions(sample, sq_sample_coord)
-            # score = 1 - rdShapeHelpers.ShapeTanimotoDist(pf_reference, sq_sample_mol)
             score = tanimoto_score(sq_ref_coord, rot_coord)
             if score > shape_tanimoto:
                 shape_tanimoto = score
