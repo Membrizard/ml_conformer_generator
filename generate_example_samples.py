@@ -6,10 +6,10 @@ import json
 
 from rdkit.Chem import Draw
 
-device = "cuda"
+device = "cpu"
 generator = MLConformerGenerator(device=device)
 
-example_refs = ["./generation_examples/ADAMOL.mol",
+example_refs = [
                 "./generation_examples/CEYYAG.mol",
                 "./generation_examples/CHEMBL223367_P10000055.mol",
                 "./generation_examples/CHEMBL3955019_P10000113.mol",
@@ -21,6 +21,8 @@ example_refs = ["./generation_examples/ADAMOL.mol",
 for i, ref in enumerate(example_refs):
 
     ref_mol = Chem.MolFromMolFile(ref, removeHs=False)
+    print(Chem.MolToSmiles(ref_mol))
+
 
     # Generate Samples
     samples = generator.generate_conformers(reference_conformer=ref_mol, n_samples=100, variance=2)
