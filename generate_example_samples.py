@@ -6,34 +6,29 @@ import json
 
 from rdkit.Chem import Draw
 
-device = "cpu"
+device = "cuda"
 generator = MLConformerGenerator(device=device)
 
-example_refs = ["./generation_examples/adamantanol.mol2",
-                "./generation_examples/ceyyag.mol2",
-                "./generation_examples/chembl223367.mol",
-                "./generation_examples/chembl3955019.mol",
-                "./generation_examples/chembl4089284.mol",
-                "generation_examples/crown-6_ed.mol",
-                "./generation_examples/yibfeu.mol2",
+example_refs = ["./generation_examples/ADAMOL.mol",
+                "./generation_examples/CEYYAG.mol",
+                "./generation_examples/CHEMBL223367_P10000055.mol",
+                "./generation_examples/CHEMBL3955019_P10000113.mol",
+                "./generation_examples/CHEMBL4089284_P10000009.mol",
+                "generation_examples/CROWN6.mol",
+                "./generation_examples/YIBFEU.mol",
                 ]
 
 for i, ref in enumerate(example_refs):
 
     ref_mol = Chem.MolFromMolFile(ref, removeHs=False)
 
-    if ref_mol is None:
-        ref_mol = Chem.MolFromMol2File(ref, removeHs=False)
+    # Generate Samples
+    samples = generator.generate_conformers(reference_conformer=ref_mol, n_samples=100, variance=2)
 
-    Chem.MolToMolFile(ref_mol, f"{ref_mol.GetProp('_Name')}.mol")
+    # Characterise samples
+    aligned_ref, std_samples = evaluate_samples(ref_mol, samples)
 
-    # # Generate Samples
-    # samples = generator.generate_conformers(reference_conformer=ref_mol, n_samples=100, variance=2)
-    #
-    # # Characterise samples
-    # aligned_ref, std_samples = evaluate_samples(ref_mol, samples)
-    #
-    # results = {"aligned_reference": aligned_ref, "generated_molecules": std_samples}
-    #
-    # with open(f"./generation_examples/generation_example_{i+1}.json", "w+") as outfile:
-    #     json.dump(results, outfile)
+    results = {"aligned_reference": aligned_ref, "generated_molecules": std_samples}
+
+    with open(f"./generation_examples/generation_example_{i+1}.json", "w+") as outfile:
+        json.dump(results, outfile)
