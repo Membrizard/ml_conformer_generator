@@ -14,7 +14,7 @@ example_refs = [
                 "./generation_examples/CHEMBL223367_P10000055.mol",
                 "./generation_examples/CHEMBL3955019_P10000113.mol",
                 "./generation_examples/CHEMBL4089284_P10000009.mol",
-                "generation_examples/CROWN6.mol",
+                "./generation_examples/CROWN6.mol",
                 "./generation_examples/YIBFEU.mol",
                 ]
 
