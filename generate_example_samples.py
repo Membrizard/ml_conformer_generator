@@ -6,7 +6,7 @@ import json
 
 from rdkit.Chem import Draw
 
-device = "cpu"
+device = "cuda"
 generator = MLConformerGenerator(device=device)
 
 example_refs = [
