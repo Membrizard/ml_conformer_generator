@@ -69,7 +69,6 @@ def evaluate_samples(
         )
         sq_sample_mol = set_conformer_positions(sample, sq_sample_coord)
         shape_tanimoto = rdShapeHelpers.ShapeTanimotoDist(pf_reference, sq_sample_mol)
-        # shape_tanimoto = tanimoto_score(ref_coord=sq_ref_coord, cand_coord=sq_sample_coord)
         best_coord = sq_sample_coord
 
         # Calculate Best shape similarity Tanimoto score
@@ -82,8 +81,6 @@ def evaluate_samples(
                 best_coord = rot_coord
 
         aligned_sample = set_conformer_positions(sample, best_coord)
-        # print(f"Our Tanimoto - {shape_tanimoto}")
-        # print(f"RDkit Tanimoto - {rdShapeHelpers.ShapeTanimotoDist(pf_reference, aligned_sample)}")
 
         results.append(
             {
