@@ -461,6 +461,7 @@ def rotate_coord(coord, angles):
 ALPHA = get_alpha(atom_radius=ATOM_RADIUS, gaussian_amplitude=AMPLITUDE)
 
 
+# Implementation of Gaussian volumes intersection tanimoto score
 def tanimoto_score(
     ref_coord,
     cand_coord,

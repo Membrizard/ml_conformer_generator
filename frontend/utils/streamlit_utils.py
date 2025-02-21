@@ -65,6 +65,7 @@ def generate_mock_results():
                 "mol_block": Chem.MolToMolBlock(mol),
                 "shape_tanimoto": random.uniform(0, 1),
                 "chemical_tanimoto": random.uniform(0, 1),
+                "name": mol.GetProp("_Name"),
             }
         )
     return results
@@ -124,7 +125,7 @@ def display_search_results(
                 fl_mol = Chem.MolFromSmiles(Chem.MolToSmiles(r_mol))
                 svg_string = draw_compound_image(fl_mol)
 
-                create_view_molecule_button(r_mol, float(mol["shape_tanimoto"]), n_row)
+                create_view_molecule_button(r_mol, float(mol["shape_tanimoto"]), mol["name"], n_row)
 
                 # st.button(
                 #     label="mol",
@@ -138,7 +139,7 @@ def display_search_results(
     return None
 
 
-def create_view_molecule_button(r_mol, score, key):
+def create_view_molecule_button(r_mol, score, name, key):
     score = round(score, 2)
     color = tuple(round(x * 255, 2) for x in CMAP(score))
 
@@ -160,7 +161,7 @@ def create_view_molecule_button(r_mol, score, key):
                 """,
     ):
         st.button(
-            label=f"{score}",
+            label=f"{name}",
             key=f"mol_{key}",
             on_click=view_mol_button,
             args=[r_mol],
@@ -187,7 +188,7 @@ def apply_custom_styling():
     footer {visibility: hidden;}
     .stSlider [data-baseweb=slider]{
             width: 100%;
-            padding: 0px 0px 0px 0px;
+            margin: 10px;
         }
     .stNumberInput [data-baseweb=input]{
                 width: 20%;

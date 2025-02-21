@@ -77,14 +77,14 @@ class MLConformerGenerator(torch.nn.Module):
 
         self.generative_model.load_state_dict(
             torch.load(
-                "./ml_conformer_generator/weights/final_edm_moi.weights",
+                "./ml_conformer_generator/weights/final_edm_moi_chembl_15_39.weights",
                 map_location=device,
             )
         )
 
         self.adj_mat_seer.load_state_dict(
             torch.load(
-                "./ml_conformer_generator/weights/final_adj_mat_seer.weights",
+                "./ml_conformer_generator/weights/final_adj_mat_seer_chembl_15_39.weights",
                 map_location=device,
             )
         )
