@@ -1,4 +1,4 @@
-import rdkit.Chem
+from rdkit import Chem
 import torch
 import random
 
@@ -170,14 +170,14 @@ class MLConformerGenerator(torch.nn.Module):
     @torch.no_grad()
     def generate_conformers(
         self,
-        reference_conformer: rdkit.Chem.Mol = None,
+        reference_conformer: Chem.Mol = None,
         n_samples: int = 10,
         variance: int = 2,
         reference_context: torch.Tensor = None,
         n_atoms: int = None,
         fix_noise: bool = False,
         optimise_geometry: bool = True,
-    ) -> list[rdkit.Chem.Mol]:
+    ) -> list[Chem.Mol]:
         """
 
         :param reference_conformer:
@@ -190,6 +190,8 @@ class MLConformerGenerator(torch.nn.Module):
         :return: A list of valid standardised generated molecules as RDkit Mol objects.
         """
         if reference_conformer:
+            # Ensure the initial mol is stripped off Hs
+            reference_conformer = Chem.RemoveHs(reference_conformer)
             ref_n_atoms = reference_conformer.GetNumAtoms()
             conf = reference_conformer.GetConformer()
             ref_coord = torch.tensor(conf.GetPositions(), dtype=torch.float32)
