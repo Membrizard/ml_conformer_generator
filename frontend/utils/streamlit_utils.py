@@ -8,6 +8,7 @@ from rdkit.Chem import rdDistGeom
 from rdkit.Chem import Draw
 import streamlit.components.v1 as components
 import matplotlib
+import json
 
 CMAP = matplotlib.cm.get_cmap("viridis")
 
@@ -36,15 +37,15 @@ SVG_PALETTE = {
 
 # Functions for buttons
 def generate_samples_button():
-    mols = generate_mock_results()
+    ref, mols = generate_mock_results()
     # Save generated molecules in session
     st.session_state.generated_mols = mols
 
-    mock_ref = Chem.MolFromSmiles("C1CC(CC(C1)N)C(=O)O")
-    mock_ref = Chem.AddHs(mock_ref)
-    rdDistGeom.EmbedMolecule(mock_ref, forceTol=0.001, randomSeed=12)
+    # mock_ref = Chem.MolFromSmiles("C1CC(CC(C1)N)C(=O)O")
+    # mock_ref = Chem.AddHs(mock_ref)
+    # rdDistGeom.EmbedMolecule(mock_ref, forceTol=0.001, randomSeed=12)
     # Save aligned reference molecule in session
-    st.session_state.current_ref = mock_ref
+    st.session_state.current_ref = Chem.MolFromMolBlock(ref, removeHs=False)
     return None
 
 
@@ -56,19 +57,12 @@ def view_mol_button(mol_in_viewer):
 
 # Working with results, rendering mol images
 def generate_mock_results():
-    mock_mols = Chem.SDMolSupplier("./example_structures/example.sdf", removeHs=False)
-    results = []
+    with open('./generation_examples/generation_example_6.json') as json_file:
+        data = json.load(json_file)
+        samples = data["generated_molecules"]
+        ref = data["aligned_reference"]
 
-    for mol in mock_mols:
-        results.append(
-            {
-                "mol_block": Chem.MolToMolBlock(mol),
-                "shape_tanimoto": random.uniform(0, 1),
-                "chemical_tanimoto": random.uniform(0, 1),
-                "name": mol.GetProp("_Name"),
-            }
-        )
-    return results
+    return ref, samples
 
 
 def draw_compound_image(compound: Chem.Mol):
@@ -125,7 +119,7 @@ def display_search_results(
                 fl_mol = Chem.MolFromSmiles(Chem.MolToSmiles(r_mol))
                 svg_string = draw_compound_image(fl_mol)
 
-                create_view_molecule_button(r_mol, float(mol["shape_tanimoto"]), mol["name"], n_row)
+                create_view_molecule_button(r_mol, float(mol["shape_tanimoto"]), n_row)
 
                 # st.button(
                 #     label="mol",
@@ -139,7 +133,7 @@ def display_search_results(
     return None
 
 
-def create_view_molecule_button(r_mol, score, name, key):
+def create_view_molecule_button(r_mol, score, key):
     score = round(score, 2)
     color = tuple(round(x * 255, 2) for x in CMAP(score))
 
@@ -161,7 +155,7 @@ def create_view_molecule_button(r_mol, score, name, key):
                 """,
     ):
         st.button(
-            label=f"{name}",
+            label=f"{score}",
             key=f"mol_{key}",
             on_click=view_mol_button,
             args=[r_mol],
