@@ -6,7 +6,9 @@ from rdkit import Chem
 
 
 def exact_match(mol, source):
-    sample_inchi = Chem.MolToInchi(mol)
+    whs_mol = Chem.RemoveHs(mol)
+    s_mol = Chem.MolFromSmiles(Chem.MolToSmiles(whs_mol))
+    sample_inchi = Chem.MolToInchi(s_mol)
 
     with open(source, "r") as f:
         lines = f.readlines()

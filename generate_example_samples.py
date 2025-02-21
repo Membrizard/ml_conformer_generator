@@ -32,5 +32,5 @@ for i, ref in enumerate(example_refs):
 
     results = {"aligned_reference": aligned_ref, "generated_molecules": std_samples}
 
-    with open(f"./generation_examples/generation_example_{i+1}.json", "w+") as outfile:
+    with open(f"frontend/generation_examples/generation_example_{i + 1}.json", "w+") as outfile:
         json.dump(results, outfile)
