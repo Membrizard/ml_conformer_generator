@@ -1,10 +1,6 @@
-from ml_conformer_generator import MLConformerGenerator
-from cheminformatics import evaluate_samples
+from ml_conformer_generator import MLConformerGenerator, evaluate_samples
 from rdkit import Chem
-from rdkit.Chem import rdDistGeom
 import json
-
-from rdkit.Chem import Draw
 
 device = "cuda"
 generator = MLConformerGenerator(device=device)
