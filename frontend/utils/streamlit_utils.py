@@ -57,7 +57,7 @@ def view_mol_button(mol_in_viewer):
 
 # Working with results, rendering mol images
 def generate_mock_results():
-    with open('./generation_examples/generation_example_6.json') as json_file:
+    with open('./generation_examples/generation_example_1.json') as json_file:
         data = json.load(json_file)
         samples = data["generated_molecules"]
         ref = data["aligned_reference"]
