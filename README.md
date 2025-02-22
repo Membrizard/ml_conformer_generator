@@ -10,14 +10,21 @@ The EDM and GCN models were trained on a 1.6M compounds having 15-39 heavy atoms
 The solution may use the following elements for the molecule generation: H, C, N, O, F, P, S, Cl, Br
 
 The standardiser pipeline uses the following steps:
-- 
-- Molecular Dynamics optimisation with MMFF
+- Checks for atom valence and kekulisation
+- ChemBL standardisation
+- Molecular Dynamics geometry optimisation with MMFF
 
 The evaluation pipeline assesses the shape similarity of the generated molecules to a reference. 
-The assesment is based on a shape tanimoto similarity score [], calculated using RDkit Shape Tanimoto Distance.
+The assesment is based on a shape tanimoto similarity score [], calculated using Gaussian Molecular Volume intersections.
 
-- Add information on the inference time
-- Add information on inputs/outputs and architecture
+Example performance of the model as evaluated on 100k samples
+- The estimated time for generation of 50 valid samples is 90 sec
+- Average Tanimoto similarity - 
+- % Of molecules not in training dataset -
+- % of valid molecules in generated batch (as defined by the stadardisation pipeline) - 
+
+
+
 
 #### Usage
 
@@ -56,6 +63,11 @@ cd ./frontend
 streamlit run app_ui.py
 ```
 
-OK. We've set up a speck stramlit object. Now we will need to implement alignment to reference.
-For that we will add custom styles to Speck module with 'Ref' key for atoms.
-We will also need to rewrite xyz interpretation, in a way that we will explicitly specify the bonds to avoid fake bonds presence
+3D viewer is now built
+
+just run:
+```
+cd ./frontend
+streamlit run app_ui.py
+```
+to start the app
