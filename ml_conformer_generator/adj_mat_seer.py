@@ -2,7 +2,7 @@ import torch
 import typing
 import torch.nn as nn
 
-from .utils import DIMENSION, NUM_BOND_TYPES
+from utils import DIMENSION, NUM_BOND_TYPES
 
 # Dimension of Embedding Must be a number divisible by 8
 EMBEDDING_DIM = 64
