@@ -25,7 +25,7 @@ for i, ref in enumerate(example_refs):
 
 
     # Generate Samples
-    samples = generator.generate_conformers(reference_conformer=ref_mol, n_samples=100, variance=2)
+    samples = generator.generate_conformers(reference_conformer=ref_mol, n_samples=20, variance=2)
 
     # Characterise samples
     aligned_ref, std_samples = evaluate_samples(ref_mol, samples)
