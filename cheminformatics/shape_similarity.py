@@ -487,4 +487,4 @@ def tanimoto_score(
 
     score = f_g_integral / (f_2 + g_2 - f_g_integral)
 
-    return score
+    return score.item()
