@@ -7,12 +7,6 @@ from tqdm import tqdm
 from .egnn import EGNNDynamics
 
 
-# def remove_mean(x):
-#     mean = torch.mean(x, dim=1, keepdim=True)
-#     x = x - mean
-#     return x
-
-
 def sum_except_batch(x):
     return x.view(x.size(0), -1).sum(-1)
 
@@ -469,8 +463,7 @@ class EquivariantDiffusion(torch.nn.Module):
                 n_samples,
                 n_nodes,
                 self.in_node_nf,
-            ),  # -> initial, most likely a typo as size shoud match node_mask
-            # size=(n_samples, n_nodes, self.n_dims),  # changed self.in_nodes to self.n_dims ???
+            ),  
             device=node_mask.device,
             node_mask=node_mask,
         )
