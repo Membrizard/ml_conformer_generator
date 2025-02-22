@@ -3,6 +3,7 @@ import re
 import base64
 import streamlit as st
 import streamlit.components.v1 as components
+from rdkit import Chem
 
 from stspeck import speck
 from utils import (
@@ -127,16 +128,14 @@ with demo_tab:
 
             with viewer_container:
                 if st.session_state.viewer_update:
-                    mol = st.session_state.current_mol
-                    ref = st.session_state.current_ref
+                    c_mol_index = st.session_state.current_mol
+                    mol_block = st.session_state.generated_mols[c_mol_index]
+                    ref_block = st.session_state.current_ref
 
-                    # # Handle Hydrogens
-                    # if hydrogens:
-                    #     mol = Chem.AddHs(st.session_state.current_mol)
-                    #     ref = Chem.AddHs(st.session_state.current_ref)
-                    # else:
-                    #     mol = Chem.RemoveHs(st.session_state.current_mol)
-                    #     ref = Chem.RemoveHs(st.session_state.current_ref)
+                    flag = not hydrogens
+                    mol = Chem.MolFromMolBlock(mol_block['mol_block'])
+
+                    ref = Chem.MolFromMolBlock(ref_block, removeHs=flag)
 
                     # Handle reference structure
                     if view_ref:

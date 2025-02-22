@@ -45,12 +45,12 @@ def generate_samples_button():
     # mock_ref = Chem.AddHs(mock_ref)
     # rdDistGeom.EmbedMolecule(mock_ref, forceTol=0.001, randomSeed=12)
     # Save aligned reference molecule in session
-    st.session_state.current_ref = Chem.MolFromMolBlock(ref, removeHs=False)
+    st.session_state.current_ref = ref
     return None
 
 
-def view_mol_button(mol_in_viewer):
-    st.session_state.current_mol = mol_in_viewer
+def view_mol_button(mol_index):
+    st.session_state.current_mol = mol_index
     st.session_state.viewer_update = True
     return None
 
@@ -59,7 +59,13 @@ def view_mol_button(mol_in_viewer):
 def generate_mock_results():
     with open('./generation_examples/generation_example_1.json') as json_file:
         data = json.load(json_file)
+
+        def s_f(x):
+            return x["shape_tanimoto"]
+
         samples = data["generated_molecules"]
+
+        samples.sort(key=s_f, reverse=True)
         ref = data["aligned_reference"]
 
     return ref, samples
@@ -104,10 +110,6 @@ def display_search_results(
     :return:
     """
 
-    def s_f(x):
-        return x["shape_tanimoto"]
-
-    mols.sort(key=s_f, reverse=True)
     with st.container(height=height, key=c_key, border=False):
         for n_row, mol in enumerate(mols):
             i = n_row % cards_per_row
@@ -119,7 +121,7 @@ def display_search_results(
                 fl_mol = Chem.MolFromSmiles(Chem.MolToSmiles(r_mol))
                 svg_string = draw_compound_image(fl_mol)
 
-                create_view_molecule_button(r_mol, float(mol["shape_tanimoto"]), n_row)
+                create_view_molecule_button(n_row, float(mol["shape_tanimoto"]), n_row)
 
                 # st.button(
                 #     label="mol",

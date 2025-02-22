@@ -18,7 +18,7 @@ The evaluation pipeline assesses the shape similarity of the generated molecules
 The assesment is based on a shape tanimoto similarity score [], calculated using Gaussian Molecular Volume intersections.
 
 Example performance of the model as evaluated on 100k samples
-- The estimated time for generation of 50 valid samples is 90 sec
+- The estimated average time for generation of 50 valid samples is 90 sec (GPU)
 - Average Tanimoto similarity - 
 - % Of molecules not in training dataset -
 - % of valid molecules in generated batch (as defined by the stadardisation pipeline) - 
