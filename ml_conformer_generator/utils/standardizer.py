@@ -238,10 +238,11 @@ def standardize_mol(mol, optimize_geometry: bool = True):
         Chem.SanitizeMol(m)
 
         # Add Hs with coordinates
-        m = Chem.AddHs(m, addCoords=True)
 
         if optimize_geometry:
+            m = Chem.AddHs(m, addCoords=True)
             std_mol, _ = md_minimize_energy(m)
+            std_mol = Chem.RemoveHs(std_mol)
         else:
             std_mol = m
 
