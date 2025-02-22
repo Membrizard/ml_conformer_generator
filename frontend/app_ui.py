@@ -132,10 +132,16 @@ with demo_tab:
                     mol_block = st.session_state.generated_mols[c_mol_index]
                     ref_block = st.session_state.current_ref
 
-                    flag = not hydrogens
-                    mol = Chem.MolFromMolBlock(mol_block['mol_block'])
+                    # if hydrogens:
+                    n_mol = Chem.MolFromMolBlock(mol_block['mol_block'], removeHs=False)
+                    mol = Chem.AddHs(n_mol, addCoords=True)
+                    print(Chem.MolToMolBlock(mol))
+                    ref = Chem.MolFromMolBlock(ref_block, removeHs=False)
 
-                    ref = Chem.MolFromMolBlock(ref_block, removeHs=flag)
+                    # else:
+                    #     mol = Chem.MolFromMolBlock(mol_block['mol_block'], removeHs=True)
+                    #     ref = Chem.MolFromMolBlock(ref_block, removeHs=True)
+
 
                     # Handle reference structure
                     if view_ref:
