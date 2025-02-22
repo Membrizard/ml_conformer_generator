@@ -225,6 +225,14 @@ def md_minimize_energy(mol):
     return mol, res
 
 
+def remove_radicals(mol):
+    for atom in mol.GetAtoms():
+        if atom.GetNumRadicalElectrons() != 0:
+            atom.SetNumRadicalElectrons(0)
+
+    return mol
+
+
 def standardize_mol(mol, optimize_geometry: bool = True):
     try:
         # Remove small fragments
@@ -234,8 +242,9 @@ def standardize_mol(mol, optimize_geometry: bool = True):
         m = kekulize_mol(m)
         # m = remove_hs_from_mol(m)
         m = normalize_mol(m)
-        m = uncharge_mol(m)
+        # m = uncharge_mol(m)
         m = flatten_tartrate_mol(m)
+        # m = remove_radicals(m)
 
         Chem.SanitizeMol(m)
 
