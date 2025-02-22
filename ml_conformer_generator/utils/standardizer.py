@@ -237,8 +237,6 @@ def standardize_mol(mol, optimize_geometry: bool = True):
         # Sanitise
         Chem.SanitizeMol(m)
 
-        # Add Hs with coordinates
-
         if optimize_geometry:
             m = Chem.AddHs(m, addCoords=True)
             std_mol, _ = md_minimize_energy(m)
