@@ -41,8 +41,14 @@ def evaluate_samples(
     ref_coord = ref_coord - virtual_com
 
     r_s_mom, sq_ref_coord = get_shape_quadrupole_for_molecule(coordinates=ref_coord)
+    # Set mol object coordinates to the principal frame
     pf_reference = set_conformer_positions(reference, sq_ref_coord)
     ref_mol_block = Chem.MolToMolBlock(pf_reference)
+    # Create a mol object without Hs for shape similarity calcs
+    pf_ref_no_hs = Chem.RemoveHs(pf_reference)
+    conf_no_hs = pf_ref_no_hs.GetConformer()
+    sq_ref_coord_no_hs = torch.tensor(conf_no_hs.GetPositions(), dtype=torch.float32)
+
 
     pi = torch.pi
     rotations = [
@@ -68,13 +74,13 @@ def evaluate_samples(
             coordinates=sample_coord
         )
 
-        shape_tanimoto = tanimoto_score(sq_ref_coord, sq_sample_coord)
+        shape_tanimoto = tanimoto_score(sq_ref_coord_no_hs, sq_sample_coord)
         best_coord = sq_sample_coord
 
         # Calculate Best shape similarity Tanimoto score
         for angles in rotations:
             rot_coord = rotate_coord(coord=sq_sample_coord, angles=angles)
-            score = tanimoto_score(sq_ref_coord, rot_coord)
+            score = tanimoto_score(sq_ref_coord_no_hs, rot_coord)
             if score > shape_tanimoto:
                 shape_tanimoto = score
                 best_coord = rot_coord
