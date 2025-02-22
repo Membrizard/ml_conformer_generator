@@ -16,6 +16,7 @@ The standardiser pipeline uses the following steps:
 
 The evaluation pipeline assesses the shape similarity of the generated molecules to a reference. 
 The assesment is based on a shape tanimoto similarity score [], calculated using Gaussian Molecular Volume intersections.
+the shape Tanimoto similarity of a generated molecule to a reference is calculated ignoring hydrogens in both reference and generated sample.
 
 Example performance of the model as evaluated on 100k samples
 - The estimated average time for generation of 50 valid samples is 90 sec (GPU)
