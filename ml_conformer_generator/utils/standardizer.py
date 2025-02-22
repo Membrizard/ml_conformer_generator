@@ -244,7 +244,7 @@ def standardize_mol(mol, optimize_geometry: bool = True):
         m = normalize_mol(m)
         # m = uncharge_mol(m)
         m = flatten_tartrate_mol(m)
-        # m = remove_radicals(m)
+        m = remove_radicals(m)
 
         Chem.SanitizeMol(m)
 
