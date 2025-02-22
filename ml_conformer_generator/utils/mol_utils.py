@@ -191,6 +191,7 @@ def redefine_bonds(mol, adj_mat):
 
     return new_mol
 
+
 # def set_conformer_positions(mol, coord):
 #     conf = mol.GetConformer()
 #     for i, point in enumerate(coord):
