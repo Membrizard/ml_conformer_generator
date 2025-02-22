@@ -6,8 +6,8 @@ from fastapi import FastAPI, UploadFile, Depends, File
 from pydantic import BaseModel, Field
 from rdkit import Chem
 
-from cheminformatics import evaluate_samples
 from conformer_generator import MLConformerGenerator
+from cheminformatics import evaluate_samples
 
 
 VERSION = "0.0.1"

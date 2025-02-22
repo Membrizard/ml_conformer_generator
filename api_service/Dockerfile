@@ -5,6 +5,7 @@ WORKDIR /code
 
 #
 COPY ./ml_conformer_generator /code/api_server
+COPY ./api_server /code/api_server
 
 
 #

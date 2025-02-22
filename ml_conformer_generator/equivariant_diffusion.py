@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math
 from tqdm import tqdm
 
-from egnn import EGNNDynamics
+from .egnn import EGNNDynamics
 
 
 def sum_except_batch(x):

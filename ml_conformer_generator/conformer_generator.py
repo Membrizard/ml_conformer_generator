@@ -2,11 +2,11 @@ from rdkit import Chem
 import torch
 import random
 
-from egnn import EGNNDynamics
-from equivariant_diffusion import EquivariantDiffusion
-from adj_mat_seer import AdjMatSeer
+from .egnn import EGNNDynamics
+from .equivariant_diffusion import EquivariantDiffusion
+from .adj_mat_seer import AdjMatSeer
 
-from utils import (
+from .utils import (
     samples_to_rdkit_mol,
     get_context_shape,
     DIMENSION,
@@ -22,10 +22,11 @@ class MLConformerGenerator(torch.nn.Module):
 
     def __init__(
         self,
-        weights_path=None,
         device: torch.device = "cpu",
         dimension: int = DIMENSION,
         num_bond_types: int = NUM_BOND_TYPES,
+        edm_weights: str = "./ml_conformer_generator/weights/final_edm_moi_chembl_15_39.weights",
+        adj_mat_seer_weights: str = "./ml_conformer_generator/weights/final_adj_mat_seer_chembl_15_39.weights",
     ):
         super().__init__()
 
@@ -77,14 +78,14 @@ class MLConformerGenerator(torch.nn.Module):
 
         self.generative_model.load_state_dict(
             torch.load(
-                "./ml_conformer_generator/weights/final_edm_moi_chembl_15_39.weights",
+                edm_weights,
                 map_location=device,
             )
         )
 
         self.adj_mat_seer.load_state_dict(
             torch.load(
-                "./ml_conformer_generator/weights/final_adj_mat_seer_chembl_15_39.weights",
+                adj_mat_seer_weights,
                 map_location=device,
             )
         )

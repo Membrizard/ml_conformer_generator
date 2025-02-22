@@ -1,9 +1,12 @@
-import rdkit.Chem
-from rdkit import Chem
-from rdkit.Chem import rdDistGeom
-import json
+import torch
+from ml_conformer_generator import MLConformerGenerator
+
+generator = MLConformerGenerator()
+
+torch.save(
+                    generator.state_dict(),
+    "ml_conformer_generator/weights/ml_conformer_generator_chembl_15_39.weights",
+                )
 
 
-for i in range(6):
-    with open(f"./generation_examples/generation_example_{i+1}.json") as json_file:
-        data = json.load(json_file)
+
