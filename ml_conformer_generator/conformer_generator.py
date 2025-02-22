@@ -2,11 +2,11 @@ from rdkit import Chem
 import torch
 import random
 
-from .egnn import EGNNDynamics
-from .equivariant_diffusion import EquivariantDiffusion
-from .adj_mat_seer import AdjMatSeer
+from egnn import EGNNDynamics
+from equivariant_diffusion import EquivariantDiffusion
+from adj_mat_seer import AdjMatSeer
 
-from .utils import (
+from utils import (
     samples_to_rdkit_mol,
     get_context_shape,
     DIMENSION,

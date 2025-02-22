@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math
 from tqdm import tqdm
 
-from .egnn import EGNNDynamics
+from egnn import EGNNDynamics
 
 
 def sum_except_batch(x):
@@ -463,7 +463,7 @@ class EquivariantDiffusion(torch.nn.Module):
                 n_samples,
                 n_nodes,
                 self.in_node_nf,
-            ),  
+            ),
             device=node_mask.device,
             node_mask=node_mask,
         )
