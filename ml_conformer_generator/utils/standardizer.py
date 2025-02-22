@@ -141,10 +141,10 @@ def remove_hs_from_mol(m):
     return res
 
 
-def remove_sgroups_from_mol(m):
-    """removes all Sgroups"""
-    Chem.ClearMolSubstanceGroups(m)
-    return m
+# def remove_sgroups_from_mol(m):
+#     """removes all Sgroups"""
+#     Chem.ClearMolSubstanceGroups(m)
+#     return m
 
 
 def uncharge_mol(m):
@@ -229,10 +229,10 @@ def standardize_mol(mol, optimize_geometry: bool = True):
     try:
         # Remove small fragments
         m = rdMolStandardize.FragmentParent(mol)
-        m = update_mol_valences(m)
-        m = remove_sgroups_from_mol(m)
+        # m = update_mol_valences(m)
+        # m = remove_sgroups_from_mol(m)
         m = kekulize_mol(m)
-        m = remove_hs_from_mol(m)
+        # m = remove_hs_from_mol(m)
         m = normalize_mol(m)
         m = uncharge_mol(m)
         m = flatten_tartrate_mol(m)
