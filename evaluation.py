@@ -26,7 +26,7 @@ source_path = "./data/full_15_39_atoms_conf_chembl.inchi"
 n_samples = 100
 max_variance = 2
 
-references = Chem.SDMolSupplier("./data/1000_ccdc_validation_set.sdf")
+references = Chem.SDMolSupplier("./data/100_ccdc_validation_set.sdf")
 n_ref = len(references)
 expected_n_samples = n_samples * n_ref
 
@@ -53,6 +53,8 @@ ref_mol_size_valid = (
 
 chem_unique_samples = 0  # number of chemically unique samples generated
 valid_samples = 0  # number of valid samples generated
+average_shape_tanimoto = 0
+average_chemical_tanimoto = 0
 
 for i, reference in enumerate(references):
     print(f"Analysing samples for reference compound {i + 1} of {n_ref}")
@@ -97,6 +99,14 @@ for i, reference in enumerate(references):
             ref_mol_size_chem_tanimoto_scores[ref_n_atoms] += std_sample[
                 "chemical_tanimoto"
             ]
+            average_shape_tanimoto += std_sample[
+                "shape_tanimoto"
+            ]
+
+            average_chemical_tanimoto += std_sample[
+                "chemical_tanimoto"
+            ]
+
 
         else:
             node_dist_dict[ref_n_atoms] = 1
@@ -146,6 +156,13 @@ with open("generation_performance_report.txt", "w+") as f:
     )
     f.write(
         f"From them, Chemically Unique in reference to training Dataset - {round(chem_unique_samples_rate, 4) * 100}%\n"
+    )
+
+    f.write(
+        f"Average Shape Tanimoto Similarity - {round(average_shape_tanimoto / valid_samples, 4) * 100}%\n"
+    )
+    f.write(
+        f"Average Chemical Tanimoto Similarity - {round(average_chemical_tanimoto / valid_samples, 4) * 100}%\n"
     )
 
     f.write(
