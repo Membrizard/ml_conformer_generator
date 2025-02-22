@@ -3,6 +3,7 @@ from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 
 from .molgraph import MolGraph
+from rdkit.Geometry import Point3D
 
 bond_type_dict = {
     1: Chem.rdchem.BondType.SINGLE,
@@ -166,12 +167,14 @@ def prepare_adj_mat_seer_input(mols, n_samples, dimension, device):
 
 def redefine_bonds(mol, adj_mat):
     n = mol.GetNumAtoms()
-    ed_mol = Chem.EditableMol(mol)
+    # Pass the molecule through xyz block to remove bonds and all extra atom properties
+    i_xyz = Chem.MolToXYZBlock(mol)
+    c_mol = Chem.MolFromXYZBlock(i_xyz)
+    ed_mol = Chem.EditableMol(c_mol)
 
     # Remove existing bonds
-
-    for bond in mol.GetBonds():
-        ed_mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
+    # for bond in mol.GetBonds():
+    #     ed_mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
 
     repr_m = torch.tril(torch.argmax(adj_mat, dim=2))
     repr_m = repr_m * (1 - torch.eye(repr_m.size(0), repr_m.size(0)))
@@ -187,3 +190,43 @@ def redefine_bonds(mol, adj_mat):
     new_mol = ed_mol.GetMol()
 
     return new_mol
+
+# def set_conformer_positions(mol, coord):
+#     conf = mol.GetConformer()
+#     for i, point in enumerate(coord):
+#         x, y, z = point.tolist()
+#         conf.SetAtomPosition(i, Point3D(x, y, z))
+#
+#     return mol
+#
+# def redefine_bonds(mol, adj_mat):
+#     n = mol.GetNumAtoms()
+#
+#     empty_mol = Chem.Mol()
+#     ed_mol = Chem.EditableMol(empty_mol)
+#     coord = mol.GetConformer().GetPositions()
+#
+#     # Add atoms with no properties
+#     for atom in mol.GetAtoms():
+#         ed_mol.AddAtom(Chem.Atom(atom.GetAtomicNum()))
+#
+#     # Remove existing bonds
+#
+#     # for bond in mol.GetBonds():
+#     #     ed_mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
+#
+#     repr_m = torch.tril(torch.argmax(adj_mat, dim=2))
+#     repr_m = repr_m * (1 - torch.eye(repr_m.size(0), repr_m.size(0)))
+#
+#     for i in range(n):
+#         for j in range(n):
+#             # Find out the bond type by indexing 1 in the matrix bond
+#             bond_type = repr_m[i, j].item()
+#
+#             if bond_type != 0:
+#                 ed_mol.AddBond(i, j, bond_type_dict[bond_type])
+#
+#     new_mol = ed_mol.GetMol()
+#     new_mol = set_conformer_positions(new_mol, coord)
+#
+#     return new_mol
