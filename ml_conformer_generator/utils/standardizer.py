@@ -19,6 +19,7 @@ def kekulize_mol(m):
     Chem.Kekulize(m)
     return m
 
+
 # derived from the MolVS set, with ChEMBL-specific additions
 _normalization_transforms = """
 //	Name	SMIRKS

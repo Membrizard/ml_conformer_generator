@@ -8,6 +8,8 @@ from typing import Any, Dict
 from fastapi import FastAPI, UploadFile, Depends, File
 from pydantic import BaseModel, Field
 
+from .cheminformatics import evaluate_samples
+from .conformer_generator import MLConformerGenerator
 
 
 VERSION = "0.0.1"
@@ -19,8 +21,12 @@ app = FastAPI(
 )
 
 # logger = logging.getLogger(__name__)
-logger = logging.getLogger('uvicorn')
+logger = logging.getLogger("uvicorn")
 logger.setLevel(logging.INFO)
+
+# Initiate the Generator
+device = "cuda"
+generator = MLConformerGenerator(device=device)
 
 
 class GenerationRequest(BaseModel):
@@ -29,8 +35,9 @@ class GenerationRequest(BaseModel):
 
 
 @app.post("/generate_molecules")
-async def generate_molecules(file: UploadFile = File(...),
-    generation_request: GenerationRequest = Depends()) -> dict:
+async def generate_molecules(
+    file: UploadFile = File(...), generation_request: GenerationRequest = Depends()
+) -> dict:
     """
     Generate molecules based on the 3D shape of a reference molecule.
 
@@ -63,11 +70,9 @@ async def generate_molecules(file: UploadFile = File(...),
     file_path = f"{TEMP_FOLDER}/{str(uuid.uuid4())}.reference"
 
     try:
-
         with open(file_path, "w+") as f:
             content = await file.read()
             f.write(content.decode("utf-8"))
-
 
     except Exception as e:
         results = None
@@ -78,3 +83,11 @@ async def generate_molecules(file: UploadFile = File(...),
 
     return {"result": results, "errors": error}
 
+
+if __name__ == "__main__":
+    import uvicorn
+
+    logger.info("--- Starting server ---")
+
+
+    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

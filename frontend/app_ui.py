@@ -61,7 +61,6 @@ with demo_tab:
         css_styles=container_css,
     )
     with app_container:
-
         input_column, viewer_column, output_column = st.columns([1, 1, 1])
 
         with input_column:
@@ -89,7 +88,10 @@ with demo_tab:
                     )
                 with variance_c:
                     variance = st.number_input(
-                        "Variance in Number of Atoms ±", min_value=0, max_value=5, value=2
+                        "Variance in Number of Atoms ±",
+                        min_value=0,
+                        max_value=5,
+                        value=2,
                     )
 
                 _, generate_button_c = st.columns([1.4, 1])
@@ -133,12 +135,16 @@ with demo_tab:
                     ref_block = st.session_state.current_ref
 
                     if hydrogens:
-                        n_mol = Chem.MolFromMolBlock(mol_block['mol_block'], removeHs=False)
+                        n_mol = Chem.MolFromMolBlock(
+                            mol_block["mol_block"], removeHs=False
+                        )
                         mol = Chem.AddHs(n_mol, addCoords=True)
                         ref = Chem.MolFromMolBlock(ref_block, removeHs=False)
 
                     else:
-                        mol = Chem.MolFromMolBlock(mol_block['mol_block'], removeHs=True)
+                        mol = Chem.MolFromMolBlock(
+                            mol_block["mol_block"], removeHs=True
+                        )
                         ref = Chem.MolFromMolBlock(ref_block, removeHs=True)
 
                     # Handle reference structure
@@ -160,4 +166,3 @@ with description_tab:
     )
     with app_container:
         st.caption("Description of the model")
-        

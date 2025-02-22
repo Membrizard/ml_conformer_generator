@@ -57,7 +57,7 @@ def view_mol_button(mol_index):
 
 # Working with results, rendering mol images
 def generate_mock_results():
-    with open('./generation_examples/generation_example_6.json') as json_file:
+    with open("./generation_examples/generation_example_6.json") as json_file:
         data = json.load(json_file)
 
         def s_f(x):
@@ -165,6 +165,7 @@ def create_view_molecule_button(r_mol, score, key):
 
 
 # Utility functions
+
 
 def render_error():
     st.markdown(

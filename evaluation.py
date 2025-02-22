@@ -98,14 +98,9 @@ for i, reference in enumerate(references):
             ref_mol_size_chem_tanimoto_scores[ref_n_atoms] += std_sample[
                 "chemical_tanimoto"
             ]
-            average_shape_tanimoto += std_sample[
-                "shape_tanimoto"
-            ]
+            average_shape_tanimoto += std_sample["shape_tanimoto"]
 
-            average_chemical_tanimoto += std_sample[
-                "chemical_tanimoto"
-            ]
-
+            average_chemical_tanimoto += std_sample["chemical_tanimoto"]
 
         else:
             node_dist_dict[ref_n_atoms] = 1

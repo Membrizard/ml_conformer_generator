@@ -49,7 +49,6 @@ def evaluate_samples(
     conf_no_hs = pf_ref_no_hs.GetConformer()
     sq_ref_coord_no_hs = torch.tensor(conf_no_hs.GetPositions(), dtype=torch.float32)
 
-
     pi = torch.pi
     rotations = [
         torch.tensor([pi, 0, 0]),
