@@ -81,10 +81,10 @@ with demo_tab:
                 with n_samples_slider_c:
                     n_samples = st.slider(
                         "Number of Molecules to generate",
-                        min_value=20,
-                        max_value=60,
-                        step=10,
-                        value=40,
+                        min_value=10,
+                        max_value=40,
+                        step=5,
+                        value=25,
                     )
                 with variance_c:
                     variance = st.number_input(
