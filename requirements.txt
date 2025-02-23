@@ -2,4 +2,3 @@ tqdm==4.66.4
 torch==2.01
 rdkit==2023.9.5
 numpy==1.26.4
-mols2grid==2.0.0
