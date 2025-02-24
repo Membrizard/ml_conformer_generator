@@ -1,6 +1,9 @@
 import time
 
-from ml_conformer_generator import MLConformerGenerator, evaluate_samples
+from ml_conformer_generator.ml_conformer_generator import (
+    MLConformerGenerator,
+    evaluate_samples,
+)
 from rdkit import Chem
 
 

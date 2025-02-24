@@ -24,7 +24,8 @@ Example performance of the model as evaluated on 100k samples
 - % Of molecules not in training dataset -
 - % of valid molecules in generated batch (as defined by the stadardisation pipeline) - 
 
-
+Generator requirements are in  ./ml_conformer_generator/generator/requirements.txt
+Frontend requirements are in ./frontend/fronted_requirements.txt
 
 
 #### Usage

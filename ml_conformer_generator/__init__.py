@@ -1,4 +1,3 @@
-from .conformer_generator import MLConformerGenerator
-from .cheminformatics import evaluate_samples
+from .ml_conformer_generator import MLConformerGenerator, evaluate_samples
 
 __all__ = ["MLConformerGenerator", "evaluate_samples"]
