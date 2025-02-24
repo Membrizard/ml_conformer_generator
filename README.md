@@ -54,6 +54,36 @@ aligned_reference, std_samples = evaluate_samples(reference, samples)
 - Run `docker compose up -d --build`
 - The api server should be available at http:/0.0.0.0:8000
 - The Swagger documentation is available at http:/0.0.0.0:8000/docs
+- Generation endpoint http:/0.0.0.0:8000/generate
+
+#### Request Schema
+```
+{
+  "reference_mol": {
+    "type": "string",
+    "content": "string"
+  },
+  "n_samples": 0,
+  "variance": 0
+}
+```
+#### Response Schema
+```
+{
+  "results": {
+    "aligned_reference": "string",
+    "generated_molecules": [
+        {
+            "mol_block": "string",
+            "shape_tanimoto": 0.1,
+            "chemical_tanimoto": 0.1
+        }
+    ]
+  },
+  "errors": "string"
+}
+
+```
 
 ### Frontend 
 
