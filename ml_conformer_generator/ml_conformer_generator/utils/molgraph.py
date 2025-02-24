@@ -262,21 +262,6 @@ class MolGraph:
         )
         plt.show()
 
-    # def nn_atoms_matrix(self) -> typing.List[torch.Tensor]:
-    #     """
-    #     Returns a fixed-sized vector with atom features
-    #     :return: [[atomic_num, shielding_const]...0...] size(DIMENSION,2)
-    #     """
-    #     elements_vector = torch.zeros(DIMENSION, dtype=torch.long)
-    #     shielding_constants_vector = torch.zeros(DIMENSION, dtype=torch.float)
-    #
-    #     for i in range(len(self.x)):
-    #         elements_vector[i] = self.x[i][0]
-    #         # # Return raw shielding constants
-    #         # shielding_constants_vector[i] = self.x[i][1]
-    #
-    #     return [elements_vector, shielding_constants_vector]
-
     def elements_vector(self) -> torch.Tensor:
         """
         Returns a fixed-sized elements vector

@@ -1,0 +1,25 @@
+services:
+  api_service:
+    build:
+      context: .
+      dockerfile: ./ml_conformer_generator/Dockerfile
+    container_name: ml-conformer-generator
+    environment:
+      PORT: 8000
+    ports:
+      - '8000:8000'
+    restart: "always"
+    networks:
+      - ml_conformer_generator_network
+#    deploy:
+#      resources:
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: all
+#              capabilities: [ gpu ]
+
+networks:
+  ml_conformer_generator_network:
+
+
