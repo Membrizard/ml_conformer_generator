@@ -6,11 +6,10 @@ from fastapi import FastAPI, UploadFile, Depends, File
 from pydantic import BaseModel, Field
 from rdkit import Chem
 
-from conformer_generator import MLConformerGenerator
-from cheminformatics import evaluate_samples
+from ml_conformer_generator import MLConformerGenerator, evaluate_samples
 
 
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 
 TEMP_FOLDER = "./structures"
 app = FastAPI(
@@ -67,7 +66,9 @@ async def generate_molecules(
         ref_mol = Chem.MolFromMolFile(file_path)
 
         samples = generator.generate_conformers(
-            reference_conformer=ref_mol, n_samples=generation_request.n_samples, variance=generation_request.variance
+            reference_conformer=ref_mol,
+            n_samples=generation_request.n_samples,
+            variance=generation_request.variance,
         )
         aligned_ref, std_samples = evaluate_samples(ref_mol, samples)
 
