@@ -1,6 +1,5 @@
-import os
-import uuid
 import logging
+from time import time
 
 from fastapi import FastAPI, UploadFile, Depends, File
 from pydantic import BaseModel, Field
@@ -26,20 +25,41 @@ device = "cpu"
 generator = MLConformerGenerator(device=device)
 
 
+class InputFile(BaseModel):
+    type: str  # .pdb, .mol, .mol2, .xyz
+    content: str
+
+
 class GenerationRequest(BaseModel):
+    reference_mol: InputFile
     n_samples: int
     variance: int
 
 
+class GeneratedMolecule(BaseModel):
+    mol_block: str
+    shape_tanimoto: float
+    chemical_tanimoto: float
+
+
+class GenerationResults(BaseModel):
+    aligned_reference: str = ""
+    generated_molecules: list[GeneratedMolecule] = []
+
+
+class GenerationResponse(BaseModel):
+    results: GenerationResults
+    errors: str = None
+
+
 @app.post("/generate_molecules")
 async def generate_molecules(
-    file: UploadFile = File(...),
-    generation_request: GenerationRequest = Depends(),
-) -> dict:
+    generation_request: GenerationRequest,
+) -> GenerationResponse:
     """
     Generate molecules based on the 3D shape of a reference molecule.
 
-    - file: A `.mol`, `.xyz`, or `.pdb` file containing the reference molecule.
+    - file: A `.mol`, (`.mol2`) `.xyz`, or `.pdb` file containing the reference molecule.
             The molecule should have 15–39 heavy atoms. binary
     - generation_request:
         - n_samples: The number of new molecules to generate. int
@@ -50,39 +70,62 @@ async def generate_molecules(
         - **aligned_reference**: The original reference molecule, aligned to its principal frame using shape quadrupole.
         - **generated_molecules**: A list of newly generated molecules.
 
-    :rtype: dict
+    :rtype: GenerationResponse
     """
-
-    logger.info("Uploading reference structure")
-
-    os.makedirs(TEMP_FOLDER, exist_ok=True)
-    file_path = f"{TEMP_FOLDER}/{str(uuid.uuid4())}.reference"
+    response = GenerationResponse(
+        results=GenerationResults(
+            aligned_reference="",
+            generated_molecules=[],
+        ),
+    )
 
     try:
-        with open(file_path, "w+") as f:
-            content = await file.read()
-            f.write(content.decode("utf-8"))
+        ref_block_type = generation_request.reference_mol.type
+        ref_block = generation_request.reference_mol.content
 
-        ref_mol = Chem.MolFromMolFile(file_path)
+        if ref_block_type == "mol":
+            ref_mol = Chem.MolFromMolBlock(ref_block)
+        elif ref_block == "mol2":
+            ref_mol = Chem.MolFromMol2Block(ref_block)
+        elif ref_block == "pdb":
+            ref_mol = Chem.MolFromPDBBlock(ref_block)
+        elif ref_block == "xyz":
+            ref_mol = Chem.MolFromXYZBlock(ref_block)
+        else:
+            raise ValueError("Unsupported molecule file type.")
 
+        logger.info("Starting Generation")
+        start = time()
         samples = generator.generate_conformers(
             reference_conformer=ref_mol,
             n_samples=generation_request.n_samples,
             variance=generation_request.variance,
         )
+        logger.info(f"Generation Complete in {round(time() - start, 2)} sec")
+        logger.info("Starting Evaluation")
+        start = time()
         aligned_ref, std_samples = evaluate_samples(ref_mol, samples)
+        logger.info(f"Evaluation Complete in {round(time() - start, 2)} sec")
 
-        results = {"aligned_reference": aligned_ref, "generated_molecules": std_samples}
-        error = None
+        gen_mols = []
+        for sample in std_samples:
+            gen_mols.append(
+                GeneratedMolecule(
+                    mol_block=sample["mol_block"],
+                    shape_tanimoto=sample["shape_tanimoto"],
+                    chemical_tanimoto=sample["chemical_tanimoto"],
+                )
+            )
+
+        response.results.aligned_reference = aligned_ref
+        response.results.generated_molecules = gen_mols
+        response.errors = None
 
     except Exception as e:
-        results = None
-        error = str(e)
+        response.errors = str(e)
         pass
-    finally:
-        os.remove(file_path)
 
-    return {"result": results, "errors": error}
+    return response
 
 
 if __name__ == "__main__":
