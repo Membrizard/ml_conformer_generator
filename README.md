@@ -78,7 +78,8 @@ aligned_reference, std_samples = evaluate_samples(reference, samples)
         {
             "mol_block": "string",
             "shape_tanimoto": 0.1,
-            "chemical_tanimoto": 0.1
+            "chemical_tanimoto": 0.1,
+            "svg": "string"
         }
     ]
   },

@@ -1,17 +1,8 @@
 import logging
-import re
 
-
-from time import time
-
-from torch import cuda
 from fastapi import FastAPI, UploadFile, Depends, File
 from pydantic import BaseModel, Field
 from rdkit import Chem
-from rdkit.Chem import Draw
-
-from ml_conformer_generator import MLConformerGenerator, evaluate_samples
-
 
 VERSION = "0.0.3"
 
@@ -25,80 +16,69 @@ logger = logging.getLogger("uvicorn")
 logger.setLevel(logging.INFO)
 
 
-class InputFile(BaseModel):
-    type: str  # .pdb, .mol, .mol2, .xyz
-    content: str
+class Atom(BaseModel):
+    symbol: str
+    x: float
+    y: float
+    z: float
 
 
-class GenerationRequest(BaseModel):
-    reference_mol: InputFile
-    n_samples: int
-    variance: int
+class Bond(BaseModel):
+    begin_atom: int
+    end_atom: int
 
 
-class GeneratedMolecule(BaseModel):
-    mol_block: str
-    shape_tanimoto: float
-    chemical_tanimoto: float
-    svg: str
+class FormatMolRequest(BaseModel):
+    reference_mol: str
+    mol: str
+    hydrogens_flag: bool
+    reference_flag: bool
 
 
-class GenerationResults(BaseModel):
-    aligned_reference: str = ""
-    generated_molecules: list[GeneratedMolecule] = []
-
-
-class GenerationResponse(BaseModel):
-    results: GenerationResults
+class FormatMolResponse(BaseModel):
+    atoms: list[Atom]
+    bonds: list[Bond]
     errors: str = None
 
 
-SVG_PALETTE = {
-    1: (0.830, 0.830, 0.830),  # H
-    6: (0.000, 0.000, 0.000),  # C
-    7: (0.200, 0.600, 0.973),  # N
-    8: (1.000, 0.400, 0.400),  # O
-    9: (0.000, 0.800, 0.267),  # F
-    15: (1.000, 0.502, 0.000),  # P
-    16: (1.000, 1.000, 0.188),  # S
-    17: (0.750, 1.000, 0.000),  # Cl
-    35: (0.902, 0.361, 0.000),  # Br
-}
+def prepare_speck_model(mol: Chem.Mol, reference: Chem.Mol = None):
+    conformer = mol.GetConformer(-1)
+    mol_json = {"atoms": [], "bonds": []}
 
+    for i, atom in enumerate(mol.GetAtoms()):
+        position = conformer.GetAtomPosition(i)
+        mol_json["atoms"].append(
+            {
+                "symbol": atom.GetSymbol(),
+                "x": position.x,
+                "y": position.y,
+                "z": position.z,
+            }
+        )
 
-def generate_svg_string(compound: Chem.Mol):
-    """
-    Renders an image for a compound with labelled atoms
-    :param compound: RDkit mol object
-    :return: path to the generated image
-    """
-    smiles_str = Chem.MolToSmiles(compound)
-    flat_mol = Chem.MolFromSmiles(smiles_str)
-    pattern = re.compile("<\?xml.*\?>")
-    # Create a drawer object
-    d2d = Draw.rdMolDraw2D.MolDraw2DSVG(160, 160)
-    # Specify the drawing options
-    dopts = d2d.drawOptions()
-    dopts.setAtomPalette(SVG_PALETTE)
-    dopts.bondLineWidth = 1
-    dopts.bondColor = (0, 0, 0)
-    dopts.clearBackground = False
-    # Generate and save an image
+    for bond in mol.GetBonds():
+        mol_json["bonds"].append(
+            {"begin_atom": bond.GetBeginAtomIdx(), "end_atom": bond.GetEndAtomIdx()}
+        )
 
-    d2d.DrawMolecule(flat_mol)
-    d2d.FinishDrawing()
-    svg = d2d.GetDrawingText().replace("svg:", "")
-    svg = re.sub(pattern, "", svg)
-    # svg = "<div>" + svg + "</div>"
-    return svg
+    if reference:
+        last_atom_idx = len(mol_json["atoms"])
+        ref_conformer = reference.GetConformer(-1)
+        for j, atom in enumerate(reference.GetAtoms()):
+            position = ref_conformer.GetAtomPosition(j)
+            mol_json["atoms"].append(
+                {"symbol": "Ref", "x": position.x, "y": position.y, "z": position.z}
+            )
 
-# Initiate the Generator
-if cuda.is_available():
-    device = 'cuda'
-else:
-    device = 'cpu'
+        for bond in reference.GetBonds():
+            mol_json["bonds"].append(
+                {
+                    "begin_atom": bond.GetBeginAtomIdx() + last_atom_idx,
+                    "end_atom": bond.GetEndAtomIdx() + last_atom_idx,
+                }
+            )
 
-generator = MLConformerGenerator(device=device)
+    return mol_json
 
 
 @app.post("/generate_molecules")
@@ -185,8 +165,3 @@ if __name__ == "__main__":
     logger.info("--- Starting server ---")
 
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-
-    if device == 'cuda':
-        logger.info("--- Model server is running on GPU ---")
-    else:
-        logger.info("--- Model server is running on CPU. The generation will take more time ---")
