@@ -1,5 +1,5 @@
 tqdm==4.66.4
-torch==2.01
+torch>=2.01
 rdkit==2023.9.5
 numpy==1.26.4
 fastapi==0.111.0
