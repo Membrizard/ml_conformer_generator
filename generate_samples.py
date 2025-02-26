@@ -18,16 +18,15 @@ n_ref = len(references)
 
 for i, reference in enumerate(references):
     print(f"Analysing samples for reference compound {i + 1} of {n_ref}")
+    ref_name = reference.GetProp("_Name")
     reference = Chem.RemoveHs(reference)
     ref_n_atoms = reference.GetNumAtoms()
 
     samples = generator.generate_conformers(
         reference_conformer=reference, n_samples=n_samples, variance=max_variance
     )
-    start = time.time()
-    _, std_samples = evaluate_samples(reference, samples)
 
-    for std_sample in std_samples:
-        sample_mol = Chem.MolFromMolBlock(std_sample["mol_block"], removeHs=True)
-        sd_writer.write(sample_mol)
+    for sample in samples:
+        sample.SetProp("reference_structure", f"{ref_name}")
+        sd_writer.write(sample)
 
