@@ -1,8 +1,10 @@
 import logging
 import re
 
+
 from time import time
 
+from torch import cuda
 from fastapi import FastAPI, UploadFile, Depends, File
 from pydantic import BaseModel, Field
 from rdkit import Chem
@@ -23,7 +25,11 @@ logger = logging.getLogger("uvicorn")
 logger.setLevel(logging.INFO)
 
 # Initiate the Generator
-device = "cpu"
+if cuda.is_available():
+    device = 'cuda'
+else:
+    device = 'cpu'
+
 generator = MLConformerGenerator(device=device)
 
 SVG_PALETTE = {
@@ -55,6 +61,7 @@ def generate_svg_string(compound: Chem.Mol):
     dopts.bondLineWidth = 1
     dopts.bondColor = (0, 0, 0)
     dopts.clearBackground = False
+    dopts.useMolBlockWedging = False
     # Generate and save an image
 
     d2d.DrawMolecule(compound)
@@ -175,5 +182,10 @@ if __name__ == "__main__":
     import uvicorn
 
     logger.info("--- Starting server ---")
+
+    if device == 'cuda':
+        logger.info("--- Model server is running on GPU ---")
+    else:
+        logger.info("--- Model server is running on CPU. The generation will take more time ---")
 
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
