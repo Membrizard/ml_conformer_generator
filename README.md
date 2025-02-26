@@ -20,10 +20,12 @@ The assesment is based on a shape tanimoto similarity score [], calculated using
 the shape Tanimoto similarity of a generated molecule to a reference is calculated ignoring hydrogens in both reference and generated sample.
 
 Example performance of the model as evaluated on 100k samples
+(Used 1000 compounds from ccdc GOLD Virtual Screening dataset)
 - The estimated average time for generation of 50 valid samples is 90-160 sec (GPU)
-- Average Shape Tanimoto similarity - 49.95%
-- % Of unique molecules (not found in training dataset) - 99.85%
-- % of valid molecules in generated batch (as defined by the stadardisation pipeline) - 51.32%
+- Average Shape Tanimoto similarity - 53.38%
+- Average Chemical TAnimoto similarity - 10.8%
+- % Of unique molecules (not found in training dataset) - 99.81%
+- % of valid molecules in generated batch (as defined by the stadardisation pipeline) - 48.59%
 
 Generator requirements are in  ./ml_conformer_generator/generator_requirements.txt
 
@@ -105,3 +107,9 @@ streamlit run app_ui.py
 ```
 - To build the 3D viewer go to ./frontend/speck/fronted and run `npm start build`
 
+
+
+Notes
+- Fix the Generator for min and max variance instead of 1 value
+- Make generator add svg's of Molecules along with other data
+- Implement Cheminformatics service for preparation of molecules for 3D viewer

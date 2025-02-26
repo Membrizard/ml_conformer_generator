@@ -1,19 +1,21 @@
 import logging
+import re
+
 from time import time
 
 from fastapi import FastAPI, UploadFile, Depends, File
 from pydantic import BaseModel, Field
 from rdkit import Chem
+from rdkit.Chem import Draw
 
 from ml_conformer_generator import MLConformerGenerator, evaluate_samples
 
 
 VERSION = "0.0.2"
 
-TEMP_FOLDER = "./structures"
 app = FastAPI(
     title=f"ML Conformer Generator Service ver {VERSION}",
-    description=f"A service that generates novel molecules based on the 3D shape of a given reference molecule. {VERSION}",
+    description=f"A service that generates novel molecules based on the shape of a given reference molecule. {VERSION}",
 )
 
 # logger = logging.getLogger(__name__)
@@ -23,6 +25,44 @@ logger.setLevel(logging.INFO)
 # Initiate the Generator
 device = "cpu"
 generator = MLConformerGenerator(device=device)
+
+SVG_PALETTE = {
+    1: (0.830, 0.830, 0.830),  # H
+    6: (0.000, 0.000, 0.000),  # C
+    7: (0.200, 0.600, 0.973),  # N
+    8: (1.000, 0.400, 0.400),  # O
+    9: (0.000, 0.800, 0.267),  # F
+    15: (1.000, 0.502, 0.000),  # P
+    16: (1.000, 1.000, 0.188),  # S
+    17: (0.750, 1.000, 0.000),  # Cl
+    35: (0.902, 0.361, 0.000),  # Br
+}
+
+
+def generate_svg_string(compound: Chem.Mol):
+    """
+    Renders an image for a compound with labelled atoms
+    :param compound: RDkit mol object
+    :return: path to the generated image
+    """
+
+    pattern = re.compile("<\?xml.*\?>")
+    # Create a drawer object
+    d2d = Draw.rdMolDraw2D.MolDraw2DSVG(160, 160)
+    # Specify the drawing options
+    dopts = d2d.drawOptions()
+    dopts.setAtomPalette(SVG_PALETTE)
+    dopts.bondLineWidth = 1
+    dopts.bondColor = (0, 0, 0)
+    dopts.clearBackground = False
+    # Generate and save an image
+
+    d2d.DrawMolecule(compound)
+    d2d.FinishDrawing()
+    svg = d2d.GetDrawingText().replace("svg:", "")
+    svg = re.sub(pattern, "", svg)
+    # svg = "<div>" + svg + "</div>"
+    return svg
 
 
 class InputFile(BaseModel):
@@ -40,6 +80,7 @@ class GeneratedMolecule(BaseModel):
     mol_block: str
     shape_tanimoto: float
     chemical_tanimoto: float
+    svg: str
 
 
 class GenerationResults(BaseModel):
@@ -108,12 +149,14 @@ async def generate_molecules(
         logger.info(f"Evaluation Complete in {round(time() - start, 2)} sec")
 
         gen_mols = []
-        for sample in std_samples:
+        for i, sample in enumerate(std_samples):
+            svg_string = generate_svg_string(samples[i])
             gen_mols.append(
                 GeneratedMolecule(
                     mol_block=sample["mol_block"],
                     shape_tanimoto=sample["shape_tanimoto"],
                     chemical_tanimoto=sample["chemical_tanimoto"],
+                    svg=svg_string,
                 )
             )
 
