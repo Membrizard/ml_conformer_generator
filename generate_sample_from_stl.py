@@ -18,7 +18,7 @@ generator = MLConformerGenerator(device=device)
 
 
 # Generate Samples
-samples = generator.generate_conformers(reference_context=ref_context, n_atoms=27, n_samples=500, variance=12)
+samples = generator.generate_conformers(reference_context=ref_context, n_atoms=27, n_samples=200, variance=12)
 
 # Characterise samples
 # _, std_samples = evaluate_samples(ref_mol, samples)
