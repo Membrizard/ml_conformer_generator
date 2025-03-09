@@ -207,7 +207,7 @@ class MLConformerGenerator(torch.nn.Module):
 
             ref_context, aligned_coord = get_context_shape(ref_coord)
 
-        elif reference_context:
+        elif reference_context is not None:
             if n_atoms:
                 ref_n_atoms = n_atoms
             else:
