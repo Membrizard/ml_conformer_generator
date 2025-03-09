@@ -16,16 +16,18 @@ The standardiser pipeline uses the following steps:
 - Molecular Dynamics geometry optimisation with MMFF
 
 The evaluation pipeline assesses the shape similarity of the generated molecules to a reference. 
-The assesment is based on a shape tanimoto similarity score [], calculated using Gaussian Molecular Volume intersections.
+The assessment is based on a shape tanimoto similarity score [], calculated using Gaussian Molecular Volume intersections.
 the shape Tanimoto similarity of a generated molecule to a reference is calculated ignoring hydrogens in both reference and generated sample.
 
 Example performance of the model as evaluated on 100k samples
 (Used 1000 compounds from ccdc GOLD Virtual Screening dataset)
 - The estimated average time for generation of 50 valid samples is 90-160 sec (GPU)
 - Average Shape Tanimoto similarity - 53.38%
-- Average Chemical TAnimoto similarity - 10.8%
-- % Of unique molecules (not found in training dataset) - 99.81%
-- % of valid molecules in generated batch (as defined by the stadardisation pipeline) - 48.59%
+- Average Chemical Tanimoto similarity - 10.8%
+- % Of chemically unique molecules in reference to training dataset (not found in training dataset) - 99.81%
+- % Of valid molecules in generated batch (as defined by the standardisation pipeline) - 48.59%
+- % Of chemically unique molecules within the generated set (as evaluated on 80k generated molecules) - 99.80%
+- Frechet Chemical Distance (as evaluated on 80k generated molecules) - 
 
 Generator requirements are in  ./ml_conformer_generator/generator_requirements.txt
 
