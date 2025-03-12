@@ -24,7 +24,7 @@ n_ref = len(references)
 os.makedirs("./raw_samples", exist_ok=True)
 
 for i, reference in enumerate(references):
-    print(f"Analysing samples for reference compound {i + 1} of {n_ref}")
+    print(f"Generating raw samples for reference compound {i + 1} of {n_ref}")
     ref_name = reference.GetProp("_Name")
     reference = Chem.RemoveHs(reference)
     ref_n_atoms = reference.GetNumAtoms()
