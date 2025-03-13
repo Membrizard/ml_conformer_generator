@@ -8,6 +8,24 @@ from ml_conformer_generator.ml_conformer_generator import (
 from rdkit import Chem
 import pickle
 
+device = "cpu"
+generator = MLConformerGenerator(device=device)
+source_path = "./data/full_15_39_atoms_conf_chembl.inchi"
+n_samples = 100
+max_variance = 2
+mode = "STRUCTURE SEER"  # or "OPENBABEL"
+
+# Configure OpenBabel Conversion
+
+ob_conversion = openbabel.OBConversion()
+# Tell Open Babel we’ll be reading an XYZ file
+ob_conversion.SetInAndOutFormats("xyz", "mol")
+
+
+references = Chem.SDMolSupplier("./data/1000_ccdc_validation_set.sdf")
+n_ref = len(references)
+expected_n_samples = n_samples * n_ref
+
 
 def exact_match(mol, source):
     whs_mol = Chem.RemoveHs(mol)
@@ -62,17 +80,17 @@ def predict_bods_gcn(raw_samples, generator):
     return optimised_conformers
 
 
-def predict_bods_openbabel(raw_samples, obconversion):
+def predict_bods_openbabel(raw_samples, ob_conversion):
     optimised_conformers = []
     for sample in raw_samples:
         xyz_string = Chem.MolToXYZBlock(sample)
         # Create an empty OBMol to hold our molecule
         ob_mol = openbabel.OBMol()
-        obconversion.ReadString(ob_mol, xyz_string)
+        ob_conversion.ReadString(ob_mol, xyz_string)
         ob_mol.ConnectTheDots()
         ob_mol.PerceiveBondOrders()
 
-        mol_block_str = obconversion.WriteString(ob_mol)
+        mol_block_str = ob_conversion.WriteString(ob_mol)
 
         rdkit_mol = Chem.MolFromMolBlock(mol_block_str)
 
@@ -82,26 +100,6 @@ def predict_bods_openbabel(raw_samples, obconversion):
 
     return optimised_conformers
 
-
-
-
-device = "cpu"
-generator = MLConformerGenerator(device=device)
-source_path = "./data/full_15_39_atoms_conf_chembl.inchi"
-n_samples = 100
-max_variance = 2
-mode = "STRUCTURE SEER"  # or "OPENBABEL"
-
-# Configure OpenBabel Conversion
-
-obConversion = openbabel.OBConversion()
-# Tell Open Babel we’ll be reading an XYZ file
-obConversion.SetInAndOutFormats("xyz", "mol")
-
-
-references = Chem.SDMolSupplier("./data/1000_ccdc_validation_set.sdf")
-n_ref = len(references)
-expected_n_samples = n_samples * n_ref
 
 node_dist_dict = (
     dict()
@@ -138,14 +136,15 @@ for i, reference in enumerate(references):
     reference = Chem.RemoveHs(reference)
     ref_n_atoms = reference.GetNumAtoms()
 
-    samples = get_samples(ref_name)
+    raw_samples = get_samples(ref_name)
 
-
-
-
-
-
-
+    print(f" Predicting bonds with {mode}")
+    if mode == "STRUCTURE SEER":
+        samples = predict_bods_gcn(raw_samples, generator)
+    elif mode == "OPENBABEL":
+        samples = predict_bods_openbabel(raw_samples, ob_conversion)
+    else:
+        raise ValueError("either STRUCTURE SEER or OPENBABEL modes are supported")
 
     start = time.time()
     _, std_samples = evaluate_samples(reference, samples)
