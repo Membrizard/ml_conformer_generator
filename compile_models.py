@@ -14,4 +14,4 @@ diffusion = EquivariantDiffusion(
         )
 
 compiled_model = torch.jit.script(diffusion)
-compiled_model.save("diffusion.pt")
+

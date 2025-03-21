@@ -1,3 +1,5 @@
+import typing
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -54,18 +56,19 @@ def assert_correctly_masked(variable, node_mask):
     ).abs().max().item() < 1e-4, "Variables not masked properly."
 
 
-def assert_mean_zero_with_mask(x, node_mask, eps=1e-10):
-    assert_correctly_masked(x, node_mask)
-    largest_value = x.abs().max().item()
-    error = torch.sum(x, dim=1, keepdim=True).abs().max().item()
-    rel_error = error / (largest_value + eps)
-    assert rel_error < 1e-2, f"Mean is not zero, relative_error {rel_error}"
+# def assert_mean_zero_with_mask(x, node_mask, eps=1e-10):
+#     assert_correctly_masked(x, node_mask)
+#     largest_value = x.abs().max().item()
+#     error = torch.sum(x, dim=1, keepdim=True).abs().max().item()
+#     rel_error = error / (largest_value + eps)
+#     assert rel_error < 1e-2, f"Mean is not zero, relative_error {rel_error}"
 
 
 def remove_mean_with_mask(x, node_mask):
     masked_max_abs_value = (x * (1 - node_mask)).abs().sum().item()
     assert masked_max_abs_value < 1e-5, f"Error {masked_max_abs_value} too high"
-    N = node_mask.sum(1, keepdims=True)
+    # N = node_mask.sum(1, keepdims=True)
+    N = torch.sum(node_mask, 1, keepdim=True)
 
     mean = torch.sum(x, dim=1, keepdim=True) / N
     x = x - mean * node_mask
@@ -114,7 +117,7 @@ def gaussian_KL_for_dimension(q_mu, q_sigma, p_mu, p_sigma, d):
     )
 
 
-def sample_center_gravity_zero_gaussian_with_mask(size, device, node_mask):
+def sample_center_gravity_zero_gaussian_with_mask(size: typing.Tuple[int, int, int], device: torch.device, node_mask):
     assert len(size) == 3
     x = torch.randn(size, device=device)
 
@@ -126,7 +129,7 @@ def sample_center_gravity_zero_gaussian_with_mask(size, device, node_mask):
     return x_projected
 
 
-def sample_gaussian_with_mask(size, device, node_mask):
+def sample_gaussian_with_mask(size: typing.Tuple[int, int, int], device: torch.device, node_mask):
     x = torch.randn(size, device=device)
 
     x_masked = x * node_mask
@@ -175,7 +178,7 @@ class PredefinedNoiseSchedule(torch.nn.Module):
     Predefined noise schedule. Essentially creates a lookup array for predefined (non-learned) noise schedules.
     """
 
-    def __init__(self, timesteps, precision, power: int = 2):
+    def __init__(self, timesteps: int, precision: float, power: int = 2):
         super(PredefinedNoiseSchedule, self).__init__()
         self.timesteps = timesteps
 
@@ -194,7 +197,7 @@ class PredefinedNoiseSchedule(torch.nn.Module):
             (-log_alphas2_to_sigmas2).float(), requires_grad=False
         )
 
-    def forward(self, t):
+    def forward(self, t: torch.Tensor):
         t_int = torch.round(t * self.timesteps).long()
         return self.gamma[t_int]
 
@@ -231,13 +234,23 @@ class EquivariantDiffusion(torch.nn.Module):
 
         self.num_classes = self.in_node_nf
 
+        # Declare timesteps-related tensors
         self.T = timesteps
+        self.timesteps = torch.flip(torch.arange(0, timesteps, device=dynamics.device), dims=[0])
 
         self.norm_values = norm_values
         # self.norm_biases = norm_biases
         self.register_buffer("buffer", torch.zeros(1))
 
         self.check_issues_norm_values()
+
+    @staticmethod
+    def assert_mean_zero_with_mask(x, node_mask, eps: float = 1e-10):
+        assert_correctly_masked(x, node_mask)
+        largest_value = x.abs().max().item()
+        error = torch.sum(x, dim=1, keepdim=True).abs().max().item()
+        rel_error = error / (largest_value + eps)
+        assert rel_error < 1e-2, f"Mean is not zero, relative_error {rel_error}"
 
     def check_issues_norm_values(self, num_stdevs=8):
         zeros = torch.zeros((1, 1))
@@ -254,7 +267,7 @@ class EquivariantDiffusion(torch.nn.Module):
             )
 
     def phi(self, x, t, node_mask, edge_mask, context):
-        net_out = self.dynamics._forward(t, x, node_mask, edge_mask, context)
+        net_out = self.dynamics(t, x, node_mask, edge_mask, context)
 
         return net_out
 
@@ -380,7 +393,9 @@ class EquivariantDiffusion(torch.nn.Module):
 
         return x_pred
 
-    def sample_p_xh_given_z0(self, z0, node_mask, edge_mask, context, fix_noise=False):
+    def sample_p_xh_given_z0(self, z0, node_mask, edge_mask, context,
+                             # fix_noise=False
+                             ):
         """Samples x ~ p(x|z0)."""
         zeros = torch.zeros(size=(z0.size(0), 1), device=z0.device)
         gamma_0 = self.gamma(zeros)
@@ -391,7 +406,8 @@ class EquivariantDiffusion(torch.nn.Module):
         # Compute mu for p(zs | zt).
         mu_x = self.compute_x_pred(net_out, z0, gamma_0)
         xh = self.sample_normal(
-            mu=mu_x, sigma=sigma_x, node_mask=node_mask, fix_noise=fix_noise
+            mu=mu_x, sigma=sigma_x, node_mask=node_mask,
+            # fix_noise=fix_noise
         )
 
         x = xh[:, :, : self.n_dims]
@@ -402,14 +418,18 @@ class EquivariantDiffusion(torch.nn.Module):
         h = h_cat
         return x, h
 
-    def sample_normal(self, mu, sigma, node_mask, fix_noise=False):
+    def sample_normal(self, mu, sigma, node_mask,
+                      # fix_noise=False
+                      ):
         """Samples from a Normal distribution."""
-        bs = 1 if fix_noise else mu.size(0)
+        # bs = 1 if fix_noise else mu.size(0)
+        bs = mu.size(0)
         eps = self.sample_combined_position_feature_noise(bs, mu.size(1), node_mask)
         return mu + sigma * eps
 
     def sample_p_zs_given_zt(
-        self, s, t, zt, node_mask, edge_mask, context, fix_noise=False
+        self, s: torch.Tensor, t: torch.Tensor, zt: torch.Tensor, node_mask: torch.Tensor, edge_mask: torch.Tensor, context: torch.Tensor,
+            # fix_noise=False
     ):
         """Samples from zs ~ p(zs | zt). Only used during sampling."""
         gamma_s = self.gamma(s)
@@ -428,8 +448,8 @@ class EquivariantDiffusion(torch.nn.Module):
         eps_t = self.phi(zt, t, node_mask, edge_mask, context)
 
         # Compute mu for p(zs | zt).
-        assert_mean_zero_with_mask(zt[:, :, : self.n_dims], node_mask)
-        assert_mean_zero_with_mask(eps_t[:, :, : self.n_dims], node_mask)
+        self.assert_mean_zero_with_mask(zt[:, :, : self.n_dims], node_mask)
+        self.assert_mean_zero_with_mask(eps_t[:, :, : self.n_dims], node_mask)
         mu = (
             zt / alpha_t_given_s
             - (sigma2_t_given_s / alpha_t_given_s / sigma_t) * eps_t
@@ -439,7 +459,8 @@ class EquivariantDiffusion(torch.nn.Module):
         sigma = sigma_t_given_s * sigma_s / sigma_t
 
         # Sample zs given the paramters derived from zt.
-        zs = self.sample_normal(mu, sigma, node_mask, fix_noise)
+        zs = self.sample_normal(mu, sigma, node_mask)
+                                # fix_noise)
 
         # Project down to avoid numerical runaway of the center of gravity.
         zs = torch.cat(
@@ -451,7 +472,7 @@ class EquivariantDiffusion(torch.nn.Module):
         )
         return zs
 
-    def sample_combined_position_feature_noise(self, n_samples, n_nodes, node_mask):
+    def sample_combined_position_feature_noise(self, n_samples: int, n_nodes: int, node_mask: torch.Tensor):
         """
         Samples mean-centered normal noise for z_x, and standard normal noise for z_h.
         """
@@ -473,48 +494,52 @@ class EquivariantDiffusion(torch.nn.Module):
         z = torch.cat([z_x, z_h], dim=2)
         return z
 
-    @torch.no_grad()
-    def sample(
-        self, n_samples, n_nodes, node_mask, edge_mask, context, fix_noise=False
+    # Renamed from sample to allow compilation with torch.jit.script
+    def forward(
+        self, n_samples: int, n_nodes: int, node_mask: torch.Tensor, edge_mask: torch.Tensor, context: torch.Tensor,
+            # fix_noise=False
     ):
         """
         Draw samples from the generative model.
         Inference
         """
-        if fix_noise:
-            # Noise is broadcasted over the batch axis, useful for visualizations.
-            z = self.sample_combined_position_feature_noise(1, n_nodes, node_mask)
-        else:
-            z = self.sample_combined_position_feature_noise(
+        # if fix_noise:
+        #     # Noise is broadcasted over the batch axis, useful for visualizations.
+        #     z = self.sample_combined_position_feature_noise(1, n_nodes, node_mask)
+        # else:
+        z = self.sample_combined_position_feature_noise(
                 n_samples, n_nodes, node_mask
             )
 
-        assert_mean_zero_with_mask(z[:, :, : self.n_dims], node_mask)
+        self.assert_mean_zero_with_mask(z[:, :, : self.n_dims], node_mask)
+
 
         # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
-        for s in tqdm(reversed(range(0, self.T))):
-            s_array = torch.full((n_samples, 1), fill_value=s, device=z.device)
+        # for s in reversed(range(0, self.T)):
+        for s in self.timesteps:
+            s_array = torch.full([n_samples, 1], fill_value=s, device=z.device)
             t_array = s_array + 1
             s_array = s_array / self.T
             t_array = t_array / self.T
 
             z = self.sample_p_zs_given_zt(
-                s_array, t_array, z, node_mask, edge_mask, context, fix_noise=fix_noise
+                s_array, t_array, z, node_mask, edge_mask, context,
+                # fix_noise=fix_noise
             )
 
         # Finally sample p(x, h | z_0).
         x, h = self.sample_p_xh_given_z0(
-            z, node_mask, edge_mask, context, fix_noise=fix_noise
+            z, node_mask, edge_mask, context,
+            # fix_noise=fix_noise
         )
 
-        assert_mean_zero_with_mask(x, node_mask)
+        self.assert_mean_zero_with_mask(x, node_mask)
 
         max_cog = torch.sum(x, dim=1, keepdim=True).abs().max().item()
         if max_cog > 5e-2:
-            print(
-                f"Warning cog drift with error {max_cog:.3f}. Projecting "
-                f"the positions down."
-            )
+            # print(
+            #     f"Warning cog drift with error {max_cog:.3f}. Projecting the positions down."
+            # )
             x = remove_mean_with_mask(x, node_mask)
 
         return x, h

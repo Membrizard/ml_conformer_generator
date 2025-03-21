@@ -2,8 +2,8 @@ from rdkit import Chem
 import torch
 import random
 
-from .egnn import EGNNDynamics
-from .equivariant_diffusion import EquivariantDiffusion
+from .compilable_egnn import EGNNDynamics
+from .compilable_equivariant_diffusion import EquivariantDiffusion
 from .adj_mat_seer import AdjMatSeer
 
 from .utils import (
@@ -27,10 +27,10 @@ class MLConformerGenerator(torch.nn.Module):
         device: torch.device = "cpu",
         dimension: int = DIMENSION,
         num_bond_types: int = NUM_BOND_TYPES,
-        edm_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/"
-        "final_edm_moi_chembl_15_39.weights",
-        adj_mat_seer_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/"
-        "final_adj_mat_seer_chembl_15_39.weights",
+        edm_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/compilable_weights/"
+        "compilable_edm_moi_chembl_15_39.weights",
+        adj_mat_seer_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/compilable_weights/"
+        "compilable_adj_mat_seer_chembl_15_39.weights",
     ):
         super().__init__()
 
@@ -64,14 +64,14 @@ class MLConformerGenerator(torch.nn.Module):
             device=device,
         )
 
-        self.generative_model = EquivariantDiffusion(
+        generative_model = EquivariantDiffusion(
             dynamics=net_dynamics,
             in_node_nf=8,
             timesteps=1000,
             noise_precision=1e-5,
         )
 
-        self.adj_mat_seer = AdjMatSeer(
+        adj_mat_seer = AdjMatSeer(
             dimension=dimension,
             n_hidden=2048,
             embedding_dim=64,
@@ -80,25 +80,30 @@ class MLConformerGenerator(torch.nn.Module):
             device=device,
         )
 
-        self.generative_model.load_state_dict(
+        generative_model.load_state_dict(
             torch.load(
                 edm_weights,
                 map_location=device,
             )
         )
 
-        self.adj_mat_seer.load_state_dict(
+        adj_mat_seer.load_state_dict(
             torch.load(
                 adj_mat_seer_weights,
                 map_location=device,
             )
         )
 
-        self.generative_model.to(device)
-        self.adj_mat_seer.to(device)
+        generative_model.to(device)
+        adj_mat_seer.to(device)
 
-        self.generative_model.eval()
-        self.adj_mat_seer.eval()
+        generative_model.eval()
+        adj_mat_seer.eval()
+
+        self.generative_model = torch.jit.script(generative_model)
+        self.adj_mat_seer = torch.jit.script(adj_mat_seer)
+        # self.generative_model = generative_model
+        # self.adj_mat_seer = adj_mat_seer
 
     @torch.no_grad()
     def edm_samples(
@@ -107,7 +112,7 @@ class MLConformerGenerator(torch.nn.Module):
         n_samples=100,
         max_n_nodes=32,
         min_n_nodes=25,
-        fix_noise=False,
+        # fix_noise=False,
     ):
         """
         Generates initial samples using generative diffusion model
@@ -157,13 +162,13 @@ class MLConformerGenerator(torch.nn.Module):
 
         batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
 
-        x, h = self.generative_model.sample(
+        x, h = self.generative_model(
             batch_size,
             max_n_nodes,
             node_mask,
             edge_mask,
             batch_context,
-            fix_noise=fix_noise,
+            # fix_noise=fix_noise,
         )
 
         mols = samples_to_rdkit_mol(
@@ -180,7 +185,7 @@ class MLConformerGenerator(torch.nn.Module):
         variance: int = 2,
         reference_context: torch.Tensor = None,
         n_atoms: int = None,
-        fix_noise: bool = False,
+        # fix_noise: bool = False,
         optimise_geometry: bool = True,
     ) -> list[Chem.Mol]:
         """
@@ -190,7 +195,7 @@ class MLConformerGenerator(torch.nn.Module):
         :param variance:
         :param reference_context:
         :param n_atoms:
-        :param fix_noise:
+        # :param fix_noise:
         :param optimise_geometry:
         :return: A list of valid standardised generated molecules as RDkit Mol objects.
         """
@@ -227,7 +232,7 @@ class MLConformerGenerator(torch.nn.Module):
             n_samples=n_samples,
             min_n_nodes=ref_n_atoms - variance,
             max_n_nodes=ref_n_atoms + variance,
-            fix_noise=fix_noise,
+            # fix_noise=fix_noise,
         )
 
         (
