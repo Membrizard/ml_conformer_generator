@@ -22,13 +22,14 @@ def exact_match(mol, source):
     return False
 
 
+torch_script = True
 device = "cuda"
-generator = MLConformerGenerator(device=device)
+generator = MLConformerGenerator(device=device, torch_script=torch_script)
 source_path = "./data/full_15_39_atoms_conf_chembl.inchi"
 n_samples = 100
 max_variance = 2
 
-references = Chem.SDMolSupplier("./data/1000_ccdc_validation_set.sdf")
+references = Chem.SDMolSupplier("./data/100_ccdc_validation_set.sdf")
 n_ref = len(references)
 expected_n_samples = n_samples * n_ref
 
@@ -57,15 +58,21 @@ chem_unique_samples = 0  # number of chemically unique samples generated
 valid_samples = 0  # number of valid samples generated
 average_shape_tanimoto = 0
 average_chemical_tanimoto = 0
-
+total_gen_time = 0
+if torch_script:
+    print("Model is compiled with Torch Script")
 for i, reference in enumerate(references):
     print(f"Analysing samples for reference compound {i + 1} of {n_ref}")
     reference = Chem.RemoveHs(reference)
     ref_n_atoms = reference.GetNumAtoms()
 
+    gen_start = time.time()
     samples = generator.generate_conformers(
         reference_conformer=reference, n_samples=n_samples, variance=max_variance
     )
+    gen_time = round(time.time() - gen_start, 2)
+    total_gen_time += gen_time
+
     start = time.time()
     _, std_samples = evaluate_samples(reference, samples)
 
@@ -145,9 +152,24 @@ for key in variance_dist_dict.keys():
         variance_chem_tanimoto_scores[key] / variance_dist_dict[key]
     )
 
-with open("generation_performance_report.txt", "w+") as f:
+if torch_script:
+    file_name = "torch_script_generation_performance_report.txt"
+else:
+    file_name = "no_torch_script_generation_performance_report.txt"
+
+with open(file_name, "w+") as f:
+    if torch_script:
+        f.write("Modules are compiled using TorchScript\n")
+    else:
+        f.write("Modules are NOT compiled using TorchScript\n")
+
     f.write(f"Number of Contexts used for generation - {n_ref}\n")
     f.write(f"Number of Samples per Context - {n_samples}\n\n")
+    f.write(f"Total time for generation - {round(total_gen_time, 2)} sec\n")
+    f.write(f"Averaged time for generation (per reference) - {round(total_gen_time / n_ref ,2)} sec per request\n")
+    f.write(f"Averaged generation speed (per expected molecule) - {round(expected_n_samples / total_gen_time, 2)} molecule/sec\n")
+    f.write(f"Averaged generation speed (per valid molecule) - {round(valid_samples / total_gen_time ,2)} molecule/sec\n")
+
     f.write(
         f"Total valid molecules generated - {valid_samples} ({round(valid_samples_rate, 4) * 100}% out of requested)\n"
     )

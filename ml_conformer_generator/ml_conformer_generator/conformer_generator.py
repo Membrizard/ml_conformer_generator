@@ -31,6 +31,7 @@ class MLConformerGenerator(torch.nn.Module):
         "compilable_edm_moi_chembl_15_39.weights",
         adj_mat_seer_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/compilable_weights/"
         "compilable_adj_mat_seer_chembl_15_39.weights",
+        torch_script: bool = True,
     ):
         super().__init__()
 
@@ -100,10 +101,13 @@ class MLConformerGenerator(torch.nn.Module):
         generative_model.eval()
         adj_mat_seer.eval()
 
-        self.generative_model = torch.jit.script(generative_model)
-        self.adj_mat_seer = torch.jit.script(adj_mat_seer)
-        # self.generative_model = generative_model
-        # self.adj_mat_seer = adj_mat_seer
+        if torch_script:
+            self.generative_model = torch.jit.script(generative_model)
+            self.adj_mat_seer = torch.jit.script(adj_mat_seer)
+
+        else:
+            self.generative_model = generative_model
+            self.adj_mat_seer = adj_mat_seer
 
     @torch.no_grad()
     def edm_samples(
