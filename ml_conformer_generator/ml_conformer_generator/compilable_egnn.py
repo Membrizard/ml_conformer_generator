@@ -894,11 +894,12 @@ class EGNNDynamics(nn.Module):
         #     rows.long().unsqueeze(0),
         #     cols.long().unsqueeze(0),
         # ], dim=0).to(device)
-        
+
         edges = torch.stack([
             rows.long(),
             cols.long(),
         ], dim=0).to(device)
 
         edges_dic_b[batch_size] = edges
+
         return edges
