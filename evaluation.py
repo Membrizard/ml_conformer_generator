@@ -25,7 +25,7 @@ def exact_match(mol, source):
 torch_script = True
 device = "cuda"
 generator = MLConformerGenerator(device=device, torch_script=torch_script)
-source_path = "./data/full_15_39_atoms_conf_chembl.inchi"
+source_path = "./full_15_39_atoms_conf_chembl.inchi"
 n_samples = 100
 max_variance = 2
 
