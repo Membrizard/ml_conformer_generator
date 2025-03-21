@@ -13,5 +13,25 @@ diffusion = EquivariantDiffusion(
             noise_precision=1e-5,
         )
 
-compiled_model = torch.jit.script(diffusion)
+# compiled_model = torch.jit.script(diffusion)
+
+
+# Dummy input data for all arguments
+n_samples: int
+n_nodes: int,
+node_mask: torch.Tensor
+edge_mask: torch.Tensor
+context: torch.Tensor
+
+# Exporting to ONNX
+torch.onnx.export(
+    diffusion,
+    (x, y, z, node_mask, edge_mask, context),  # Tuple of inputs
+    "complex_model.onnx",
+    input_names=["x", "y", "z", "node_mask", "edge_mask", "context"],
+    output_names=["output"],
+    dynamic_axes={"x": {0: "batch_size"}, "y": {0: "batch_size"}, "z": {0: "batch_size"},
+                  "node_mask": {0: "batch_size"}, "edge_mask": {0: "batch_size"}, "context": {0: "batch_size"}},
+    opset_version=11,
+)
 

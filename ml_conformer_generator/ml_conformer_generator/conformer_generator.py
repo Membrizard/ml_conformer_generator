@@ -102,6 +102,7 @@ class MLConformerGenerator(torch.nn.Module):
         adj_mat_seer.eval()
 
         if torch_script:
+            # Try ONNX runtime instead?
             self.generative_model = torch.jit.script(generative_model)
             self.adj_mat_seer = torch.jit.script(adj_mat_seer)
 
