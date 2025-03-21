@@ -503,7 +503,7 @@ class EGNN(nn.Module):
         #     )
         # self.to(self.device)
 
-    def forward(self, h, x, edge_index, node_mask, edge_mask):
+    def forward(self, h, x, edge_index, node_mask, edge_mask) -> typing.Tuple[torch.Tensor, torch.Tensor]:
 
         distances, _ = coord2diff(x, edge_index, self.norm_constant)
         # if self.sin_embedding is not None:
@@ -766,8 +766,9 @@ class EGNNDynamics(nn.Module):
         bs, n_nodes, dims = xh.size()
 
         h_dims = dims - self.n_dims
-
         edges = self.get_adj_matrix(n_nodes, bs, self.device)
+
+        # edges = torch.zeros((20, 20))
         # edges = [x.to(self.device) for x in edges]
         node_mask = node_mask.view(bs * n_nodes, 1)
         edge_mask = edge_mask.view(bs * n_nodes * n_nodes, 1)
@@ -866,11 +867,10 @@ class EGNNDynamics(nn.Module):
     #         return self.get_adj_matrix(n_nodes, batch_size, device)
 
     # New
-    def get_adj_matrix(self, n_nodes: int, batch_size: int, device: torch.device):
+    def get_adj_matrix(self, n_nodes: int, batch_size: int, device: torch.device) -> torch.Tensor:
         # Check if the node number dictionary exists
         if n_nodes not in self._edges_dict:
             self._edges_dict[n_nodes] = {0: torch.tensor(0)}
-
         # Check if the batch size dictionary exists
         edges_dic_b = self._edges_dict[n_nodes]
         if batch_size in edges_dic_b:
@@ -886,6 +886,7 @@ class EGNNDynamics(nn.Module):
         # Expand to all batches
         rows = (row_indices.unsqueeze(0) + batch_offsets).flatten()
         cols = (col_indices.unsqueeze(0) + batch_offsets).flatten()
+        # print(torch.LongTensor(rows).unsqueeze(0))
 
         # Store the edges as LongTensor
         # edges = [
@@ -893,9 +894,13 @@ class EGNNDynamics(nn.Module):
         #     torch.LongTensor(cols).to(device),
         # ]
 
+        # edges = torch.cat([
+        #     torch.LongTensor(rows).unsqueeze(0),
+        #     torch.LongTensor(cols).unsqueeze(0)
+        # ], dim=0).to(device)
         edges = torch.cat([
-            torch.LongTensor(rows).unsqueeze(0),
-            torch.LongTensor(cols).unsqueeze(0)
+            rows.long().unsqueeze(0),
+            cols.long().unsqueeze(0),
         ], dim=0).to(device)
 
         edges_dic_b[batch_size] = edges

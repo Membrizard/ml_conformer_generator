@@ -213,11 +213,8 @@ class EquivariantDiffusion(torch.nn.Module):
         in_node_nf: int,
         n_dims: int = 3,
         timesteps: int = 1000,
-        noise_precision=1e-4,
-        norm_values=(
-            1.0,
-            9.0,
-        ),  # -> Original (1, 8, 1) - (1, max number of atom classes, used for h_integer)
+        noise_precision: float = 1e-4,
+        norm_values: typing.Tuple[float, float] = (1.0, 9.0),  # (1, max number of atom classes)
         # norm_biases=(None, 0.0),
     ):
         super().__init__()
