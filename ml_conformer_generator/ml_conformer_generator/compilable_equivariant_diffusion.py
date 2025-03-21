@@ -133,41 +133,41 @@ def sample_gaussian_with_mask(size, device, node_mask):
     return x_masked
 
 
-class PositiveLinear(torch.nn.Module):
-    """Linear layer with weights forced to be positive."""
-
-    def __init__(
-        self,
-        in_features: int,
-        out_features: int,
-        bias: bool = True,
-        weight_init_offset: int = -2,
-    ):
-        super(PositiveLinear, self).__init__()
-        self.in_features = in_features
-        self.out_features = out_features
-        self.weight = nn.Parameter(torch.empty((out_features, in_features)))
-        if bias:
-            self.bias = nn.Parameter(torch.empty(out_features))
-        else:
-            self.register_parameter("bias", None)
-        self.weight_init_offset = weight_init_offset
-        self.reset_parameters()
-
-    def reset_parameters(self) -> None:
-        nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
-
-        with torch.no_grad():
-            self.weight.add_(self.weight_init_offset)
-
-        if self.bias is not None:
-            fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
-            bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-            torch.nn.init.uniform_(self.bias, -bound, bound)
-
-    def forward(self, input):
-        positive_weight = F.softplus(self.weight)
-        return F.linear(input, positive_weight, self.bias)
+# class PositiveLinear(torch.nn.Module):
+#     """Linear layer with weights forced to be positive."""
+#
+#     def __init__(
+#         self,
+#         in_features: int,
+#         out_features: int,
+#         # bias: bool = True,
+#         weight_init_offset: int = -2,
+#     ):
+#         super(PositiveLinear, self).__init__()
+#         self.in_features = in_features
+#         self.out_features = out_features
+#         self.weight = nn.Parameter(torch.empty((out_features, in_features)))
+#         # if bias:
+#         self.bias = nn.Parameter(torch.empty(out_features))
+#         # else:
+#         #     self.register_parameter("bias", None)
+#         self.weight_init_offset = weight_init_offset
+#         self.reset_parameters()
+#
+#     def reset_parameters(self):
+#         nn.init.kaiming_uniform_(self.weight, a=math.sqrt(5))
+#
+#         with torch.no_grad():
+#             self.weight.add_(self.weight_init_offset)
+#
+#         # if self.bias is not None:
+#         fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.weight)
+#         bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
+#         torch.nn.init.uniform_(self.bias, -bound, bound)
+#
+#     def forward(self, input):
+#         positive_weight = F.softplus(self.weight)
+#         return F.linear(input, positive_weight, self.bias)
 
 
 class PredefinedNoiseSchedule(torch.nn.Module):
@@ -519,48 +519,48 @@ class EquivariantDiffusion(torch.nn.Module):
 
         return x, h
 
-    @torch.no_grad()
-    def sample_chain(
-        self, n_samples, n_nodes, node_mask, edge_mask, context, keep_frames=None
-    ):
-        """
-        Draw samples from the generative model, keep the intermediate states for visualization purposes.
-        """
-        z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
-
-        assert_mean_zero_with_mask(z[:, :, : self.n_dims], node_mask)
-
-        if keep_frames is None:
-            keep_frames = self.T
-        else:
-            assert keep_frames <= self.T
-        chain = torch.zeros((keep_frames,) + z.size(), device=z.device)
-
-        # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
-        for s in reversed(range(0, self.T)):
-            s_array = torch.full((n_samples, 1), fill_value=s, device=z.device)
-            t_array = s_array + 1
-            s_array = s_array / self.T
-            t_array = t_array / self.T
-
-            z = self.sample_p_zs_given_zt(
-                s_array, t_array, z, node_mask, edge_mask, context
-            )
-
-            assert_mean_zero_with_mask(z[:, :, : self.n_dims], node_mask)
-
-            # Write to chain tensor.
-            write_index = (s * keep_frames) // self.T
-            chain[write_index] = self.unnormalize_z(z, node_mask)
-
-        # Finally sample p(x, h | z_0).
-        x, h = self.sample_p_xh_given_z0(z, node_mask, edge_mask, context)
-
-        assert_mean_zero_with_mask(x[:, :, : self.n_dims], node_mask)
-
-        xh = torch.cat([x, h["categorical"], h["integer"]], dim=2)
-        chain[0] = xh  # Overwrite last frame with the resulting x and h.
-
-        chain_flat = chain.view(n_samples * keep_frames, *z.size()[1:])
-
-        return chain_flat
+    # @torch.no_grad()
+    # def sample_chain(
+    #     self, n_samples, n_nodes, node_mask, edge_mask, context, keep_frames=None
+    # ):
+    #     """
+    #     Draw samples from the generative model, keep the intermediate states for visualization purposes.
+    #     """
+    #     z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
+    #
+    #     assert_mean_zero_with_mask(z[:, :, : self.n_dims], node_mask)
+    #
+    #     if keep_frames is None:
+    #         keep_frames = self.T
+    #     else:
+    #         assert keep_frames <= self.T
+    #     chain = torch.zeros((keep_frames,) + z.size(), device=z.device)
+    #
+    #     # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
+    #     for s in reversed(range(0, self.T)):
+    #         s_array = torch.full((n_samples, 1), fill_value=s, device=z.device)
+    #         t_array = s_array + 1
+    #         s_array = s_array / self.T
+    #         t_array = t_array / self.T
+    #
+    #         z = self.sample_p_zs_given_zt(
+    #             s_array, t_array, z, node_mask, edge_mask, context
+    #         )
+    #
+    #         assert_mean_zero_with_mask(z[:, :, : self.n_dims], node_mask)
+    #
+    #         # Write to chain tensor.
+    #         write_index = (s * keep_frames) // self.T
+    #         chain[write_index] = self.unnormalize_z(z, node_mask)
+    #
+    #     # Finally sample p(x, h | z_0).
+    #     x, h = self.sample_p_xh_given_z0(z, node_mask, edge_mask, context)
+    #
+    #     assert_mean_zero_with_mask(x[:, :, : self.n_dims], node_mask)
+    #
+    #     xh = torch.cat([x, h["categorical"], h["integer"]], dim=2)
+    #     chain[0] = xh  # Overwrite last frame with the resulting x and h.
+    #
+    #     chain_flat = chain.view(n_samples * keep_frames, *z.size()[1:])
+    #
+    #     return chain_flat

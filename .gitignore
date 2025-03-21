@@ -7,3 +7,4 @@ __pycache__/
 /venv
 /frontend/stspeck/frontend/node_modules
 /ml_conformer_generator/ml_conformer_generator/weights/ml_conformer_generator_chembl_15_39.weights
+/OPENBABEL_samples

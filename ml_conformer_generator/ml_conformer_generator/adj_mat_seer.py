@@ -39,17 +39,17 @@ class GraphConv(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        adjacency_matrix: typing.Optional[torch.Tensor] = None,
-        l_norm: typing.Optional[torch.Tensor] = None,
+        # adjacency_matrix,
+        l_norm,
     ) -> torch.Tensor:
         """
         :param x: element-shielding embedding of size (batch_size, DIMENSION, EMBEDDING_DIM)
-        :param adjacency_matrix: adjacency matrix with size (batch_size, DIMENSION, DIMENSION, NUM_BOND_TYPES)
+        # :param adjacency_matrix: adjacency matrix with size (batch_size, DIMENSION, DIMENSION, NUM_BOND_TYPES)
         :param l_norm: pre-computed l-norm for a graph batch, if
         :return Nodes embedding
         """
-        if l_norm is None:
-            l_norm = self.l_norm(adjacency_matrix)
+        # if l_norm is None:
+        #     l_norm = self.l_norm(adjacency_matrix)
 
         # Embed nodes and apply linear transformation to x
         x = self.linear(x)
