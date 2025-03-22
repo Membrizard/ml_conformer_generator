@@ -237,6 +237,7 @@ class EquivariantDiffusion(torch.nn.Module):
 
         self.norm_values = norm_values
         # self.norm_biases = norm_biases
+
         self.register_buffer("buffer", torch.zeros(1))
 
         self.check_issues_norm_values()
@@ -293,22 +294,22 @@ class EquivariantDiffusion(torch.nn.Module):
         """Computes signal to noise ratio (alpha^2/sigma^2) given gamma."""
         return torch.exp(-gamma)
 
-    def subspace_dimensionality(self, node_mask):
-        """Compute the dimensionality on translation-invariant linear subspace where distributions on x are defined."""
-        number_of_nodes = torch.sum(node_mask.squeeze(2), dim=1)
-        return (number_of_nodes - 1) * self.n_dims
+    # def subspace_dimensionality(self, node_mask):
+    #     """Compute the dimensionality on translation-invariant linear subspace where distributions on x are defined."""
+    #     number_of_nodes = torch.sum(node_mask.squeeze(2), dim=1)
+    #     return (number_of_nodes - 1) * self.n_dims
 
-    def normalize(self, x, h, node_mask):
-        x = x / self.norm_values[0]
-        delta_log_px = -self.subspace_dimensionality(node_mask) * math.log(
-            self.norm_values[0]
-        )
-
-        # Casting to float in case h still has long or int type.
-        # h = (h.float() - self.norm_biases[1]) / self.norm_values[1] * node_mask
-        h = h.float() / self.norm_values[1] * node_mask
-
-        return x, h, delta_log_px
+    # def normalize(self, x, h, node_mask):
+    #     x = x / self.norm_values[0]
+    #     delta_log_px = -self.subspace_dimensionality(node_mask) * math.log(
+    #         self.norm_values[0]
+    #     )
+    #
+    #     # Casting to float in case h still has long or int type.
+    #     # h = (h.float() - self.norm_biases[1]) / self.norm_values[1] * node_mask
+    #     h = h.float() / self.norm_values[1] * node_mask
+    #
+    #     return x, h, delta_log_px
 
     def unnormalize(self, x, h_cat, node_mask):
         x = x * self.norm_values[0]
@@ -348,41 +349,41 @@ class EquivariantDiffusion(torch.nn.Module):
 
         return sigma2_t_given_s, sigma_t_given_s, alpha_t_given_s
 
-    def kl_prior(self, xh, node_mask):
-        """Computes the KL between q(z1 | x) and the prior p(z1) = Normal(0, 1).
-
-        This is essentially a lot of work for something that is in practice negligible in the loss. However, you
-        compute it so that you see it when you've made a mistake in your noise schedule.
-        """
-        # Compute the last alpha value, alpha_T.
-        ones = torch.ones((xh.size(0), 1), device=xh.device)
-        gamma_T = self.gamma(ones)
-        alpha_T = self.alpha(gamma_T, xh)
-
-        # Compute means.
-        mu_T = alpha_T * xh
-
-        mu_T_x, mu_T_h = mu_T[:, :, : self.n_dims], mu_T[:, :, self.n_dims :]
-
-        # Compute standard deviations (only batch axis for x-part, inflated for h-part).
-        sigma_T_x = self.sigma(
-            gamma_T, mu_T_x
-        ).squeeze()  # Remove inflate, only keep batch dimension for x-part.
-
-        sigma_T_h = self.sigma(gamma_T, mu_T_h)
-
-        # Compute KL for h-part.
-        zeros, ones = torch.zeros_like(mu_T_h), torch.ones_like(sigma_T_h)
-        kl_distance_h = gaussian_KL(mu_T_h, sigma_T_h, zeros, ones, node_mask)
-
-        # Compute KL for x-part.
-        zeros, ones = torch.zeros_like(mu_T_x), torch.ones_like(sigma_T_x)
-        subspace_d = self.subspace_dimensionality(node_mask)
-        kl_distance_x = gaussian_KL_for_dimension(
-            mu_T_x, sigma_T_x, zeros, ones, d=subspace_d
-        )
-
-        return kl_distance_x + kl_distance_h
+    # def kl_prior(self, xh, node_mask):
+    #     """Computes the KL between q(z1 | x) and the prior p(z1) = Normal(0, 1).
+    #
+    #     This is essentially a lot of work for something that is in practice negligible in the loss. However, you
+    #     compute it so that you see it when you've made a mistake in your noise schedule.
+    #     """
+    #     # Compute the last alpha value, alpha_T.
+    #     ones = torch.ones((xh.size(0), 1), device=xh.device)
+    #     gamma_T = self.gamma(ones)
+    #     alpha_T = self.alpha(gamma_T, xh)
+    #
+    #     # Compute means.
+    #     mu_T = alpha_T * xh
+    #
+    #     mu_T_x, mu_T_h = mu_T[:, :, : self.n_dims], mu_T[:, :, self.n_dims :]
+    #
+    #     # Compute standard deviations (only batch axis for x-part, inflated for h-part).
+    #     sigma_T_x = self.sigma(
+    #         gamma_T, mu_T_x
+    #     ).squeeze()  # Remove inflate, only keep batch dimension for x-part.
+    #
+    #     sigma_T_h = self.sigma(gamma_T, mu_T_h)
+    #
+    #     # Compute KL for h-part.
+    #     zeros, ones = torch.zeros_like(mu_T_h), torch.ones_like(sigma_T_h)
+    #     kl_distance_h = gaussian_KL(mu_T_h, sigma_T_h, zeros, ones, node_mask)
+    #
+    #     # Compute KL for x-part.
+    #     zeros, ones = torch.zeros_like(mu_T_x), torch.ones_like(sigma_T_x)
+    #     subspace_d = self.subspace_dimensionality(node_mask)
+    #     kl_distance_x = gaussian_KL_for_dimension(
+    #         mu_T_x, sigma_T_x, zeros, ones, d=subspace_d
+    #     )
+    #
+    #     return kl_distance_x + kl_distance_h
 
     def compute_x_pred(self, net_out, zt, gamma_t):
         """Commputes x_pred, i.e. the most likely prediction of x."""
@@ -449,8 +450,10 @@ class EquivariantDiffusion(torch.nn.Module):
         eps_t = self.phi(zt, t, node_mask, edge_mask, context)
 
         # Compute mu for p(zs | zt).
-        self.assert_mean_zero_with_mask(zt[:, :, : self.n_dims], node_mask)
-        self.assert_mean_zero_with_mask(eps_t[:, :, : self.n_dims], node_mask)
+        # Redundant checks removed
+        # self.assert_mean_zero_with_mask(zt[:, :, : self.n_dims], node_mask)
+        # self.assert_mean_zero_with_mask(eps_t[:, :, : self.n_dims], node_mask)
+
         mu = (
             zt / alpha_t_given_s
             - (sigma2_t_given_s / alpha_t_given_s / sigma_t) * eps_t
@@ -508,11 +511,15 @@ class EquivariantDiffusion(torch.nn.Module):
         #     # Noise is broadcasted over the batch axis, useful for visualizations.
         #     z = self.sample_combined_position_feature_noise(1, n_nodes, node_mask)
         # else:
+
+        # Handle case of single sample generation? due to optimisations in flow of EGNN Dynamics
+
         z = self.sample_combined_position_feature_noise(
                 n_samples, n_nodes, node_mask
             )
 
-        self.assert_mean_zero_with_mask(z[:, :, : self.n_dims], node_mask)
+        # Remove redundant checks
+        # self.assert_mean_zero_with_mask(z[:, :, : self.n_dims], node_mask)
 
 
         # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
@@ -534,14 +541,15 @@ class EquivariantDiffusion(torch.nn.Module):
             # fix_noise=fix_noise
         )
 
-        self.assert_mean_zero_with_mask(x, node_mask)
+        # Remove redundant checks
+        # self.assert_mean_zero_with_mask(x, node_mask)
 
-        max_cog = torch.sum(x, dim=1, keepdim=True).abs().max().item()
-        if max_cog > 5e-2:
-            # print(
-            #     f"Warning cog drift with error {max_cog:.3f}. Projecting the positions down."
-            # )
-            x = remove_mean_with_mask(x, node_mask)
+        # max_cog = torch.sum(x, dim=1, keepdim=True).abs().max().item()
+        # if max_cog > torch.tensor(5e-2):
+        #     # print(
+        #     #     f"Warning cog drift with error {max_cog:.3f}. Projecting the positions down."
+        #     # )
+        #     x = remove_mean_with_mask(x, node_mask)
 
         return x, h
 

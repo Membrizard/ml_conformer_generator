@@ -3,7 +3,7 @@ import torch.cuda.amp as amp
 from ml_conformer_generator.ml_conformer_generator.compilable_egnn import EGNNDynamics
 from ml_conformer_generator.ml_conformer_generator.compilable_equivariant_diffusion import EquivariantDiffusion
 
-device = "cuda"
+device = "cpu"
 net_dynamics = EGNNDynamics(
             in_node_nf=9,
             context_node_nf=3,
@@ -28,9 +28,10 @@ generative_model.load_state_dict(
             )
         )
 
+
 generative_model.eval()
+
 compiled_model = torch.jit.script(generative_model)
-print("reach")
 
 
 # Dummy input data for all arguments - Equivariant Diffusion
@@ -44,13 +45,12 @@ context = torch.zeros((1, 2, 3), dtype=torch.float32, device=device)
 dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
 
 # Exporting to ONNX
-with torch.autocast("cuda", dtype=torch.float16):
-    torch.onnx.export(
-        generative_model,
+torch.onnx.export(
+        compiled_model,
         dummy_input,  # Tuple of inputs
         "moi_edm_chembl_15_39.onnx",
         do_constant_folding=True,
-        opset_version=16,
+        opset_version=18,
         export_params=True,
         input_names=["n_samples", "n_nodes", "node_mask", "edge_mask", "context"],
         output_names=["x", "h"],
@@ -61,5 +61,6 @@ with torch.autocast("cuda", dtype=torch.float16):
                       "x": {0: "batch_size", 1: "num_nodes"},
                       "h": {0: "batch_size", 1: "num_nodes"},
         },
-        verbose=True,
+        verbose=False,
     )
+

@@ -764,16 +764,23 @@ class EGNNDynamics(nn.Module):
 
     def forward(self, t, xh, node_mask, edge_mask, context):
         # print(f"t - size {t.size()} type {t.type()}")
+        # print(t)
         # print(f"xh - size {xh.size()} type {xh.type()}")
+        # print(xh)
         # print(f"node_mask - size {node_mask.size()} type {node_mask.type()}")
+        # print(node_mask)
         # print(f"edge_mask - size {edge_mask.size()} type {edge_mask.type()}")
+        # print(edge_mask)
         # print(f"context - size {context.size()} type {context.type()}")
+        # print(context)
 
 
         # bs, n_nodes, dims = xh.shape
-        bs, n_nodes, dims = xh.size()
+        # bs, n_nodes, dims = xh.size()
+        bs, n_nodes, _ = xh.size()
 
-        h_dims = dims - self.n_dims
+
+        # h_dims = dims - self.n_dims
         edges = self.get_adj_matrix(n_nodes, bs, self.device)
 
         # edges = torch.zeros((20, 20))
@@ -790,13 +797,18 @@ class EGNNDynamics(nn.Module):
         # Condition time is set to True by default
         # if self.condition_time:
         # if np.prod(t.size()) == 1:
-        if t.numel() == 1:
-            # t is the same for all elements in batch.
-            h_time = torch.empty_like(h[:, 0:1]).fill_(t.item())
-        else:
-            # t is different over the batch dimension.
-            h_time = t.view(bs, 1).repeat(1, n_nodes)
-            h_time = h_time.view(bs * n_nodes, 1)
+
+        # A Case of single sample generation will deprecate - Add Notes or cover in higher level
+        # if t.numel() == 1:
+        #     print("A")
+        #     # Case of a single sample generation
+        #     # t is the same for all elements in batch.
+        #     h_time = torch.empty_like(h[:, 0:1]).fill_(t.item())
+        # else:
+        #     print("B")
+        # t is different over the batch dimension by default for multiple sample eneration
+        h_time = t.view(bs, 1).repeat(1, n_nodes)
+        h_time = h_time.view(bs * n_nodes, 1)
 
         h = torch.cat([h, h_time], dim=1)
 
@@ -824,20 +836,24 @@ class EGNNDynamics(nn.Module):
 
         vel = vel.view(bs, n_nodes, -1)
 
-        if torch.any(torch.isnan(vel)):
-            print("Warning: detected nan, resetting EGNN output to zero.")
-            vel = torch.zeros_like(vel)
+        # Deprecate redundant check for speed up
+        # if torch.any(torch.isnan(vel)):
+        #     print("Warning: detected nan, resetting EGNN output to zero.")
+        #     vel = torch.zeros_like(vel)
 
         # if node_mask is None:
         #     vel = remove_mean(vel)
         # else:
         vel = remove_mean_with_mask(vel, node_mask.view(bs, n_nodes, 1))
 
-        if h_dims == 0:
-            return vel
-        else:
-            h_final = h_final.view(bs, n_nodes, -1)
-            return torch.cat([vel, h_final], dim=2)
+        # Not reacheable during generation
+        # if h_dims == 0:
+        #     print("C")
+        #     return vel
+        # else:
+
+        h_final = h_final.view(bs, n_nodes, -1)
+        return torch.cat([vel, h_final], dim=2)
 
     # OLD
     # def get_adj_matrix(self, n_nodes: int, batch_size: int, device):
