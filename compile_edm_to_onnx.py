@@ -17,6 +17,8 @@ generative_model = EquivariantDiffusion(
             noise_precision=1e-5,
         )
 
+generative_model.to("cuda")
+
 edm_weights = "./ml_conformer_generator/ml_conformer_generator/weights/compilable_weights/compilable_edm_moi_chembl_15_39.weights"
 generative_model.load_state_dict(
             torch.load(
