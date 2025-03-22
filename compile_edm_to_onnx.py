@@ -31,20 +31,16 @@ generative_model.load_state_dict(
 generative_model.eval()
 
 
-def convert_to_half(module):
-    for module_1 in module.modules():
-        try:
-            module_1.half()
-            for module_2 in module_1.modules():
-                module_2.half()
-                for module_3 in module_2.modules():
-                    module_3.half()
-                    for layer in module_3.modules():
-                        layer.half()
-        except:
-            pass
+def convert_to_half(model):
+    for name, param in model.named_parameters():
+        param.data = param.data.half()
+        if param.requires_grad:
+            param.grad = param.grad.half() if param.grad is not None else None
 
-    return module
+    for name, buf in model.named_buffers():
+        model._buffers[name] = buf.half()
+
+    return model
 
 generative_model = convert_to_half(generative_model)
 
