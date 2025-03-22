@@ -3,11 +3,12 @@ import torch.jit
 from ml_conformer_generator.ml_conformer_generator.compilable_egnn import EGNNDynamics
 from ml_conformer_generator.ml_conformer_generator.compilable_equivariant_diffusion import EquivariantDiffusion
 
+device = "cpu"
 net_dynamics = EGNNDynamics(
             in_node_nf=9,
             context_node_nf=3,
             hidden_nf=420,
-            device="cuda",
+            device=device,
         )
 
 generative_model = EquivariantDiffusion(
@@ -17,13 +18,13 @@ generative_model = EquivariantDiffusion(
             noise_precision=1e-5,
         )
 
-generative_model.to("cuda")
+generative_model.to(device=)
 
 edm_weights = "./ml_conformer_generator/ml_conformer_generator/weights/compilable_weights/compilable_edm_moi_chembl_15_39.weights"
 generative_model.load_state_dict(
             torch.load(
                 edm_weights,
-                map_location="cuda",
+                map_location=device,
             )
         )
 
@@ -34,9 +35,9 @@ compiled_model = torch.jit.script(generative_model)
 # Dummy input data for all arguments - Equivariant Diffusion
 n_samples = 4
 n_nodes = 20
-node_mask = torch.ones((4, 20, 1), dtype=torch.float32, device="cuda")
-edge_mask = torch.zeros((1600, 1), dtype=torch.float32, device="cuda")
-context = torch.zeros((4, 20, 3), dtype=torch.float32, device="cuda")
+node_mask = torch.ones((4, 20, 1), dtype=torch.float32, device=device)
+edge_mask = torch.zeros((1600, 1), dtype=torch.float32, device=device)
+context = torch.zeros((4, 20, 3), dtype=torch.float32, device=device)
 
 # dummy_input = (elements, dist_mat, adj_mat)
 dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
