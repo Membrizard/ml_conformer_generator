@@ -29,8 +29,14 @@ generative_model.load_state_dict(
         )
 
 generative_model.eval()
+generative_model.half()
+
+for name, module in generative_model.named_modules():
+    if isinstance(module, torch.nn.Linear):
+        module.float()
+
 compiled_model = torch.jit.script(generative_model)
-compiled_model = compiled_model.half()
+
 
 
 # Dummy input data for all arguments - Equivariant Diffusion
