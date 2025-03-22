@@ -35,16 +35,16 @@ compiled_model = torch.jit.script(generative_model)
 # Dummy input data for all arguments - Equivariant Diffusion
 n_samples = 1
 n_nodes = 20
-node_mask = torch.ones((1, 20, 1), dtype=torch.half, device=device)
-edge_mask = torch.zeros((400, 1), dtype=torch.half, device=device)
-context = torch.zeros((1, 20, 3), dtype=torch.half, device=device)
+node_mask = torch.ones((1, 20, 1), dtype=torch.float32, device=device)
+edge_mask = torch.zeros((400, 1), dtype=torch.float32, device=device)
+context = torch.zeros((1, 20, 3), dtype=torch.float32, device=device)
 
 # dummy_input = (elements, dist_mat, adj_mat)
 dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
 
 # Exporting to ONNX
 torch.onnx.export(
-    compiled_model.half(),
+    compiled_model,
     dummy_input,  # Tuple of inputs
     "moi_edm_chembl_15_39.onnx",
     do_constant_folding=True,
