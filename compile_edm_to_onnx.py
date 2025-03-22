@@ -33,6 +33,65 @@ generative_model.eval()
 
 compiled_model = torch.jit.script(generative_model)
 
+# TODO prepare valid dummy import for compilation
+def prepare_dummy_input(
+        reference_context,
+        n_samples=100,
+        max_n_nodes=32,
+        min_n_nodes=25,
+        device="cpu",
+        context_norms,
+        # fix_noise=False,
+):
+    """
+    """
+    # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
+    nodesxsample = []
+
+    # Make sure that number of atoms of generated samples is within requested range
+    if min_n_nodes < 15:
+        min_n_nodes = 15
+
+    if max_n_nodes > 39:
+        max_n_nodes = 39
+
+    for n in range(n_samples):
+        nodesxsample.append(random.randint(min_n_nodes, max_n_nodes))
+
+    nodesxsample = torch.tensor(nodesxsample)
+
+    batch_size = nodesxsample.size(0)
+
+    node_mask = torch.zeros(batch_size, max_n_nodes)
+    for i in range(batch_size):
+        node_mask[i, 0: nodesxsample[i]] = 1
+
+    # Compute edge_mask
+
+    edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
+    diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
+    edge_mask *= diag_mask
+    edge_mask = edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1).to(
+        device
+    )
+    node_mask = node_mask.unsqueeze(2).to(device)
+
+    normed_context = (
+            (reference_context - context_norms["mean"]) / context_norms["mad"]
+    ).to(device)
+
+    batch_context = normed_context.unsqueeze(0).repeat(batch_size, 1)
+
+    batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
+
+    return
+
+
+
+
+
+
+
 
 # Dummy input data for all arguments - Equivariant Diffusion
 n_samples = 1
