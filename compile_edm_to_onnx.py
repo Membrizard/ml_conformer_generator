@@ -29,36 +29,35 @@ generative_model.load_state_dict(
         )
 
 generative_model.eval()
-
+generative_model = generative_model.half()
 compiled_model = torch.jit.script(generative_model)
 
 
 # Dummy input data for all arguments - Equivariant Diffusion
-n_samples = 1
-n_nodes = 20
-node_mask = torch.ones((1, 20, 1), dtype=torch.float32, device=device)
-edge_mask = torch.zeros((400, 1), dtype=torch.float32, device=device)
-context = torch.zeros((1, 20, 3), dtype=torch.float32, device=device)
+n_samples = torch.tensor(20, dtype=torch.half)
+n_nodes = torch.tensor(20, dtype=torch.half)
+node_mask = torch.ones((1, 20, 1), dtype=torch.half, device=device)
+edge_mask = torch.zeros((400, 1), dtype=torch.half, device=device)
+context = torch.zeros((1, 20, 3), dtype=torch.half, device=device)
 
 # dummy_input = (elements, dist_mat, adj_mat)
 dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
 
 # Exporting to ONNX
-with amp.autocast():
-    torch.onnx.export(
-        compiled_model,
-        dummy_input,  # Tuple of inputs
-        "moi_edm_chembl_15_39.onnx",
-        do_constant_folding=True,
-        input_names=["n_samples", "n_nodes", "node_mask", "edge_mask", "context"],
-        output_names=["x", "h"],
-        dynamic_axes={
-                      "node_mask": {0: "batch_size", 1: "num_nodes"},
-                      "edge_mask": {0: "num_edges"},
-                      "context": {0: "batch_size", 1: "num_nodes"},
-                      "x": {0: "batch_size", 1: "num_nodes"},
-                      "h": {0: "batch_size", 1: "num_nodes"},
-        },
-        opset_version=18,
-        verbose=True,
-    )
+torch.onnx.export(
+    compiled_model,
+    dummy_input,  # Tuple of inputs
+    "moi_edm_chembl_15_39.onnx",
+    do_constant_folding=True,
+    input_names=["n_samples", "n_nodes", "node_mask", "edge_mask", "context"],
+    output_names=["x", "h"],
+    dynamic_axes={
+                  "node_mask": {0: "batch_size", 1: "num_nodes"},
+                  "edge_mask": {0: "num_edges"},
+                  "context": {0: "batch_size", 1: "num_nodes"},
+                  "x": {0: "batch_size", 1: "num_nodes"},
+                  "h": {0: "batch_size", 1: "num_nodes"},
+    },
+    opset_version=18,
+    verbose=True,
+)
