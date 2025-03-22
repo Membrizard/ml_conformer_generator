@@ -45,7 +45,7 @@ def convert_to_half(model):
 generative_model = convert_to_half(generative_model)
 
 compiled_model = torch.jit.script(generative_model)
-
+print("reach")
 
 
 # Dummy input data for all arguments - Equivariant Diffusion
@@ -73,6 +73,6 @@ torch.onnx.export(
                   "x": {0: "batch_size", 1: "num_nodes"},
                   "h": {0: "batch_size", 1: "num_nodes"},
     },
-    opset_version=18,
+    opset_version=11,
     verbose=True,
 )
