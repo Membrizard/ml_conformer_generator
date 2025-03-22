@@ -17,18 +17,20 @@ diffusion = EquivariantDiffusion(
 
 
 # Dummy input data for all arguments
-n_samples: int
-n_nodes: int,
-node_mask: torch.Tensor
-edge_mask: torch.Tensor
-context: torch.Tensor
+n_samples = 2
+n_nodes = 42
+node_mask = torch.zeros()
+edge_mask = torch.zeros()
+context = torch.zeros()
+
+dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
 
 # Exporting to ONNX
 torch.onnx.export(
     diffusion,
-    (x, y, z, node_mask, edge_mask, context),  # Tuple of inputs
+    dummy_input,  # Tuple of inputs
     "complex_model.onnx",
-    input_names=["x", "y", "z", "node_mask", "edge_mask", "context"],
+    input_names=["n_samples", "n_nodes", "node_mask", "edge_mask", "context"],
     output_names=["output"],
     dynamic_axes={"x": {0: "batch_size"}, "y": {0: "batch_size"}, "z": {0: "batch_size"},
                   "node_mask": {0: "batch_size"}, "edge_mask": {0: "batch_size"}, "context": {0: "batch_size"}},
