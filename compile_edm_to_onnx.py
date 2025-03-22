@@ -34,9 +34,13 @@ generative_model.eval()
 def convert_to_half(module):
     for module_1 in module.modules():
         try:
-            for layer in module_1.modules():
-                layer.half()
-
+            module_1.half()
+            for module_2 in module_1.modules():
+                module_2.half()
+                for module_3 in module_2.modules():
+                    module_3.half()
+                    for layer in module_3.modules():
+                        layer.half()
         except:
             pass
 
