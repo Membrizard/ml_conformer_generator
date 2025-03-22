@@ -59,6 +59,6 @@ with torch.autocast("cuda", dtype=torch.float16):
                       "x": {0: "batch_size", 1: "num_nodes"},
                       "h": {0: "batch_size", 1: "num_nodes"},
         },
-        opset_version=18,
+        opset_version=11,
         verbose=True,
     )
