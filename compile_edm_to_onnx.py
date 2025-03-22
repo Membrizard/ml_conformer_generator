@@ -50,6 +50,8 @@ with torch.autocast("cuda", dtype=torch.float16):
         dummy_input,  # Tuple of inputs
         "moi_edm_chembl_15_39.onnx",
         do_constant_folding=True,
+        opset_version=16,
+        export_params=True,
         input_names=["n_samples", "n_nodes", "node_mask", "edge_mask", "context"],
         output_names=["x", "h"],
         dynamic_axes={
@@ -59,6 +61,5 @@ with torch.autocast("cuda", dtype=torch.float16):
                       "x": {0: "batch_size", 1: "num_nodes"},
                       "h": {0: "batch_size", 1: "num_nodes"},
         },
-        opset_version=11,
         verbose=True,
     )
