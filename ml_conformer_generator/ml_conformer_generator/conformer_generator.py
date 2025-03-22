@@ -167,6 +167,7 @@ class MLConformerGenerator(torch.nn.Module):
 
         batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
 
+        print(f"edge_mask - {edge_mask.size()}")
         x, h = self.generative_model(
             batch_size,
             max_n_nodes,

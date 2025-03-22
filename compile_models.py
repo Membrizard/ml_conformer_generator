@@ -24,11 +24,11 @@ compiled_model = torch.jit.script(adj_mat_seer)
 
 
 # Dummy input data for all arguments - Equivariant Diffusion
-n_samples = 4
+n_samples = 1
 n_nodes = 20
-node_mask = torch.ones((4, 20, 1), dtype=torch.float32)
-edge_mask = torch.zeros((1600, 1), dtype=torch.float32)
-context = torch.zeros((4, 20, 3), dtype=torch.float32)
+node_mask = torch.ones((1, 20, 1), dtype=torch.float32)
+edge_mask = torch.zeros((400, 1), dtype=torch.float32)
+context = torch.zeros((1, 20, 3), dtype=torch.float32)
 
 # Dummy input data for all arguments - AdjMatSeer
 elements = torch.ones((4, 42), dtype=torch.long)
@@ -40,8 +40,8 @@ dummy_input = (elements, dist_mat, adj_mat)
 
 # Exporting to ONNX
 torch.onnx.export(
-    compiled_model,
-    dummy_input,  # Tuple of inputs
+    compiled_model.half(),
+    dummy_input.half(),  # Tuple of inputs
     "complex_model.onnx",
     input_names=["elements", "dist_mat", "adj_mat"],
     output_names=["output"],
