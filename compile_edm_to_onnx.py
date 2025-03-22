@@ -31,20 +31,16 @@ generative_model.load_state_dict(
 generative_model.eval()
 generative_model.half()
 
-for name, module in generative_model.named_modules():
-    if isinstance(module, torch.nn.Linear):
-        module.float()
-
 compiled_model = torch.jit.script(generative_model)
 
 
 
 # Dummy input data for all arguments - Equivariant Diffusion
 n_samples = 1
-n_nodes = 20
-node_mask = torch.ones((1, 20, 1), dtype=torch.float16, device=device)
-edge_mask = torch.zeros((400, 1), dtype=torch.float16, device=device)
-context = torch.zeros((1, 20, 3), dtype=torch.float16, device=device)
+n_nodes = 2
+node_mask = torch.ones((1, 2, 1), dtype=torch.float16, device=device)
+edge_mask = torch.zeros((4, 1), dtype=torch.float16, device=device)
+context = torch.zeros((1, 2, 3), dtype=torch.float16, device=device)
 
 # dummy_input = (elements, dist_mat, adj_mat)
 dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
