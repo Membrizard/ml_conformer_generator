@@ -13,21 +13,21 @@ diffusion = EquivariantDiffusion(
             noise_precision=1e-5,
         )
 
-# compiled_model = torch.jit.script(diffusion)
+compiled_model = torch.jit.script(diffusion)
 
 
 # Dummy input data for all arguments
-n_samples = 2
-n_nodes = 42
-node_mask = torch.zeros()
-edge_mask = torch.zeros()
-context = torch.zeros()
+n_samples = 4
+n_nodes = 20
+node_mask = torch.ones((4, 20, 1), dtype=torch.float32)
+edge_mask = torch.zeros((1600, 1), dtype=torch.float32)
+context = torch.zeros((4, 20, 3), dtype=torch.float32)
 
 dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
 
 # Exporting to ONNX
 torch.onnx.export(
-    diffusion,
+    compiled_model,
     dummy_input,  # Tuple of inputs
     "complex_model.onnx",
     input_names=["n_samples", "n_nodes", "node_mask", "edge_mask", "context"],

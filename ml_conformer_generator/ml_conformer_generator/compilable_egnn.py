@@ -746,7 +746,8 @@ class EGNNDynamics(nn.Module):
         # def create_edges_dict() -> typing.Dict[int, typing.List[torch.LongTensor]]:
         #     return {}
 
-        self._edges_dict = {0: {0: torch.tensor(0)}}
+        # self._edges_dict = {0: {0: torch.tensor(0)}}
+
         # self.condition_time = condition_time
 
     # def forward(self, t, xh, node_mask, edge_mask, context):
@@ -866,16 +867,46 @@ class EGNNDynamics(nn.Module):
     #         self._edges_dict[n_nodes] = {0: [torch.tensor([0])]}
     #         return self.get_adj_matrix(n_nodes, batch_size, device)
 
-    # New
-    def get_adj_matrix(self, n_nodes: int, batch_size: int, device: torch.device) -> torch.Tensor:
-        # Check if the node number dictionary exists
-        if n_nodes not in self._edges_dict:
-            self._edges_dict[n_nodes] = {0: torch.tensor(0)}
-        # Check if the batch size dictionary exists
-        edges_dic_b = self._edges_dict[n_nodes]
-        if batch_size in edges_dic_b:
-            return edges_dic_b[batch_size]
+    # New with Cashing
+    # def get_adj_matrix(self, n_nodes: int, batch_size: int, device: torch.device) -> torch.Tensor:
+    #     # Check if the node number dictionary exists
+    #     if n_nodes not in self._edges_dict:
+    #         self._edges_dict[n_nodes] = {0: torch.tensor(0)}
+    #     # Check if the batch size dictionary exists
+    #     edges_dic_b = self._edges_dict[n_nodes]
+    #     if batch_size in edges_dic_b:
+    #         return edges_dic_b[batch_size]
+    #
+    #     # Generate batch offsets
+    #     batch_offsets = torch.arange(batch_size, device=device).unsqueeze(1) * n_nodes
+    #
+    #     # Generate row and column indices for a single batch
+    #     row_indices = torch.arange(n_nodes, device=device).repeat(n_nodes, 1).T.flatten()
+    #     col_indices = torch.arange(n_nodes, device=device).repeat(n_nodes)
+    #
+    #     # Expand to all batches
+    #     rows = (row_indices.unsqueeze(0) + batch_offsets).flatten()
+    #     cols = (col_indices.unsqueeze(0) + batch_offsets).flatten()
+    #     # print(torch.LongTensor(rows).unsqueeze(0))
+    #
+    #     # Store the edges as LongTensor
+    #
+    #     # edges = torch.cat([
+    #     #     rows.long().unsqueeze(0),
+    #     #     cols.long().unsqueeze(0),
+    #     # ], dim=0).to(device)
+    #
+    #     edges = torch.stack([
+    #         rows.long(),
+    #         cols.long(),
+    #     ], dim=0).to(device)
+    #
+    #     edges_dic_b[batch_size] = edges
+    #
+    #     return edges
 
+    # New without caching
+    def get_adj_matrix(self, n_nodes: int, batch_size: int, device: torch.device) -> torch.Tensor:
         # Generate batch offsets
         batch_offsets = torch.arange(batch_size, device=device).unsqueeze(1) * n_nodes
 
@@ -886,20 +917,11 @@ class EGNNDynamics(nn.Module):
         # Expand to all batches
         rows = (row_indices.unsqueeze(0) + batch_offsets).flatten()
         cols = (col_indices.unsqueeze(0) + batch_offsets).flatten()
-        # print(torch.LongTensor(rows).unsqueeze(0))
 
         # Store the edges as LongTensor
-
-        # edges = torch.cat([
-        #     rows.long().unsqueeze(0),
-        #     cols.long().unsqueeze(0),
-        # ], dim=0).to(device)
-
         edges = torch.stack([
             rows.long(),
             cols.long(),
         ], dim=0).to(device)
-
-        edges_dic_b[batch_size] = edges
 
         return edges

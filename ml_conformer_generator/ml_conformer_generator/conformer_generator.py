@@ -30,7 +30,7 @@ class MLConformerGenerator(torch.nn.Module):
         edm_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/compilable_weights/"
         "compilable_edm_moi_chembl_15_39.weights",
         adj_mat_seer_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/compilable_weights/"
-        "upd_compilable_adj_mat_seer_chembl_15_39.weights",
+        "compilable_adj_mat_seer_chembl_15_39.weights",
         torch_script: bool = True,
     ):
         super().__init__()

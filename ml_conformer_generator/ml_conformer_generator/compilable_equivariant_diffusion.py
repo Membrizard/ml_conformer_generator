@@ -329,8 +329,12 @@ class EquivariantDiffusion(torch.nn.Module):
             alpha t given s = alpha t / alpha s,
             sigma t given s = sqrt(1 - (alpha t given s) ^2 ).
         """
+        # sigma2_t_given_s = self.inflate_batch_array(
+        #     -torch.expm1(F.softplus(gamma_s) - F.softplus(gamma_t)), target_tensor
+        # )
+        # Without expm1
         sigma2_t_given_s = self.inflate_batch_array(
-            -torch.expm1(F.softplus(gamma_s) - F.softplus(gamma_t)), target_tensor
+           1 - torch.exp(F.softplus(gamma_s) - F.softplus(gamma_t)), target_tensor
         )
 
         log_alpha2_t = F.logsigmoid(-gamma_t)
