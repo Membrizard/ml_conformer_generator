@@ -34,9 +34,9 @@ compiled_model = torch.jit.script(generative_model)
 # Dummy input data for all arguments - Equivariant Diffusion
 n_samples = 4
 n_nodes = 20
-node_mask = torch.ones((4, 20, 1), dtype=torch.float32)
-edge_mask = torch.zeros((1600, 1), dtype=torch.float32)
-context = torch.zeros((4, 20, 3), dtype=torch.float32)
+node_mask = torch.ones((4, 20, 1), dtype=torch.float32, device="cuda")
+edge_mask = torch.zeros((1600, 1), dtype=torch.float32, device="cuda")
+context = torch.zeros((4, 20, 3), dtype=torch.float32, device="cuda")
 
 # dummy_input = (elements, dist_mat, adj_mat)
 dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
