@@ -7,7 +7,7 @@ net_dynamics = EGNNDynamics(
             in_node_nf=9,
             context_node_nf=3,
             hidden_nf=420,
-            device=torch.device("cuda"),
+            device="cuda",
         )
 
 generative_model = EquivariantDiffusion(
