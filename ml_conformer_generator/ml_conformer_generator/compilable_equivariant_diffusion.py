@@ -249,7 +249,7 @@ class EquivariantDiffusion(torch.nn.Module):
         rel_error = error / (largest_value + eps)
         assert rel_error < 1e-2, f"Mean is not zero, relative_error {rel_error}"
 
-    def check_issues_norm_values(self, num_stdevs=8):
+    def check_issues_norm_values(self, num_stdevs: int = 8):
         zeros = torch.zeros((1, 1))
         gamma_0 = self.gamma(zeros)
         sigma_0 = self.sigma(gamma_0, target_tensor=zeros).item()
@@ -332,7 +332,7 @@ class EquivariantDiffusion(torch.nn.Module):
         # sigma2_t_given_s = self.inflate_batch_array(
         #     -torch.expm1(F.softplus(gamma_s) - F.softplus(gamma_t)), target_tensor
         # )
-        # Without expm1
+        # Replaced -expm1 with 1 - exp(x) for onnx
         sigma2_t_given_s = self.inflate_batch_array(
            1 - torch.exp(F.softplus(gamma_s) - F.softplus(gamma_t)), target_tensor
         )

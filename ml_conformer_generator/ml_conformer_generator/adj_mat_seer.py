@@ -30,11 +30,19 @@ class GraphConv(nn.Module):
         self.linear = nn.Linear(in_features, out_features)
         self.device = device
 
-    def l_norm(self, adjacency_matrix: torch.Tensor) -> torch.Tensor:
-        d_norm = torch.diag_embed(torch.pow(adjacency_matrix.sum(dim=-1), -0.5))
-        l_norm = torch.bmm(torch.bmm(d_norm, adjacency_matrix), d_norm).to(self.device)
+    # def l_norm(self, adjacency_matrix: torch.Tensor) -> torch.Tensor:
+    #     d_norm = torch.diag_embed(torch.pow(adjacency_matrix.sum(dim=-1), -0.5))
+    #     l_norm = torch.bmm(torch.bmm(d_norm, adjacency_matrix), d_norm).to(self.device)
+    #
+    #     return l_norm
 
-        return l_norm
+    # Removed onnx incompatible ops
+    def l_norm(self, adjacency_matrix: torch.Tensor) -> torch.Tensor:
+        degree = adjacency_matrix.sum(dim=-1)
+        inv_sqrt_degree = torch.rsqrt(degree.clamp(min=1e-12))
+        l_norm = inv_sqrt_degree.unsqueeze(-1) * adjacency_matrix * inv_sqrt_degree.unsqueeze(-2)
+
+        return l_norm.to(self.device)
 
     def forward(
         self,
