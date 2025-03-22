@@ -29,7 +29,14 @@ generative_model.load_state_dict(
         )
 
 generative_model.eval()
-generative_model.half()
+
+
+def convert_to_half(module):
+    for layer in module.modules():
+        layer.half()
+    return module
+
+generative_model = convert_to_half(generative_model)
 
 compiled_model = torch.jit.script(generative_model)
 
