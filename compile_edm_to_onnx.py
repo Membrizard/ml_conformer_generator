@@ -29,21 +29,6 @@ generative_model.load_state_dict(
         )
 
 generative_model.eval()
-
-
-def convert_to_half(model):
-    for name, param in model.named_parameters():
-        param.data = param.data.half()
-        if param.requires_grad:
-            param.grad = param.grad.half() if param.grad is not None else None
-
-    for name, buf in model.named_buffers():
-        model._buffers[name] = buf.half()
-
-    return model
-
-generative_model = convert_to_half(generative_model)
-
 compiled_model = torch.jit.script(generative_model)
 print("reach")
 
@@ -51,28 +36,29 @@ print("reach")
 # Dummy input data for all arguments - Equivariant Diffusion
 n_samples = 1
 n_nodes = 2
-node_mask = torch.ones((1, 2, 1), dtype=torch.float16, device=device)
-edge_mask = torch.zeros((4, 1), dtype=torch.float16, device=device)
-context = torch.zeros((1, 2, 3), dtype=torch.float16, device=device)
+node_mask = torch.ones((1, 2, 1), dtype=torch.float32, device=device)
+edge_mask = torch.zeros((4, 1), dtype=torch.float32, device=device)
+context = torch.zeros((1, 2, 3), dtype=torch.float32, device=device)
 
 # dummy_input = (elements, dist_mat, adj_mat)
 dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
 
 # Exporting to ONNX
-torch.onnx.export(
-    compiled_model,
-    dummy_input,  # Tuple of inputs
-    "moi_edm_chembl_15_39.onnx",
-    do_constant_folding=True,
-    input_names=["n_samples", "n_nodes", "node_mask", "edge_mask", "context"],
-    output_names=["x", "h"],
-    dynamic_axes={
-                  "node_mask": {0: "batch_size", 1: "num_nodes"},
-                  "edge_mask": {0: "num_edges"},
-                  "context": {0: "batch_size", 1: "num_nodes"},
-                  "x": {0: "batch_size", 1: "num_nodes"},
-                  "h": {0: "batch_size", 1: "num_nodes"},
-    },
-    opset_version=11,
-    verbose=True,
-)
+with torch.autocast("cuda", dtype=torch.float16):
+    torch.onnx.export(
+        compiled_model,
+        dummy_input,  # Tuple of inputs
+        "moi_edm_chembl_15_39.onnx",
+        do_constant_folding=True,
+        input_names=["n_samples", "n_nodes", "node_mask", "edge_mask", "context"],
+        output_names=["x", "h"],
+        dynamic_axes={
+                      "node_mask": {0: "batch_size", 1: "num_nodes"},
+                      "edge_mask": {0: "num_edges"},
+                      "context": {0: "batch_size", 1: "num_nodes"},
+                      "x": {0: "batch_size", 1: "num_nodes"},
+                      "h": {0: "batch_size", 1: "num_nodes"},
+        },
+        opset_version=18,
+        verbose=True,
+    )
