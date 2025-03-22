@@ -29,8 +29,8 @@ generative_model.load_state_dict(
         )
 
 generative_model.eval()
-generative_model = generative_model.to(torch.float16)
 compiled_model = torch.jit.script(generative_model)
+compiled_model = compiled_model.half()
 
 
 # Dummy input data for all arguments - Equivariant Diffusion
