@@ -46,7 +46,7 @@ dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
 # Exporting to ONNX
 with torch.autocast("cuda", dtype=torch.float16):
     torch.onnx.export(
-        compiled_model,
+        generative_model,
         dummy_input,  # Tuple of inputs
         "moi_edm_chembl_15_39.onnx",
         do_constant_folding=True,
