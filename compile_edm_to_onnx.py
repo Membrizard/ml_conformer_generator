@@ -39,7 +39,7 @@ generative_model.eval()
 
 # model = generative_model.dynamics
 
-compiled_model = torch.compile(generative_model, backend="cuda")
+compiled_model = torch.compile(generative_model, backend="inductor")
 
 #
 # def prepare_dummy_input():
