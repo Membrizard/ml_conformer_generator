@@ -22,7 +22,7 @@ def exact_match(mol, source):
     return False
 
 
-compile = True
+compile = False
 device = "cuda"
 generator = MLConformerGenerator(device=device, compile=compile)
 source_path = "./full_15_39_atoms_conf_chembl.inchi"
