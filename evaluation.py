@@ -153,13 +153,13 @@ for key in variance_dist_dict.keys():
     )
 
 if compile:
-    file_name = "tensorrt_generation_performance_report.txt"
+    file_name = "compiled_generation_performance_report.txt"
 else:
     file_name = "no_torch_script_generation_performance_report.txt"
 
 with open(file_name, "w+") as f:
     if compile:
-        f.write("Modules are compiled using TensorRT\n")
+        f.write("Modules are compiled using INDUCTOR\n")
     else:
         f.write("Modules are NOT compiled\n")
 

@@ -107,8 +107,8 @@ class MLConformerGenerator(torch.nn.Module):
             # TorchScript
             # self.generative_model = torch.jit.script(generative_model)
             # self.adj_mat_seer = torch.jit.script(adj_mat_seer)
-            self.generative_model = torch.compile(generative_model, backend="torch_tensorrt")
-            self.adj_mat_seer = torch.compile(adj_mat_seer, backend="torch_tensorrt")
+            self.generative_model = torch.compile(generative_model, backend="inductor")
+            self.adj_mat_seer = torch.compile(adj_mat_seer, backend="inductor")
 
         else:
             self.generative_model = generative_model
