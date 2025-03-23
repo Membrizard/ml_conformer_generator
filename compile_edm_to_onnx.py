@@ -106,7 +106,7 @@ def prepare_dummy_input(
 
     batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
 
-    return n_samples, max_n_nodes, node_mask, edge_mask, batch_context
+    return n_samples, max_n_nodes, node_mask.to(device), edge_mask.to(device), batch_context.to(device)
 
 
 dummy_input = prepare_dummy_input()
