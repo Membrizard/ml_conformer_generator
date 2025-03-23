@@ -1,17 +1,8 @@
 import typing
-import pickle
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import math
-from tqdm import tqdm
 
 from .egnn import EGNNDynamics
-# import onnxruntime
-
-
-# def sum_except_batch(x):
-#     return x.view(x.size(0), -1).sum(-1)
 
 
 def clip_noise_schedule(alphas2, clip_value=0.001):
@@ -32,7 +23,7 @@ def clip_noise_schedule(alphas2, clip_value=0.001):
     return alphas2
 
 
-def polynomial_schedule(timesteps: int, s=1e-4, power=2):
+def polynomial_schedule(timesteps: int, s: float = 1e-4, power: int = 2):
     """
     A noise schedule based on a simple polynomial equation: 1 - x^power.
 
@@ -51,10 +42,10 @@ def polynomial_schedule(timesteps: int, s=1e-4, power=2):
     return alphas2
 
 
-def assert_correctly_masked(variable, node_mask):
-    assert (
-        variable * (1 - node_mask)
-    ).abs().max().item() < 1e-4, "Variables not masked properly."
+# def assert_correctly_masked(variable, node_mask):
+#     assert (
+#         variable * (1 - node_mask)
+#     ).abs().max().item() < 1e-4, "Variables not masked properly."
 
 
 # def assert_mean_zero_with_mask(x, node_mask, eps=1e-10):
@@ -243,7 +234,6 @@ class EquivariantDiffusion(torch.nn.Module):
 
         self.norm_values = norm_values
 
-
         # self.flag = True
         # self.norm_biases = norm_biases
 
@@ -251,13 +241,13 @@ class EquivariantDiffusion(torch.nn.Module):
 
         # self.check_issues_norm_values()
 
-    @staticmethod
-    def assert_mean_zero_with_mask(x, node_mask, eps: float = 1e-10):
-        assert_correctly_masked(x, node_mask)
-        largest_value = x.abs().max().item()
-        error = torch.sum(x, dim=1, keepdim=True).abs().max().item()
-        rel_error = error / (largest_value + eps)
-        assert rel_error < 1e-2, f"Mean is not zero, relative_error {rel_error}"
+    # @staticmethod
+    # def assert_mean_zero_with_mask(x, node_mask, eps: float = 1e-10):
+    #     assert_correctly_masked(x, node_mask)
+    #     largest_value = x.abs().max().item()
+    #     error = torch.sum(x, dim=1, keepdim=True).abs().max().item()
+    #     rel_error = error / (largest_value + eps)
+    #     assert rel_error < 1e-2, f"Mean is not zero, relative_error {rel_error}"
 
     # def check_issues_norm_values(self, num_stdevs: int = 8):
     #     zeros = torch.zeros((1, 1))
@@ -274,13 +264,7 @@ class EquivariantDiffusion(torch.nn.Module):
     #         )
 
     def phi(self, x, t, node_mask, edge_mask, context):
-        # Normal pass
         net_out = self.dynamics(t, x, node_mask, edge_mask, context)
-
-        #ONNX pass
-
-        # input = {"t":  }
-
         return net_out
 
     @staticmethod
@@ -516,7 +500,7 @@ class EquivariantDiffusion(torch.nn.Module):
     def forward(
         self, n_samples: int, n_nodes: int, node_mask: torch.Tensor, edge_mask: torch.Tensor, context: torch.Tensor,
             # fix_noise=False
-    ):
+    ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
         """
         Draw samples from the generative model.
         Inference
@@ -566,49 +550,3 @@ class EquivariantDiffusion(torch.nn.Module):
         #     x = remove_mean_with_mask(x, node_mask)
 
         return x, h
-
-    # @torch.no_grad()
-    # def sample_chain(
-    #     self, n_samples, n_nodes, node_mask, edge_mask, context, keep_frames=None
-    # ):
-    #     """
-    #     Draw samples from the generative model, keep the intermediate states for visualization purposes.
-    #     """
-    #     z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
-    #
-    #     assert_mean_zero_with_mask(z[:, :, : self.n_dims], node_mask)
-    #
-    #     if keep_frames is None:
-    #         keep_frames = self.T
-    #     else:
-    #         assert keep_frames <= self.T
-    #     chain = torch.zeros((keep_frames,) + z.size(), device=z.device)
-    #
-    #     # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
-    #     for s in reversed(range(0, self.T)):
-    #         s_array = torch.full((n_samples, 1), fill_value=s, device=z.device)
-    #         t_array = s_array + 1
-    #         s_array = s_array / self.T
-    #         t_array = t_array / self.T
-    #
-    #         z = self.sample_p_zs_given_zt(
-    #             s_array, t_array, z, node_mask, edge_mask, context
-    #         )
-    #
-    #         assert_mean_zero_with_mask(z[:, :, : self.n_dims], node_mask)
-    #
-    #         # Write to chain tensor.
-    #         write_index = (s * keep_frames) // self.T
-    #         chain[write_index] = self.unnormalize_z(z, node_mask)
-    #
-    #     # Finally sample p(x, h | z_0).
-    #     x, h = self.sample_p_xh_given_z0(z, node_mask, edge_mask, context)
-    #
-    #     assert_mean_zero_with_mask(x[:, :, : self.n_dims], node_mask)
-    #
-    #     xh = torch.cat([x, h["categorical"], h["integer"]], dim=2)
-    #     chain[0] = xh  # Overwrite last frame with the resulting x and h.
-    #
-    #     chain_flat = chain.view(n_samples * keep_frames, *z.size()[1:])
-    #
-    #     return chain_flat

@@ -92,9 +92,9 @@ for i, reference in enumerate(references):
         sample_mol = Chem.MolFromMolBlock(std_sample["mol_block"], removeHs=True)
 
         # Check for sample uniqueness
-        match = exact_match(sample_mol, source_path)
-        if not match:
-            chem_unique_samples += 1
+        # match = exact_match(sample_mol, source_path)
+        # if not match:
+        #     chem_unique_samples += 1
 
         sample_num_atoms = sample_mol.GetNumAtoms()
         variance = ref_n_atoms - sample_num_atoms  # -> Can be negative intentionally
@@ -153,13 +153,13 @@ for key in variance_dist_dict.keys():
     )
 
 if compile:
-    file_name = "compiled_generation_performance_report.txt"
+    file_name = "tensorrt_generation_performance_report.txt"
 else:
     file_name = "no_torch_script_generation_performance_report.txt"
 
 with open(file_name, "w+") as f:
     if compile:
-        f.write("Modules are compiled using INDUCTOR\n")
+        f.write("Modules are compiled using TensorRT\n")
     else:
         f.write("Modules are NOT compiled\n")
 

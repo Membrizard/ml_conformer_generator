@@ -30,13 +30,6 @@ class GraphConv(nn.Module):
         self.linear = nn.Linear(in_features, out_features)
         self.device = device
 
-    # def l_norm(self, adjacency_matrix: torch.Tensor) -> torch.Tensor:
-    #     d_norm = torch.diag_embed(torch.pow(adjacency_matrix.sum(dim=-1), -0.5))
-    #     l_norm = torch.bmm(torch.bmm(d_norm, adjacency_matrix), d_norm).to(self.device)
-    #
-    #     return l_norm
-
-    # Removed onnx incompatible ops
     def l_norm(self, adjacency_matrix: torch.Tensor) -> torch.Tensor:
         degree = adjacency_matrix.sum(dim=-1)
         inv_sqrt_degree = torch.rsqrt(degree.clamp(min=1e-12))
@@ -47,19 +40,13 @@ class GraphConv(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        # adjacency_matrix,
-        l_norm,
+        l_norm: torch.Tensor,
     ) -> torch.Tensor:
         """
         :param x: element-shielding embedding of size (batch_size, DIMENSION, EMBEDDING_DIM)
-        # :param adjacency_matrix: adjacency matrix with size (batch_size, DIMENSION, DIMENSION, NUM_BOND_TYPES)
-        :param l_norm: pre-computed l-norm for a graph batch, if
+        :param l_norm: pre-computed l-norm for a graph batch using self.l_norm()
         :return Nodes embedding
         """
-        # if l_norm is None:
-        #     l_norm = self.l_norm(adjacency_matrix)
-
-        # Embed nodes and apply linear transformation to x
         x = self.linear(x)
 
         output = torch.bmm(l_norm, x)
