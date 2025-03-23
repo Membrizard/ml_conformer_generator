@@ -40,7 +40,8 @@ generative_model = EquivariantDiffusion(
 #             )
 #         )
 new_state_dict = generative_model.state_dict()
-old_weights = torch.load("./ml_conformer_generator/ml_conformer_generator/weights/compilable_weights/compilable_edm_moi_chembl_15_39.weights")
+old_weights = torch.load(
+    "ml_conformer_generator/ml_conformer_generator/weights/compilable_edm_moi_chembl_15_39.weights")
 
 mapped_state_dict = {}
 for key in new_state_dict.keys():

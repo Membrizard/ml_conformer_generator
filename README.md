@@ -13,21 +13,26 @@ The standardiser pipeline uses the following steps:
 - Checks for atom valence
 - Kekulises molecules
 - RDkit Sanitization
-- Molecular Dynamics geometry optimisation with MMFF
+- Molecular Dynamics geometry optimisation with MMFF94
 
 The evaluation pipeline assesses the shape similarity of the generated molecules to a reference. 
 The assessment is based on a shape tanimoto similarity score [], calculated using Gaussian Molecular Volume intersections.
 the shape Tanimoto similarity of a generated molecule to a reference is calculated ignoring hydrogens in both reference and generated sample.
 
-Example performance of the model as evaluated on 100k samples
-(Used 1000 compounds from ccdc GOLD Virtual Screening dataset)
-- The estimated average time for generation of 50 valid samples is 90-160 sec (GPU)
+Example performance of the model as evaluated on 100k generated samples
+
+(Used 1000 compounds from ccdc GOLD Virtual Screening dataset for generation)
+
+- The average time for generation of 50 valid samples is 96 sec (NVidia H100, TorchScript)
+- Average Generation speed (NVidia H100, TorchScript) - 0.5 molecule/sec (valid)
+- Estimated GPU memory Consumtion per single Generation thread - 2.5 GB
 - Average Shape Tanimoto similarity - 53.38%
+- Maximum Shape Tanimoto similarity - 99.21%
 - Average Chemical Tanimoto similarity - 10.8%
 - % Of chemically unique molecules in reference to training dataset (not found in training dataset) - 99.81%
 - % Of valid molecules in generated batch (as defined by the standardisation pipeline) - 48.59%
 - % Of chemically unique molecules within the generated set (as evaluated on 80k generated molecules) - 99.80%
-- Frechet Chemical Distance (as evaluated on 80k generated molecules) - 
+- Average Generation speed (NVidia H100, TorchScript) - 0.5 molecule/sec (valid)
 
 Generator requirements are in  ./ml_conformer_generator/generator_requirements.txt
 
@@ -42,7 +47,6 @@ Look for interactive example in `./ml_conformer_generator_app_demo.ipynb`
 ```
 from rdkit import Chem
 from ml_conformer_generator import MLConformerGenerator, evaluate_samples
-
 
 model = MLConformerGenerator(device="cpu")
 
