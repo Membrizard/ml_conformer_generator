@@ -759,16 +759,11 @@ class EGNNDynamics(nn.Module):
     #     return self._forward
 
     def forward(self, t, xh, node_mask, edge_mask, context):
-        # print(f"t - size {t.size()} type {t.type()}")
-        # print(t)
-        # print(f"xh - size {xh.size()} type {xh.type()}")
-        # print(xh)
-        # print(f"node_mask - size {node_mask.size()} type {node_mask.type()}")
-        # print(node_mask)
-        # print(f"edge_mask - size {edge_mask.size()} type {edge_mask.type()}")
-        # print(edge_mask)
-        # print(f"context - size {context.size()} type {context.type()}")
-        # print(context)
+        print(f"t - size {t.size()} type {t.type()}")
+        print(f"xh - size {xh.size()} type {xh.type()}")
+        print(f"node_mask - size {node_mask.size()} type {node_mask.type()}")
+        print(f"edge_mask - size {edge_mask.size()} type {edge_mask.type()}")
+        print(f"context - size {context.size()} type {context.type()}")
 
 
         # bs, n_nodes, dims = xh.shape

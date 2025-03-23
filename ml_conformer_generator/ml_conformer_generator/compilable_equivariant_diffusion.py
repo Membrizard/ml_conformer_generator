@@ -1,5 +1,5 @@
 import typing
-
+import pickle
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -7,10 +7,11 @@ import math
 from tqdm import tqdm
 
 from .egnn import EGNNDynamics
+import onnxruntime
 
 
-def sum_except_batch(x):
-    return x.view(x.size(0), -1).sum(-1)
+# def sum_except_batch(x):
+#     return x.view(x.size(0), -1).sum(-1)
 
 
 def clip_noise_schedule(alphas2, clip_value=0.001):
@@ -75,46 +76,46 @@ def remove_mean_with_mask(x, node_mask):
     return x
 
 
-def gaussian_KL(q_mu, q_sigma, p_mu, p_sigma, node_mask):
-    """Computes the KL distance between two normal distributions.
+# def gaussian_KL(q_mu, q_sigma, p_mu, p_sigma, node_mask):
+#     """Computes the KL distance between two normal distributions.
+#
+#     Args:
+#         q_mu: Mean of distribution q.
+#         q_sigma: Standard deviation of distribution q.
+#         p_mu: Mean of distribution p.
+#         p_sigma: Standard deviation of distribution p.
+#     Returns:
+#         The KL distance, summed over all dimensions except the batch dim.
+#     """
+#     return sum_except_batch(
+#         (
+#             torch.log(p_sigma / q_sigma)
+#             + 0.5 * (q_sigma**2 + (q_mu - p_mu) ** 2) / (p_sigma**2)
+#             - 0.5
+#         )
+#         * node_mask
+#     )
 
-    Args:
-        q_mu: Mean of distribution q.
-        q_sigma: Standard deviation of distribution q.
-        p_mu: Mean of distribution p.
-        p_sigma: Standard deviation of distribution p.
-    Returns:
-        The KL distance, summed over all dimensions except the batch dim.
-    """
-    return sum_except_batch(
-        (
-            torch.log(p_sigma / q_sigma)
-            + 0.5 * (q_sigma**2 + (q_mu - p_mu) ** 2) / (p_sigma**2)
-            - 0.5
-        )
-        * node_mask
-    )
 
-
-def gaussian_KL_for_dimension(q_mu, q_sigma, p_mu, p_sigma, d):
-    """Computes the KL distance between two normal distributions.
-
-    Args:
-        q_mu: Mean of distribution q.
-        q_sigma: Standard deviation of distribution q.
-        p_mu: Mean of distribution p.
-        p_sigma: Standard deviation of distribution p.
-    Returns:
-        The KL distance, summed over all dimensions except the batch dim.
-    """
-    mu_norm2 = sum_except_batch((q_mu - p_mu) ** 2)
-    assert len(q_sigma.size()) == 1
-    assert len(p_sigma.size()) == 1
-    return (
-        d * torch.log(p_sigma / q_sigma)
-        + 0.5 * (d * q_sigma**2 + mu_norm2) / (p_sigma**2)
-        - 0.5 * d
-    )
+# def gaussian_KL_for_dimension(q_mu, q_sigma, p_mu, p_sigma, d):
+#     """Computes the KL distance between two normal distributions.
+#
+#     Args:
+#         q_mu: Mean of distribution q.
+#         q_sigma: Standard deviation of distribution q.
+#         p_mu: Mean of distribution p.
+#         p_sigma: Standard deviation of distribution p.
+#     Returns:
+#         The KL distance, summed over all dimensions except the batch dim.
+#     """
+#     mu_norm2 = sum_except_batch((q_mu - p_mu) ** 2)
+#     assert len(q_sigma.size()) == 1
+#     assert len(p_sigma.size()) == 1
+#     return (
+#         d * torch.log(p_sigma / q_sigma)
+#         + 0.5 * (d * q_sigma**2 + mu_norm2) / (p_sigma**2)
+#         - 0.5 * d
+#     )
 
 
 def sample_center_gravity_zero_gaussian_with_mask(size: typing.Tuple[int, int, int], device: torch.device, node_mask):
@@ -202,6 +203,10 @@ class PredefinedNoiseSchedule(torch.nn.Module):
         return self.gamma[t_int]
 
 
+# model_path = "./ml_conformer_generator/ml_conformer_generator/weights/onnx/egnn_chembl_15_39.onnx"
+# SESSION = onnxruntime.InferenceSession(model_path)
+
+
 class EquivariantDiffusion(torch.nn.Module):
     """
     The E(n) Diffusion Module.
@@ -236,6 +241,9 @@ class EquivariantDiffusion(torch.nn.Module):
         self.timesteps = torch.flip(torch.arange(0, timesteps, device=dynamics.device), dims=[0])
 
         self.norm_values = norm_values
+
+
+        # self.flag = True
         # self.norm_biases = norm_biases
 
         # self.register_buffer("buffer", torch.zeros(1))
@@ -265,7 +273,12 @@ class EquivariantDiffusion(torch.nn.Module):
     #         )
 
     def phi(self, x, t, node_mask, edge_mask, context):
+        # Normal pass
         net_out = self.dynamics(t, x, node_mask, edge_mask, context)
+
+        #ONNX pass
+
+        # input = {"t":  }
 
         return net_out
 
