@@ -109,7 +109,7 @@ def prepare_dummy_input(
     return n_samples, max_n_nodes, node_mask.to(device), edge_mask.to(device), batch_context.to(device)
 
 
-dummy_input = prepare_dummy_input()
+dummy_input = prepare_dummy_input(device=device)
 
 # Dummy input data for all arguments - Equivariant Diffusion
 # n_samples = 1
