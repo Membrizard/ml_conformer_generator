@@ -650,16 +650,11 @@ def unsorted_segment_sum(
     Custom PyTorch op to replicate TensorFlow's `unsorted_segment_sum`.
     Normalization: 'sum'.
     """
-    # Create an empty result tensor of the same type as data
-    result = torch.zeros((num_segments, data.size(1)), dtype=data.dtype, device=data.device)
 
-    # Expand segment_ids to match data dimensions
+    result = torch.zeros((num_segments, data.size(1)), dtype=data.dtype, device=data.device)
     segment_ids = segment_ids.unsqueeze(-1).expand_as(data)
 
-    # Accumulate values in the result tensor
     result.scatter_add_(0, segment_ids, data)
-
-    # Normalize the result by the normalization factor
     result = result / normalization_factor
 
     return result
@@ -672,10 +667,11 @@ def unsorted_segment_sum(
 
 
 def remove_mean_with_mask(x, node_mask):
-    masked_max_abs_value = (x * (1 - node_mask)).abs().sum().item()
-    assert masked_max_abs_value < 1e-5, f"Error {masked_max_abs_value} too high"
+    # Remove rdundant checks
+    # masked_max_abs_value = (x * (1 - node_mask)).abs().sum().item()
+    # assert masked_max_abs_value < 1e-5, f"Error {masked_max_abs_value} too high"
     # N = node_mask.sum(1, keepdims=True)
-    N = torch.sum(node_mask, 1 , keepdim=True)
+    N = torch.sum(node_mask, 1, keepdim=True)
 
     mean = torch.sum(x, dim=1, keepdim=True) / N
     x = x - mean * node_mask

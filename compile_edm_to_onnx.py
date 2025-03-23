@@ -1,9 +1,12 @@
 import torch.jit
-import torch.cuda.amp as amp
+import random
 from ml_conformer_generator.ml_conformer_generator.compilable_egnn import EGNNDynamics
 from ml_conformer_generator.ml_conformer_generator.compilable_equivariant_diffusion import EquivariantDiffusion
+from ml_conformer_generator.ml_conformer_generator.utils import get_context_shape
+from rdkit import Chem
+from rdkit.Chem import rdDistGeom
 
-device = "cpu"
+device = "cuda"
 net_dynamics = EGNNDynamics(
             in_node_nf=9,
             context_node_nf=3,
@@ -33,20 +36,39 @@ generative_model.eval()
 
 compiled_model = torch.jit.script(generative_model)
 
-# TODO prepare valid dummy import for compilation
+
 def prepare_dummy_input(
-        reference_context,
-        n_samples=100,
-        max_n_nodes=32,
-        min_n_nodes=25,
+        smiles: str = 'Cc1cccc(N2CCC[C@H]2c2ccncn2)n1',
+        n_samples=2,
+        variance=2,
         device="cpu",
-        context_norms,
-        # fix_noise=False,
 ):
     """
     """
+    ref_mol = Chem.MolFromSmiles(smiles)
+    rdDistGeom.EmbedMolecule(ref_mol, forceTol=0.001, randomSeed=12)
+
+    context_norms = {
+        "mean": torch.tensor([105.0766, 473.1938, 537.4675]),
+        "mad": torch.tensor([52.0409, 219.7475, 232.9718]),
+    }
+
+    reference_conformer = Chem.RemoveHs(ref_mol)
+    ref_n_atoms = reference_conformer.GetNumAtoms()
+    conf = reference_conformer.GetConformer()
+    ref_coord = torch.tensor(conf.GetPositions(), dtype=torch.float32)
+
+    # move coord to center
+    virtual_com = torch.mean(ref_coord, dim=0)
+    ref_coord = ref_coord - virtual_com
+
+    ref_context, aligned_coord = get_context_shape(ref_coord)
+
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
     nodesxsample = []
+
+    min_n_nodes = ref_n_atoms - variance
+    max_n_nodes = ref_n_atoms + variance
 
     # Make sure that number of atoms of generated samples is within requested range
     if min_n_nodes < 15:
@@ -77,31 +99,27 @@ def prepare_dummy_input(
     node_mask = node_mask.unsqueeze(2).to(device)
 
     normed_context = (
-            (reference_context - context_norms["mean"]) / context_norms["mad"]
+            (ref_context - context_norms["mean"]) / context_norms["mad"]
     ).to(device)
 
     batch_context = normed_context.unsqueeze(0).repeat(batch_size, 1)
 
     batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
 
-    return
+    return n_samples, max_n_nodes, node_mask, edge_mask, batch_context
 
 
-
-
-
-
-
+dummy_input = prepare_dummy_input()
 
 # Dummy input data for all arguments - Equivariant Diffusion
-n_samples = 1
-n_nodes = 2
-node_mask = torch.ones((1, 2, 1), dtype=torch.float32, device=device)
-edge_mask = torch.zeros((4, 1), dtype=torch.float32, device=device)
-context = torch.zeros((1, 2, 3), dtype=torch.float32, device=device)
-
-# dummy_input = (elements, dist_mat, adj_mat)
-dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
+# n_samples = 1
+# n_nodes = 2
+# node_mask = torch.ones((1, 2, 1), dtype=torch.float32, device=device)
+# edge_mask = torch.zeros((4, 1), dtype=torch.float32, device=device)
+# context = torch.zeros((1, 2, 3), dtype=torch.float32, device=device)
+#
+# # dummy_input = (elements, dist_mat, adj_mat)
+# dummy_input = (n_samples, n_nodes, node_mask, edge_mask, context)
 
 # Exporting to ONNX
 torch.onnx.export(
@@ -120,6 +138,6 @@ torch.onnx.export(
                       "x": {0: "batch_size", 1: "num_nodes"},
                       "h": {0: "batch_size", 1: "num_nodes"},
         },
-        verbose=False,
+        verbose=True,
     )
 

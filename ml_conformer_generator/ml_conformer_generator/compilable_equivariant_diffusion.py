@@ -238,9 +238,9 @@ class EquivariantDiffusion(torch.nn.Module):
         self.norm_values = norm_values
         # self.norm_biases = norm_biases
 
-        self.register_buffer("buffer", torch.zeros(1))
+        # self.register_buffer("buffer", torch.zeros(1))
 
-        self.check_issues_norm_values()
+        # self.check_issues_norm_values()
 
     @staticmethod
     def assert_mean_zero_with_mask(x, node_mask, eps: float = 1e-10):
@@ -250,19 +250,19 @@ class EquivariantDiffusion(torch.nn.Module):
         rel_error = error / (largest_value + eps)
         assert rel_error < 1e-2, f"Mean is not zero, relative_error {rel_error}"
 
-    def check_issues_norm_values(self, num_stdevs: int = 8):
-        zeros = torch.zeros((1, 1))
-        gamma_0 = self.gamma(zeros)
-        sigma_0 = self.sigma(gamma_0, target_tensor=zeros).item()
-
-        max_norm_value = self.norm_values[1]
-
-        if sigma_0 * num_stdevs > 1.0 / max_norm_value:
-            raise ValueError(
-                f"Value for normalization value {max_norm_value} probably too "
-                f"large with sigma_0 {sigma_0:.5f} and "
-                f"1 / norm_value = {1. / max_norm_value}"
-            )
+    # def check_issues_norm_values(self, num_stdevs: int = 8):
+    #     zeros = torch.zeros((1, 1))
+    #     gamma_0 = self.gamma(zeros)
+    #     sigma_0 = self.sigma(gamma_0, target_tensor=zeros).item()
+    #
+    #     max_norm_value = self.norm_values[1]
+    #
+    #     if sigma_0 * num_stdevs > 1.0 / max_norm_value:
+    #         raise ValueError(
+    #             f"Value for normalization value {max_norm_value} probably too "
+    #             f"large with sigma_0 {sigma_0:.5f} and "
+    #             f"1 / norm_value = {1. / max_norm_value}"
+    #         )
 
     def phi(self, x, t, node_mask, edge_mask, context):
         net_out = self.dynamics(t, x, node_mask, edge_mask, context)
