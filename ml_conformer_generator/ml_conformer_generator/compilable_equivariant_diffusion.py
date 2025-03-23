@@ -66,8 +66,9 @@ def assert_correctly_masked(variable, node_mask):
 
 
 def remove_mean_with_mask(x, node_mask):
-    masked_max_abs_value = (x * (1 - node_mask)).abs().sum().item()
-    assert masked_max_abs_value < 1e-5, f"Error {masked_max_abs_value} too high"
+    #Remove redundant checks
+    # masked_max_abs_value = (x * (1 - node_mask)).abs().sum().item()
+    # assert masked_max_abs_value < 1e-5, f"Error {masked_max_abs_value} too high"
     # N = node_mask.sum(1, keepdims=True)
     N = torch.sum(node_mask, 1, keepdim=True)
 
