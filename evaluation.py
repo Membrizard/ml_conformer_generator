@@ -22,9 +22,9 @@ def exact_match(mol, source):
     return False
 
 
-torch_script = True
+compile = True
 device = "cuda"
-generator = MLConformerGenerator(device=device, torch_script=torch_script)
+generator = MLConformerGenerator(device=device, compile=compile)
 source_path = "./full_15_39_atoms_conf_chembl.inchi"
 n_samples = 100
 max_variance = 2
@@ -59,7 +59,7 @@ valid_samples = 0  # number of valid samples generated
 average_shape_tanimoto = 0
 average_chemical_tanimoto = 0
 total_gen_time = 0
-if torch_script:
+if compile:
     print("Model is compiled with Torch Script")
 for i, reference in enumerate(references):
     print(f"Analysing samples for reference compound {i + 1} of {n_ref}")
@@ -152,16 +152,16 @@ for key in variance_dist_dict.keys():
         variance_chem_tanimoto_scores[key] / variance_dist_dict[key]
     )
 
-if torch_script:
-    file_name = "torch_script_generation_performance_report.txt"
+if compile:
+    file_name = "tensorrt_generation_performance_report.txt"
 else:
     file_name = "no_torch_script_generation_performance_report.txt"
 
 with open(file_name, "w+") as f:
-    if torch_script:
-        f.write("Modules are compiled using TorchScript\n")
+    if compile:
+        f.write("Modules are compiled using TensorRT\n")
     else:
-        f.write("Modules are NOT compiled using TorchScript\n")
+        f.write("Modules are NOT compiled\n")
 
     f.write(f"Number of Contexts used for generation - {n_ref}\n")
     f.write(f"Number of Samples per Context - {n_samples}\n\n")

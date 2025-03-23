@@ -16,6 +16,8 @@ from .utils import (
     standardize_mol,
 )
 
+import torch_tensorrt
+
 
 class MLConformerGenerator(torch.nn.Module):
     """
@@ -31,7 +33,7 @@ class MLConformerGenerator(torch.nn.Module):
         "compilable_edm_moi_chembl_15_39.weights",
         adj_mat_seer_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/compilable_weights/"
         "compilable_adj_mat_seer_chembl_15_39.weights",
-        torch_script: bool = True,
+        compile: bool = True,
     ):
         super().__init__()
 
@@ -101,10 +103,12 @@ class MLConformerGenerator(torch.nn.Module):
         generative_model.eval()
         adj_mat_seer.eval()
 
-        if torch_script:
-            # Try ONNX runtime instead?
-            self.generative_model = torch.jit.script(generative_model)
-            self.adj_mat_seer = torch.jit.script(adj_mat_seer)
+        if compile:
+            # TorchScript
+            # self.generative_model = torch.jit.script(generative_model)
+            # self.adj_mat_seer = torch.jit.script(adj_mat_seer)
+            self.generative_model = torch.compile(generative_model, backend="torch_tensorrt")
+            self.adj_mat_seer = torch.compile(adj_mat_seer, backend="torch_tensorrt")
 
         else:
             self.generative_model = generative_model
