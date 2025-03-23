@@ -34,7 +34,7 @@ generative_model.load_state_dict(
 
 generative_model.eval()
 
-compiled_model = torch.jit.script(generative_model)
+# compiled_model = torch.jit.script(generative_model)
 
 
 def prepare_dummy_input(
@@ -123,7 +123,7 @@ dummy_input = prepare_dummy_input(device=device)
 
 # Exporting to ONNX
 torch.onnx.export(
-        compiled_model,
+        generative_model,
         dummy_input,  # Tuple of inputs
         "moi_edm_chembl_15_39.onnx",
         do_constant_folding=True,
