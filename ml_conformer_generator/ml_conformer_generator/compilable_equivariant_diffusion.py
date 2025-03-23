@@ -7,7 +7,7 @@ import math
 from tqdm import tqdm
 
 from .egnn import EGNNDynamics
-import onnxruntime
+# import onnxruntime
 
 
 # def sum_except_batch(x):
