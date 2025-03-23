@@ -16,8 +16,6 @@ from .utils import (
     standardize_mol,
 )
 
-import torch_tensorrt
-
 
 class MLConformerGenerator(torch.nn.Module):
     """
@@ -107,8 +105,10 @@ class MLConformerGenerator(torch.nn.Module):
             # TorchScript
             # self.generative_model = torch.jit.script(generative_model)
             # self.adj_mat_seer = torch.jit.script(adj_mat_seer)
+            print("Compiling models")
             self.generative_model = torch.compile(generative_model, backend="inductor")
             self.adj_mat_seer = torch.compile(adj_mat_seer, backend="inductor")
+            print("Models Compiled!")
 
         else:
             self.generative_model = generative_model
