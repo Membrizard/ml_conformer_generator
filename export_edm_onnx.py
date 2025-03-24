@@ -76,7 +76,7 @@ def prepare_dummy_input(device):
     batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
     return batch_size, max_n_nodes, node_mask, edge_mask, batch_context
 
-dummy_input = prepare_dummy_input()
+dummy_input = prepare_dummy_input(device)
 
 onnx_model = torch.onnx.export(generative_model, dummy_input, dynamo=True)
 
