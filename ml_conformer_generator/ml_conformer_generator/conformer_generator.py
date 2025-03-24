@@ -29,7 +29,6 @@ class MLConformerGenerator(torch.nn.Module):
         num_bond_types: int = NUM_BOND_TYPES,
         edm_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
         adj_mat_seer_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/adj_mat_seer_chembl_15_39.weights",
-        compile: bool = True,
     ):
         super().__init__()
 
@@ -99,18 +98,8 @@ class MLConformerGenerator(torch.nn.Module):
         generative_model.eval()
         adj_mat_seer.eval()
 
-        if compile:
-            # TorchScript
-            self.generative_model = torch.jit.script(generative_model)
-            self.adj_mat_seer = torch.jit.script(adj_mat_seer)
-            # print("Compiling models")
-            # self.generative_model = torch.compile(generative_model, backend="inductor")
-            # self.adj_mat_seer = torch.compile(adj_mat_seer, backend="inductor")
-            # print("Models Compiled!")
-
-        else:
-            self.generative_model = generative_model
-            self.adj_mat_seer = adj_mat_seer
+        self.generative_model = generative_model
+        self.adj_mat_seer = adj_mat_seer
 
     @torch.no_grad()
     def edm_samples(
@@ -119,7 +108,6 @@ class MLConformerGenerator(torch.nn.Module):
         n_samples=100,
         max_n_nodes=32,
         min_n_nodes=25,
-        # fix_noise=False,
     ):
         """
         Generates initial samples using generative diffusion model
@@ -169,24 +157,12 @@ class MLConformerGenerator(torch.nn.Module):
 
         batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
 
-        # print(f"edge_mask - {edge_mask.size()}")
-        # print("batch_size")
-        # print(batch_size)
-        # print("max_n_nodes")
-        # print(max_n_nodes)
-        # print("node_mask")
-        # print(node_mask)
-
-
-
-
         x, h = self.generative_model(
             batch_size,
             max_n_nodes,
             node_mask,
             edge_mask,
             batch_context,
-            # fix_noise=fix_noise,
         )
 
         mols = samples_to_rdkit_mol(
@@ -203,7 +179,6 @@ class MLConformerGenerator(torch.nn.Module):
         variance: int = 2,
         reference_context: torch.Tensor = None,
         n_atoms: int = None,
-        # fix_noise: bool = False,
         optimise_geometry: bool = True,
     ) -> list[Chem.Mol]:
         """

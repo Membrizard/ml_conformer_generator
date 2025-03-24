@@ -29,4 +29,3 @@ for i, reference in enumerate(references):
     for sample in samples:
         sample.SetProp("reference_structure", f"{ref_name}")
         sd_writer.write(sample)
-

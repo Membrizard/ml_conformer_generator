@@ -43,7 +43,7 @@ def exact_match(mol, source):
 
 
 def get_samples(name: str):
-    with open(f"./raw_samples/{name}_100_samples.pkl", 'rb') as f:
+    with open(f"./raw_samples/{name}_100_samples.pkl", "rb") as f:
         raw_samples = pickle.load(f)
 
     return raw_samples
@@ -282,32 +282,3 @@ with open("generation_performance_report.txt", "w+") as f:
     )
     for key in sorted(variance_chem_tanimoto_scores.keys()):
         f.write(f"{key}:  {variance_chem_tanimoto_scores[key]}\n")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

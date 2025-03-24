@@ -50,7 +50,9 @@ def remove_mean_with_mask(x, node_mask):
     return x
 
 
-def sample_center_gravity_zero_gaussian_with_mask(size: typing.Tuple[int, int, int], device: torch.device, node_mask):
+def sample_center_gravity_zero_gaussian_with_mask(
+    size: typing.Tuple[int, int, int], device: torch.device, node_mask
+):
     assert len(size) == 3
     x = torch.randn(size, device=device)
 
@@ -62,7 +64,9 @@ def sample_center_gravity_zero_gaussian_with_mask(size: typing.Tuple[int, int, i
     return x_projected
 
 
-def sample_gaussian_with_mask(size: typing.Tuple[int, int, int], device: torch.device, node_mask):
+def sample_gaussian_with_mask(
+    size: typing.Tuple[int, int, int], device: torch.device, node_mask
+):
     x = torch.randn(size, device=device)
 
     x_masked = x * node_mask
@@ -110,7 +114,10 @@ class EquivariantDiffusion(torch.nn.Module):
         n_dims: int = 3,
         timesteps: int = 1000,
         noise_precision: float = 1e-4,
-        norm_values: typing.Tuple[float, float] = (1.0, 9.0),  # (1, max number of atom classes)
+        norm_values: typing.Tuple[float, float] = (
+            1.0,
+            9.0,
+        ),  # (1, max number of atom classes)
     ):
         super().__init__()
 
@@ -128,7 +135,9 @@ class EquivariantDiffusion(torch.nn.Module):
 
         # Declare timesteps-related tensors
         self.T = timesteps
-        self.timesteps = torch.flip(torch.arange(0, timesteps, device=dynamics.device), dims=[0])
+        self.timesteps = torch.flip(
+            torch.arange(0, timesteps, device=dynamics.device), dims=[0]
+        )
 
         self.norm_values = norm_values
 
@@ -179,7 +188,7 @@ class EquivariantDiffusion(torch.nn.Module):
             sigma t given s = sqrt(1 - (alpha t given s) ^2 ).
         """
         sigma2_t_given_s = self.inflate_batch_array(
-           1 - torch.exp(F.softplus(gamma_s) - F.softplus(gamma_t)), target_tensor
+            1 - torch.exp(F.softplus(gamma_s) - F.softplus(gamma_t)), target_tensor
         )
 
         log_alpha2_t = F.logsigmoid(-gamma_t)
@@ -230,7 +239,13 @@ class EquivariantDiffusion(torch.nn.Module):
         return mu + sigma * eps
 
     def sample_p_zs_given_zt(
-        self, s: torch.Tensor, t: torch.Tensor, zt: torch.Tensor, node_mask: torch.Tensor, edge_mask: torch.Tensor, context: torch.Tensor,
+        self,
+        s: torch.Tensor,
+        t: torch.Tensor,
+        zt: torch.Tensor,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+        context: torch.Tensor,
     ):
         """Samples from zs ~ p(zs | zt). Only used during sampling."""
         gamma_s = self.gamma(s)
@@ -269,7 +284,9 @@ class EquivariantDiffusion(torch.nn.Module):
         )
         return zs
 
-    def sample_combined_position_feature_noise(self, n_samples: int, n_nodes: int, node_mask: torch.Tensor):
+    def sample_combined_position_feature_noise(
+        self, n_samples: int, n_nodes: int, node_mask: torch.Tensor
+    ):
         """
         Samples mean-centered normal noise for z_x, and standard normal noise for z_h.
         """
@@ -293,7 +310,12 @@ class EquivariantDiffusion(torch.nn.Module):
 
     # Renamed from sample to allow compilation with torch.jit.script
     def forward(
-        self, n_samples: int, n_nodes: int, node_mask: torch.Tensor, edge_mask: torch.Tensor, context: torch.Tensor,
+        self,
+        n_samples: int,
+        n_nodes: int,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+        context: torch.Tensor,
     ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
         """
         Draw samples from the generative model.
@@ -301,9 +323,7 @@ class EquivariantDiffusion(torch.nn.Module):
         """
         # Handle case of single sample generation? due to optimisations in flow of EGNN Dynamics
 
-        z = self.sample_combined_position_feature_noise(
-                n_samples, n_nodes, node_mask
-            )
+        z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
 
         # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
         for s in self.timesteps:
@@ -313,12 +333,20 @@ class EquivariantDiffusion(torch.nn.Module):
             t_array = t_array / self.T
 
             z = self.sample_p_zs_given_zt(
-                s_array, t_array, z, node_mask, edge_mask, context,
+                s_array,
+                t_array,
+                z,
+                node_mask,
+                edge_mask,
+                context,
             )
 
         # Finally sample p(x, h | z_0).
         x, h = self.sample_p_xh_given_z0(
-            z, node_mask, edge_mask, context,
+            z,
+            node_mask,
+            edge_mask,
+            context,
         )
 
         return x, h

@@ -92,11 +92,12 @@ def generate_svg_string(compound: Chem.Mol):
     # svg = "<div>" + svg + "</div>"
     return svg
 
+
 # Initiate the Generator
 if cuda.is_available():
-    device = 'cuda'
+    device = "cuda"
 else:
-    device = 'cpu'
+    device = "cpu"
 
 generator = MLConformerGenerator(device=device)
 
@@ -186,7 +187,9 @@ if __name__ == "__main__":
 
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
 
-    if device == 'cuda':
+    if device == "cuda":
         logger.info("--- Model server is running on GPU ---")
     else:
-        logger.info("--- Model server is running on CPU. The generation will take more time ---")
+        logger.info(
+            "--- Model server is running on CPU. The generation will take more time ---"
+        )

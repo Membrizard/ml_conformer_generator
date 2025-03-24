@@ -38,7 +38,6 @@ class GCL(nn.Module):
         self.att_mlp = nn.Sequential(nn.Linear(hidden_nf, 1), nn.Sigmoid())
 
     def edge_model(self, source, target, edge_attr, edge_mask):
-
         out = torch.cat([source, target, edge_attr], dim=1)
         mij = self.edge_mlp(out)
 
@@ -150,41 +149,40 @@ class EquivariantBlock(nn.Module):
         self.normalization_factor = normalization_factor
 
         self.gcl_0 = GCL(
-                    input_nf=hidden_nf,
-                    output_nf=hidden_nf,
-                    hidden_nf=hidden_nf,
-                    edges_in_d=edge_feat_nf,
-                    normalization_factor=normalization_factor,
-                )
+            input_nf=hidden_nf,
+            output_nf=hidden_nf,
+            hidden_nf=hidden_nf,
+            edges_in_d=edge_feat_nf,
+            normalization_factor=normalization_factor,
+        )
 
         self.gcl_1 = GCL(
-                    input_nf=hidden_nf,
-                    output_nf=hidden_nf,
-                    hidden_nf=hidden_nf,
-                    edges_in_d=edge_feat_nf,
-                    normalization_factor=normalization_factor,
-                )
+            input_nf=hidden_nf,
+            output_nf=hidden_nf,
+            hidden_nf=hidden_nf,
+            edges_in_d=edge_feat_nf,
+            normalization_factor=normalization_factor,
+        )
 
         self.gcl_equiv = EquivariantUpdate(
-                hidden_nf=hidden_nf,
-                edges_in_d=edge_feat_nf,
-                coords_range=self.coords_range_layer,
-                normalization_factor=normalization_factor,
-            )
+            hidden_nf=hidden_nf,
+            edges_in_d=edge_feat_nf,
+            coords_range=self.coords_range_layer,
+            normalization_factor=normalization_factor,
+        )
 
     def forward(self, h, x, edge_index, node_mask, edge_mask, edge_attr):
-
         distances, coord_diff = coord2diff(x, edge_index)
 
         edge_attr = torch.cat([distances, edge_attr], dim=1)
 
         h, _ = self.gcl_0(
-                h=h,
-                edge_index=edge_index,
-                edge_attr=edge_attr,
-                node_mask=node_mask,
-                edge_mask=edge_mask,
-            )
+            h=h,
+            edge_index=edge_index,
+            edge_attr=edge_attr,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+        )
 
         h, _ = self.gcl_1(
             h=h,
@@ -220,11 +218,11 @@ class EGNN(nn.Module):
         self.embedding_out = nn.Linear(self.hidden_nf, in_node_nf)
 
         self.e_block_0 = EquivariantBlock(
-                    hidden_nf=hidden_nf,
-                    edge_feat_nf=edge_feat_nf,
-                    coords_range=coords_range,
-                    normalization_factor=self.normalization_factor,
-                )
+            hidden_nf=hidden_nf,
+            edge_feat_nf=edge_feat_nf,
+            coords_range=coords_range,
+            normalization_factor=self.normalization_factor,
+        )
 
         self.e_block_1 = EquivariantBlock(
             hidden_nf=hidden_nf,
@@ -282,8 +280,9 @@ class EGNN(nn.Module):
             normalization_factor=self.normalization_factor,
         )
 
-    def forward(self, h, x, edge_index, node_mask, edge_mask) -> typing.Tuple[torch.Tensor, torch.Tensor]:
-
+    def forward(
+        self, h, x, edge_index, node_mask, edge_mask
+    ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
         distances, _ = coord2diff(x, edge_index)
 
         h = self.embedding(h)
@@ -375,7 +374,9 @@ class EGNN(nn.Module):
         return h, x
 
 
-def coord2diff(x: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+def coord2diff(
+    x: torch.Tensor, edge_index: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
     row = edge_index[0]
     col = edge_index[1]
 
@@ -388,17 +389,19 @@ def coord2diff(x: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor,
 
 
 def unsorted_segment_sum(
-        data: torch.Tensor,
-        segment_ids: torch.Tensor,
-        num_segments: int,
-        normalization_factor: int
+    data: torch.Tensor,
+    segment_ids: torch.Tensor,
+    num_segments: int,
+    normalization_factor: int,
 ) -> torch.Tensor:
     """
     Custom PyTorch op to replicate TensorFlow's `unsorted_segment_sum`.
     Normalization: 'sum'.
     """
 
-    result = torch.zeros((num_segments, data.size(1)), dtype=data.dtype, device=data.device)
+    result = torch.zeros(
+        (num_segments, data.size(1)), dtype=data.dtype, device=data.device
+    )
     segment_ids = segment_ids.unsqueeze(-1).expand_as(data)
 
     result.scatter_add_(0, segment_ids, data)
@@ -408,7 +411,6 @@ def unsorted_segment_sum(
 
 
 def remove_mean_with_mask(x: torch.Tensor, node_mask: torch.Tensor) -> torch.Tensor:
-
     n = torch.sum(node_mask, 1, keepdim=True)
 
     mean = torch.sum(x, dim=1, keepdim=True) / n
@@ -441,7 +443,6 @@ class EGNNDynamics(nn.Module):
         self.n_dims = n_dims
 
     def forward(self, t, xh, node_mask, edge_mask, context):
-
         bs, n_nodes, _ = xh.size()
 
         edges = self.get_adj_matrix(n_nodes, bs, self.device)
@@ -449,9 +450,9 @@ class EGNNDynamics(nn.Module):
         node_mask = node_mask.view(bs * n_nodes, 1)
         edge_mask = edge_mask.view(bs * n_nodes * n_nodes, 1)
         xh = xh.view(bs * n_nodes, -1).clone() * node_mask
-        x = xh[:, 0: self.n_dims].clone()
+        x = xh[:, 0 : self.n_dims].clone()
 
-        h = xh[:, self.n_dims:].clone()
+        h = xh[:, self.n_dims :].clone()
 
         h_time = t.view(bs, 1).repeat(1, n_nodes)
         h_time = h_time.view(bs * n_nodes, 1)
@@ -485,12 +486,16 @@ class EGNNDynamics(nn.Module):
         return torch.cat([vel, h_final], dim=2)
 
     @staticmethod
-    def get_adj_matrix(n_nodes: int, batch_size: int, device: torch.device) -> torch.Tensor:
+    def get_adj_matrix(
+        n_nodes: int, batch_size: int, device: torch.device
+    ) -> torch.Tensor:
         # Generate batch offsets
         batch_offsets = torch.arange(batch_size, device=device).unsqueeze(1) * n_nodes
 
         # Generate row and column indices for a single batch
-        row_indices = torch.arange(n_nodes, device=device).repeat(n_nodes, 1).T.flatten()
+        row_indices = (
+            torch.arange(n_nodes, device=device).repeat(n_nodes, 1).T.flatten()
+        )
         col_indices = torch.arange(n_nodes, device=device).repeat(n_nodes)
 
         # Expand to all batches
@@ -498,9 +503,12 @@ class EGNNDynamics(nn.Module):
         cols = (col_indices.unsqueeze(0) + batch_offsets).flatten()
 
         # Store the edges as LongTensor
-        edges = torch.stack([
-            rows.long(),
-            cols.long(),
-        ], dim=0).to(device)
+        edges = torch.stack(
+            [
+                rows.long(),
+                cols.long(),
+            ],
+            dim=0,
+        ).to(device)
 
         return edges

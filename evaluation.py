@@ -166,9 +166,15 @@ with open(file_name, "w+") as f:
     f.write(f"Number of Contexts used for generation - {n_ref}\n")
     f.write(f"Number of Samples per Context - {n_samples}\n\n")
     f.write(f"Total time for generation - {round(total_gen_time, 2)} sec\n")
-    f.write(f"Averaged time for generation (per reference) - {round(total_gen_time / n_ref ,2)} sec per request\n")
-    f.write(f"Averaged generation speed (per expected molecule) - {round(expected_n_samples / total_gen_time, 2)} molecule/sec\n")
-    f.write(f"Averaged generation speed (per valid molecule) - {round(valid_samples / total_gen_time ,2)} molecule/sec\n")
+    f.write(
+        f"Averaged time for generation (per reference) - {round(total_gen_time / n_ref ,2)} sec per request\n"
+    )
+    f.write(
+        f"Averaged generation speed (per expected molecule) - {round(expected_n_samples / total_gen_time, 2)} molecule/sec\n"
+    )
+    f.write(
+        f"Averaged generation speed (per valid molecule) - {round(valid_samples / total_gen_time ,2)} molecule/sec\n"
+    )
 
     f.write(
         f"Total valid molecules generated - {valid_samples} ({round(valid_samples_rate, 4) * 100}% out of requested)\n"
