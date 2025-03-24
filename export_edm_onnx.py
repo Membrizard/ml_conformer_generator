@@ -35,8 +35,8 @@ generative_model.eval()
 def prepare_dummy_input(device):
     reference_context = torch.tensor([53.6424, 108.3042, 151.4399], dtype=torch.float32, device=device)
     context_norms = {
-        "mean": torch.tensor([105.0766, 473.1938, 537.4675]),
-        "mad": torch.tensor([52.0409, 219.7475, 232.9718]),
+        "mean": torch.tensor([105.0766, 473.1938, 537.4675], dtype=torch.float32, device=device),
+        "mad": torch.tensor([52.0409, 219.7475, 232.9718], dtype=torch.float32, device=device),
     }
 
     n_samples = 2
