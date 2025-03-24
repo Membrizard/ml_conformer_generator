@@ -5,7 +5,7 @@ from ml_conformer_generator.ml_conformer_generator.compilable_equivariant_diffus
     EquivariantDiffusion,
 )
 
-device = "cuda"
+device = "cpu"
 net_dynamics = EGNNDynamics(
     in_node_nf=9,
     context_node_nf=3,
@@ -76,9 +76,29 @@ def prepare_dummy_input(device):
     batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
     return batch_size, max_n_nodes, node_mask, edge_mask, batch_context
 
-dummy_input = prepare_dummy_input(device)
 
-onnx_model = torch.onnx.export(generative_model, dummy_input, dynamo=True)
+n_samples, n_nodes, node_mask, edge_mask, context = prepare_dummy_input(device)
+
+
+# onnx_model = torch.onnx.export(generative_model, dummy_input, dynamo=True)
+
+onnx_model =torch.onnx.export(
+    generative_model,
+    (n_samples, n_nodes, node_mask, edge_mask, context),
+    "moi_edm_chembl_15_39.onnx",
+    input_names=["n_samples", "n_nodes", "node_mask", "edge_mask", "context"],
+    output_names=["x", "h"],
+    dynamic_axes={
+        "node_mask": {0: "batch_size", 1: "num_nodes"},
+        "edge_mask": {0: "num_edges"},
+        "context": {0: "batch_size", 1: "num_nodes"},
+        "x": {0: "batch_size", 1: "num_nodes"},
+        "h": {0: "batch_size", 1: "num_nodes"},
+    },
+    opset_version=18,
+    verbose=True,
+    dynamo=True,
+)
 
 onnx_model.optimize()
 onnx_model.save("edm_moi_chembl_15_39.onnx")
