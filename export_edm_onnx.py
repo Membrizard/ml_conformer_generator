@@ -5,7 +5,7 @@ from ml_conformer_generator.ml_conformer_generator.compilable_equivariant_diffus
     EquivariantDiffusion,
 )
 
-device = "cpu"
+device = "cuda"
 net_dynamics = EGNNDynamics(
     in_node_nf=9,
     context_node_nf=3,
