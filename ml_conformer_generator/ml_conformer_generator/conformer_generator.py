@@ -2,8 +2,8 @@ from rdkit import Chem
 import torch
 import random
 
-from .compilable_egnn import EGNNDynamics
-from .compilable_equivariant_diffusion import EquivariantDiffusion
+from .egnn import EGNNDynamics
+from .equivariant_diffusion import EquivariantDiffusion
 from .adj_mat_seer import AdjMatSeer
 
 from .utils import (
@@ -19,7 +19,8 @@ from .utils import (
 
 class MLConformerGenerator(torch.nn.Module):
     """
-    A model that generates novel molecules based on the 3D shape of a given reference molecule.
+    ML pipeline interface to generates novel molecules based on the 3D shape of a given reference molecule
+    or an arbitrary context (principal components of MOI tensor).
     """
 
     def __init__(

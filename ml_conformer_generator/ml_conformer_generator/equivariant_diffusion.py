@@ -2,7 +2,7 @@ import typing
 import torch
 import torch.nn.functional as F
 
-from .compilable_egnn import EGNNDynamics
+from .egnn import EGNNDynamics
 
 
 def clip_noise_schedule(alphas2, clip_value: float = 0.001):
