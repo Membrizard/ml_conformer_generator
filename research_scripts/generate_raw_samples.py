@@ -1,16 +1,15 @@
 import os
+import pickle
 import time
+
 import torch
+from rdkit import Chem
 
 from ml_conformer_generator.ml_conformer_generator import (
     MLConformerGenerator,
     evaluate_samples,
 )
 from ml_conformer_generator.ml_conformer_generator.utils import get_context_shape
-from rdkit import Chem
-
-import pickle
-
 
 device = "cuda"
 generator = MLConformerGenerator(device=device)
@@ -37,13 +36,13 @@ for i, reference in enumerate(references):
     ref_context, aligned_coord = get_context_shape(ref_coord)
 
     samples = generator.edm_samples(
-            reference_context=ref_context,
-            n_samples=n_samples,
-            min_n_nodes=ref_n_atoms - max_variance,
-            max_n_nodes=ref_n_atoms + max_variance,
-            fix_noise=False,
-        )
+        reference_context=ref_context,
+        n_samples=n_samples,
+        min_n_nodes=ref_n_atoms - max_variance,
+        max_n_nodes=ref_n_atoms + max_variance,
+        fix_noise=False,
+    )
 
     # pickle
-    with open(f'./raw_samples/{ref_name}_100_samples.pkl', 'wb') as f:
+    with open(f"./raw_samples/{ref_name}_100_samples.pkl", "wb") as f:
         pickle.dump(samples, f)

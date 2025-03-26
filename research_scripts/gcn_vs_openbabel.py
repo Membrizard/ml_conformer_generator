@@ -1,10 +1,31 @@
+import pickle
 import time
+
+from openbabel import openbabel
+from rdkit import Chem
 
 from ml_conformer_generator.ml_conformer_generator import (
     MLConformerGenerator,
     evaluate_samples,
 )
-from rdkit import Chem
+
+device = "cpu"
+generator = MLConformerGenerator(device=device)
+source_path = "./data/full_15_39_atoms_conf_chembl.inchi"
+n_samples = 100
+max_variance = 2
+mode = "STRUCTURE SEER"  # or "OPENBABEL"
+
+# Configure OpenBabel Conversion
+
+ob_conversion = openbabel.OBConversion()
+# Tell Open Babel we’ll be reading an XYZ file
+ob_conversion.SetInAndOutFormats("xyz", "mol")
+
+
+references = Chem.SDMolSupplier("./data/1000_ccdc_validation_set.sdf")
+n_ref = len(references)
+expected_n_samples = n_samples * n_ref
 
 
 def exact_match(mol, source):
@@ -22,15 +43,64 @@ def exact_match(mol, source):
     return False
 
 
-device = "cuda"
-generator = MLConformerGenerator(device=device)
-source_path = "./data/full_15_39_atoms_conf_chembl.inchi"
-n_samples = 100
-max_variance = 2
+def get_samples(name: str):
+    with open(f"./raw_samples/{name}_100_samples.pkl", "rb") as f:
+        raw_samples = pickle.load(f)
 
-references = Chem.SDMolSupplier("./data/1000_ccdc_validation_set.sdf")
-n_ref = len(references)
-expected_n_samples = n_samples * n_ref
+    return raw_samples
+
+
+def predict_bods_gcn(raw_samples, generator):
+    (
+        el_batch,
+        dm_batch,
+        b_adj_mat_batch,
+        canonicalised_samples,
+    ) = prepare_adj_mat_seer_input(
+        mols=raw_samples,
+        n_samples=n_samples,
+        dimension=generator.dimension,
+        device=generator.device,
+    )
+
+    adj_mat_batch = generator.adj_mat_seer(
+        elements=el_batch, dist_mat=dm_batch, adj_mat=b_adj_mat_batch
+    )
+
+    adj_mat_batch = adj_mat_batch.to("cpu")
+
+    # Append generated bonds and standardise existing samples
+    optimised_conformers = []
+
+    for i, adj_mat in enumerate(adj_mat_batch):
+        f_mol = redefine_bonds(canonicalised_samples[i], adj_mat)
+        std_mol = standardize_mol(mol=f_mol, optimize_geometry=True)
+        if std_mol:
+            optimised_conformers.append(std_mol)
+
+    return optimised_conformers
+
+
+def predict_bods_openbabel(raw_samples, ob_conversion):
+    optimised_conformers = []
+    for sample in raw_samples:
+        xyz_string = Chem.MolToXYZBlock(sample)
+        # Create an empty OBMol to hold our molecule
+        ob_mol = openbabel.OBMol()
+        ob_conversion.ReadString(ob_mol, xyz_string)
+        ob_mol.ConnectTheDots()
+        ob_mol.PerceiveBondOrders()
+
+        mol_block_str = ob_conversion.WriteString(ob_mol)
+
+        rdkit_mol = Chem.MolFromMolBlock(mol_block_str)
+
+        std_mol = standardize_mol(mol=rdkit_mol, optimize_geometry=True)
+        if std_mol:
+            optimised_conformers.append(std_mol)
+
+    return optimised_conformers
+
 
 node_dist_dict = (
     dict()
@@ -57,15 +127,26 @@ chem_unique_samples = 0  # number of chemically unique samples generated
 valid_samples = 0  # number of valid samples generated
 average_shape_tanimoto = 0
 average_chemical_tanimoto = 0
+max_shape_tanimoto = dict()
 
 for i, reference in enumerate(references):
     print(f"Analysing samples for reference compound {i + 1} of {n_ref}")
+
+    # Get a name of the reference
+    ref_name = reference.GetProp("_Name")
     reference = Chem.RemoveHs(reference)
     ref_n_atoms = reference.GetNumAtoms()
 
-    samples = generator.generate_conformers(
-        reference_conformer=reference, n_samples=n_samples, variance=max_variance
-    )
+    raw_samples = get_samples(ref_name)
+
+    print(f" Predicting bonds with {mode}")
+    if mode == "STRUCTURE SEER":
+        samples = predict_bods_gcn(raw_samples, generator)
+    elif mode == "OPENBABEL":
+        samples = predict_bods_openbabel(raw_samples, ob_conversion)
+    else:
+        raise ValueError("either STRUCTURE SEER or OPENBABEL modes are supported")
+
     start = time.time()
     _, std_samples = evaluate_samples(reference, samples)
 
@@ -104,6 +185,8 @@ for i, reference in enumerate(references):
             average_shape_tanimoto += std_sample["shape_tanimoto"]
 
             average_chemical_tanimoto += std_sample["chemical_tanimoto"]
+            if std_sample["shape_tanimoto"] >= max_shape_tanimoto[ref_n_atoms]:
+                max_shape_tanimoto[ref_n_atoms] = std_sample["shape_tanimoto"]
 
         else:
             node_dist_dict[ref_n_atoms] = 1
@@ -113,6 +196,7 @@ for i, reference in enumerate(references):
             ref_mol_size_chem_tanimoto_scores[ref_n_atoms] = std_sample[
                 "chemical_tanimoto"
             ]
+            max_shape_tanimoto[ref_n_atoms] = std_sample["shape_tanimoto"]
 
         # Log the error in context generation and tanimoto scores for variance
         if variance in variance_dist_dict.keys():
@@ -146,6 +230,8 @@ for key in variance_dist_dict.keys():
     )
 
 with open("generation_performance_report.txt", "w+") as f:
+    f.write(f"GENERATION PERFORMANCE REPORT")
+    f.write(f"Bonds are predicted using {mode}")
     f.write(f"Number of Contexts used for generation - {n_ref}\n")
     f.write(f"Number of Samples per Context - {n_samples}\n\n")
     f.write(
@@ -163,10 +249,16 @@ with open("generation_performance_report.txt", "w+") as f:
     )
 
     f.write(
-        "\nShape Tanimoto Scores of Generated Molecules vs number of atoms in reference:\n\n"
+        "\n Average Shape Tanimoto Scores of Generated Molecules vs number of atoms in reference:\n\n"
     )
     for key in sorted(ref_mol_size_shape_tanimoto_scores.keys()):
         f.write(f"{key}:  {ref_mol_size_shape_tanimoto_scores[key]}\n")
+
+    f.write(
+        "\n Maximal Shape Tanimoto Scores of Generated Molecules vs number of atoms in reference:\n\n"
+    )
+    for key in sorted(max_shape_tanimoto.keys()):
+        f.write(f"{key}:  {max_shape_tanimoto[key]}\n")
 
     f.write(
         "\nChemical Tanimoto Scores of Generated Molecules vs number of atoms in reference:\n\n"
@@ -191,8 +283,3 @@ with open("generation_performance_report.txt", "w+") as f:
     )
     for key in sorted(variance_chem_tanimoto_scores.keys()):
         f.write(f"{key}:  {variance_chem_tanimoto_scores[key]}\n")
-
-# - What is the error in context of generated samples vs number of atoms in the reference and variance
-# - What is the average shape tanimoto similarity of generated samples vs number of atoms in the reference and variance
-# - How many valid samples (after cheminformatics pipeline) was generated (as % from generated with edm) vs number of atoms in the reference
-# - How many chemically unique samples (which the model has never seen) was generated in total (as % of the number of all valid

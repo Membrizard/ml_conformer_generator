@@ -1,10 +1,11 @@
 import time
 
+from rdkit import Chem
+
 from ml_conformer_generator.ml_conformer_generator import (
     MLConformerGenerator,
     evaluate_samples,
 )
-from rdkit import Chem
 
 device = "cuda"
 generator = MLConformerGenerator(device=device)
@@ -29,4 +30,3 @@ for i, reference in enumerate(references):
     for sample in samples:
         sample.SetProp("reference_structure", f"{ref_name}")
         sd_writer.write(sample)
-
