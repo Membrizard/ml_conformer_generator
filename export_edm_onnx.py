@@ -16,16 +16,16 @@ net_dynamics = EGNNDynamics(
 generative_model = EquivariantDiffusion(
     dynamics=net_dynamics,
     in_node_nf=8,
-    timesteps=100,
+    timesteps=30,
     noise_precision=1e-5,
 )
 
-generative_model.load_state_dict(
-    torch.load(
-        "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
-        map_location=device,
-    )
-)
+# generative_model.load_state_dict(
+#     torch.load(
+#         "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
+#         map_location=device,
+#     )
+# )
 
 
 generative_model.to(device)
