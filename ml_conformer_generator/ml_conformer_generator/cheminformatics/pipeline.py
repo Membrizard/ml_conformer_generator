@@ -1,7 +1,7 @@
 import rdkit.Chem
 import torch
 from rdkit import Chem
-from rdkit.Chem import rdFingerprintGenerator, rdShapeHelpers
+from rdkit.Chem import rdFingerprintGenerator
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 from rdkit.Geometry import Point3D
 

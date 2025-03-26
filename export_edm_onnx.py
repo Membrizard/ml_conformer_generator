@@ -102,8 +102,6 @@ def prepare_dummy_input(device):
 n_samples, n_nodes, node_mask, edge_mask, context = prepare_dummy_input(device)
 
 
-# onnx_model = torch.onnx.export(generative_model, dummy_input, dynamo=True)
-# Fixed to generate 100 samples, fixed max_n_nodes to 42 As onnx does not support dynamic axe with dynamo
 export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
 onnx_model = torch.onnx.export(
     generative_model,

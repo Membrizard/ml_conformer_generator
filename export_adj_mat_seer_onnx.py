@@ -5,42 +5,24 @@ import torch
 from ml_conformer_generator.ml_conformer_generator.adj_mat_seer import AdjMatSeer
 
 device = "cpu"
-net_dynamics = EGNNDynamics(
-    in_node_nf=9,
-    context_node_nf=3,
-    hidden_nf=420,
-    device=device,
-)
-
-generative_model = EquivariantDiffusion(
-    dynamics=net_dynamics,
-    in_node_nf=8,
-    timesteps=1000,
-    noise_precision=1e-5,
-)
-
-generative_model.load_state_dict(
-    torch.load(
-        "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
-        map_location=device,
-    )
-)
-
-diffusion_steps = 100
-
-# Update denoising steps for the Equivarinat Diffusion
-generative_model.gamma = PredefinedNoiseSchedule(
-            timesteps=diffusion_steps, precision=1e-5
+adj_mat_seer = AdjMatSeer(
+            dimension=42,
+            n_hidden=2048,
+            embedding_dim=64,
+            num_embeddings=36,
+            num_bond_types=5,
+            device=device,
         )
 
-generative_model.timesteps = torch.flip(
-            torch.arange(0, diffusion_steps, device=device), dims=[0]
+adj_mat_seer.load_state_dict(
+            torch.load(
+                "./ml_conformer_generator/ml_conformer_generator/weights/adj_mat_seer_chembl_15_39.weights",
+                map_location=device,
+            )
         )
 
-generative_model.T = diffusion_steps
-
-generative_model.to(device)
-generative_model.eval()
+adj_mat_seer.to(device)
+adj_mat_seer.eval()
 
 
 def prepare_dummy_input(device):
@@ -99,13 +81,12 @@ def prepare_dummy_input(device):
 n_samples, n_nodes, node_mask, edge_mask, context = prepare_dummy_input(device)
 
 
-# onnx_model = torch.onnx.export(generative_model, dummy_input, dynamo=True)
-# Fixed to generate 100 samples, fixed max_n_nodes to 42 As onnx does not support dynamic axe with dynamo
+
 export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
 onnx_model = torch.onnx.export(
-    generative_model,
+    adj_mat_seer,
     (n_samples, n_nodes, node_mask, edge_mask, context),
-    "moi_edm_chembl_15_39.onnx",
+    "adj_mat_seer_chembl_15_39.onnx",
     input_names=["n_samples", "n_nodes", "node_mask", "edge_mask", "context"],
     output_names=["x", "h"],
     export_options=export_options,
@@ -115,4 +96,4 @@ onnx_model = torch.onnx.export(
 )
 
 onnx_model.optimize()
-onnx_model.save("opt_edm_moi_chembl_15_39.onnx")
+onnx_model.save("opt_adj_mat_seer_chembl_15_39.onnx")
