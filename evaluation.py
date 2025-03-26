@@ -1,12 +1,12 @@
 import os
 import time
 
+from rdkit import Chem
+
 from ml_conformer_generator.ml_conformer_generator import (
     MLConformerGenerator,
     evaluate_samples,
 )
-from rdkit import Chem
-
 
 # def exact_match(mol, source):
 #     whs_mol = Chem.RemoveHs(mol)
@@ -48,13 +48,12 @@ def exact_match2(taget, source):
 
     target_inchi = set(taget_inchi)
     n_unique_target = len(target_inchi)
-    gen_unique = counter - n_unique_target
 
     n_intersection = len(source_inchi.intersection(target_inchi))
 
     set_unique = counter - n_intersection
 
-    return {"unique_within_batch": gen_unique, "unique_train_set": set_unique}
+    return {"unique_within_batch": n_unique_target, "unique_train_set": set_unique}
 
 
 device = "cuda"
@@ -63,11 +62,11 @@ source_path = "./full_15_39_atoms_conf_chembl.inchi"
 n_samples = 100
 max_variance = 2
 
-references = Chem.SDMolSupplier("./data/100_ccdc_validation_set.sdf")
+references = Chem.SDMolSupplier("./data/1000_ccdc_validation_set.sdf")
 n_ref = len(references)
 expected_n_samples = n_samples * n_ref
 
-n_dif_steps = [20, 50, 100, 300, 500]
+n_dif_steps = [100]
 folder = "./time_steps_experiments"
 os.makedirs(folder, exist_ok=True)
 
@@ -105,7 +104,9 @@ for time_steps in n_dif_steps:
     max_shape_tanimoto = dict()
 
     for i, reference in enumerate(references):
-        print(f"Analysing samples for reference compound {i + 1} of {n_ref} number of timesteps - {time_steps}")
+        print(
+            f"Analysing samples for reference compound {i + 1} of {n_ref} number of timesteps - {time_steps}"
+        )
         reference = Chem.RemoveHs(reference)
         ref_n_atoms = reference.GetNumAtoms()
 
@@ -142,7 +143,9 @@ for time_steps in n_dif_steps:
             #     chem_unique_samples += 1
 
             sample_num_atoms = sample_mol.GetNumAtoms()
-            variance = ref_n_atoms - sample_num_atoms  # -> Can be negative intentionally
+            variance = (
+                ref_n_atoms - sample_num_atoms
+            )  # -> Can be negative intentionally
 
             # Log the error in context generation and tanimoto scores for ref_n_atoms
             if ref_n_atoms in node_dist_dict.keys():
@@ -173,14 +176,17 @@ for time_steps in n_dif_steps:
             if variance in variance_dist_dict.keys():
                 variance_dist_dict[variance] += 1
                 variance_shape_tanimoto_scores[variance] += std_sample["shape_tanimoto"]
-                variance_chem_tanimoto_scores[variance] += std_sample["chemical_tanimoto"]
+                variance_chem_tanimoto_scores[variance] += std_sample[
+                    "chemical_tanimoto"
+                ]
             else:
                 variance_dist_dict[variance] = 1
                 variance_shape_tanimoto_scores[variance] = std_sample["shape_tanimoto"]
-                variance_chem_tanimoto_scores[variance] = std_sample["chemical_tanimoto"]
+                variance_chem_tanimoto_scores[variance] = std_sample[
+                    "chemical_tanimoto"
+                ]
 
     valid_samples_rate = valid_samples / expected_n_samples
-
 
     # Calculate mean Error and Tanimoto score values, for ref_mol_size and variance
 
@@ -209,10 +215,10 @@ for time_steps in n_dif_steps:
 
     print("Done!")
 
-    file_name = f"{folder}/{time_steps}_time_steps_generation_performance_report_100_ref_100_samples_var_2.txt"
+    file_name = f"{folder}/{time_steps}_time_steps_generation_performance_report_1000_ref_100_samples_var_2.txt"
 
     with open(file_name, "w+") as f:
-        f.write(f"Number of diffusion steps {time_steps}")
+        f.write(f"Number of diffusion steps {time_steps}\n")
 
         f.write(f"Number of Contexts used for generation - {n_ref}\n")
         f.write(f"Number of Samples per Context - {n_samples}\n\n")

@@ -1,15 +1,14 @@
 import rdkit.Chem
 import torch
-from rdkit.Geometry import Point3D
 from rdkit import Chem
-from rdkit.Chem import rdFingerprintGenerator
+from rdkit.Chem import rdFingerprintGenerator, rdShapeHelpers
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
-from rdkit.Chem import rdShapeHelpers
+from rdkit.Geometry import Point3D
 
 from .shape_similarity import (
     get_shape_quadrupole_for_molecule,
-    tanimoto_score,
     rotate_coord,
+    tanimoto_score,
 )
 
 FP_SIZE = 2048

@@ -1,18 +1,23 @@
-from rdkit import Chem
-import torch
-import random
+from typing import List
 
+import torch
+from rdkit import Chem
+
+from .adj_mat_seer import AdjMatSeer
 from .egnn import EGNNDynamics
 from .equivariant_diffusion import EquivariantDiffusion, PredefinedNoiseSchedule
-from .adj_mat_seer import AdjMatSeer
-
 from .utils import (
-    samples_to_rdkit_mol,
-    get_context_shape,
     DIMENSION,
     NUM_BOND_TYPES,
+    MIN_N_NODES,
+    MAX_N_NODES,
+    CONTEXT_NORMS,
+    ATOM_DECODER,
+    get_context_shape,
     prepare_adj_mat_seer_input,
+    prepare_edm_input,
     redefine_bonds,
+    samples_to_rdkit_mol,
     standardize_mol,
 )
 
@@ -25,10 +30,14 @@ class MLConformerGenerator(torch.nn.Module):
 
     def __init__(
         self,
-        diffusion_steps: int = 1000,
+        diffusion_steps: int = 100,
         device: torch.device = "cpu",
         dimension: int = DIMENSION,
         num_bond_types: int = NUM_BOND_TYPES,
+        min_n_nodes: int = MIN_N_NODES,
+        max_n_nodes: int = MAX_N_NODES,
+        context_norms: dict = CONTEXT_NORMS,
+        atom_decoder: dict = ATOM_DECODER,
         edm_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
         adj_mat_seer_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/adj_mat_seer_chembl_15_39.weights",
     ):
@@ -38,24 +47,12 @@ class MLConformerGenerator(torch.nn.Module):
 
         self.dimension = dimension
 
-        self.context_norms = {
-            "mean": torch.tensor([105.0766, 473.1938, 537.4675]),
-            "mad": torch.tensor([52.0409, 219.7475, 232.9718]),
-        }
+        self.context_norms = context_norms
 
-        self.atom_decoder = {
-            0: "C",
-            1: "N",
-            2: "O",
-            3: "F",
-            4: "P",
-            5: "S",
-            6: "Cl",
-            7: "Br",
-        }
+        self.atom_decoder = atom_decoder
 
-        self.min_n_nodes = 15
-        self.max_n_nodes = 39
+        self.min_n_nodes = min_n_nodes
+        self.max_n_nodes = max_n_nodes
 
         net_dynamics = EGNNDynamics(
             in_node_nf=9,
@@ -94,7 +91,7 @@ class MLConformerGenerator(torch.nn.Module):
             )
         )
 
-        # Update diffusion steps
+        # Update denoising steps for the Equivarinat Diffusion
         generative_model.gamma = PredefinedNoiseSchedule(
             timesteps=diffusion_steps, precision=1e-5
         )
@@ -118,22 +115,19 @@ class MLConformerGenerator(torch.nn.Module):
     @torch.no_grad()
     def edm_samples(
         self,
-        reference_context,
-        n_samples=100,
-        max_n_nodes=32,
-        min_n_nodes=25,
-    ):
+        reference_context: torch.Tensor,
+        n_samples: int = 100,
+        max_n_nodes: int = 32,
+        min_n_nodes: int = 25,
+    ) -> List[Chem.Mol]:
         """
         Generates initial samples using generative diffusion model
         :param reference_context: reference context - tensor of shape (3)
         :param n_samples: number of samples to be generated
-        :param max_n_nodes:
-        :param min_n_nodes:
-        :param fix_noise:
+        :param max_n_nodes: the maximal number of heavy atoms in the among requested molecules
+        :param min_n_nodes: the minimal number of heavy atoms in the among requested molecules
         :return: a list of generated samples, without atom adjacency as RDkit Mol objects
         """
-        # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
-        nodesxsample = []
 
         # Make sure that number of atoms of generated samples is within requested range
         if min_n_nodes < self.min_n_nodes:
@@ -142,37 +136,16 @@ class MLConformerGenerator(torch.nn.Module):
         if max_n_nodes > self.max_n_nodes:
             max_n_nodes = self.max_n_nodes
 
-        for n in range(n_samples):
-            nodesxsample.append(random.randint(min_n_nodes, max_n_nodes))
-
-        nodesxsample = torch.tensor(nodesxsample)
-
-        batch_size = nodesxsample.size(0)
-
-        node_mask = torch.zeros(batch_size, max_n_nodes)
-        for i in range(batch_size):
-            node_mask[i, 0 : nodesxsample[i]] = 1
-
-        # Compute edge_mask
-
-        edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
-        diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
-        edge_mask *= diag_mask
-        edge_mask = edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1).to(
-            self.device
+        node_mask, edge_mask, batch_context = prepare_edm_input(
+            n_samples=n_samples,
+            reference_context=reference_context,
+            context_norms=self.context_norms,
+            min_n_nodes=min_n_nodes,
+            max_n_nodes=max_n_nodes,
+            device=self.device,
         )
-        node_mask = node_mask.unsqueeze(2).to(self.device)
-
-        normed_context = (
-            (reference_context - self.context_norms["mean"]) / self.context_norms["mad"]
-        ).to(self.device)
-
-        batch_context = normed_context.unsqueeze(0).repeat(batch_size, 1)
-
-        batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
-
         x, h = self.generative_model(
-            batch_size,
+            n_samples,
             max_n_nodes,
             node_mask,
             edge_mask,
@@ -194,7 +167,7 @@ class MLConformerGenerator(torch.nn.Module):
         reference_context: torch.Tensor = None,
         n_atoms: int = None,
         optimise_geometry: bool = True,
-    ) -> list[Chem.Mol]:
+    ) -> List[Chem.Mol]:
         """
 
         :param reference_conformer:
@@ -239,7 +212,6 @@ class MLConformerGenerator(torch.nn.Module):
             n_samples=n_samples,
             min_n_nodes=ref_n_atoms - variance,
             max_n_nodes=ref_n_atoms + variance,
-            # fix_noise=fix_noise,
         )
 
         (

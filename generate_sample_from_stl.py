@@ -1,10 +1,9 @@
-import trimesh
-from ml_conformer_generator import MLConformerGenerator, evaluate_samples
-from rdkit import Chem
-from rdkit.Chem import rdDistGeom
-
-from rdkit.Chem import Draw
 import torch
+import trimesh
+from rdkit import Chem
+from rdkit.Chem import Draw, rdDistGeom
+
+from ml_conformer_generator import MLConformerGenerator, evaluate_samples
 
 mymesh = trimesh.load("./data/6q8k_pocket_a.stl")
 mymesh.density = 0.02

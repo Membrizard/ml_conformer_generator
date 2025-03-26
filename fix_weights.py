@@ -1,10 +1,10 @@
 import torch
+
+from ml_conformer_generator.ml_conformer_generator.adj_mat_seer import AdjMatSeer
 from ml_conformer_generator.ml_conformer_generator.compilable_egnn import EGNNDynamics
 from ml_conformer_generator.ml_conformer_generator.compilable_equivariant_diffusion import (
     EquivariantDiffusion,
 )
-from ml_conformer_generator.ml_conformer_generator.adj_mat_seer import AdjMatSeer
-
 
 net_dynamics = EGNNDynamics(
     in_node_nf=9,

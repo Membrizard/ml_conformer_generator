@@ -1,14 +1,14 @@
+import base64
+import json
 import random
 import re
-import base64
 
-import streamlit as st
-from rdkit import Chem
-from rdkit.Chem import rdDistGeom
-from rdkit.Chem import Draw
-import streamlit.components.v1 as components
 import matplotlib
-import json
+import requests
+import streamlit as st
+import streamlit.components.v1 as components
+from rdkit import Chem
+from rdkit.Chem import Draw, rdDistGeom
 
 CMAP = matplotlib.cm.get_cmap("viridis")
 
@@ -57,6 +57,21 @@ def view_mol_button(mol_index):
 
 # Working with results, rendering mol images
 def generate_mock_results():
+    with open("./generation_examples/generation_example_4.json") as json_file:
+        data = json.load(json_file)
+
+        def s_f(x):
+            return x["shape_tanimoto"]
+
+        samples = data["generated_molecules"]
+
+        samples.sort(key=s_f, reverse=True)
+        ref = data["aligned_reference"]
+
+    return ref, samples
+
+
+def generate_results():
     with open("./generation_examples/generation_example_4.json") as json_file:
         data = json.load(json_file)
 

@@ -1,5 +1,6 @@
-import torch
 import typing
+
+import torch
 import torch.nn as nn
 
 from .utils import DIMENSION, NUM_BOND_TYPES

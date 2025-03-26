@@ -9,15 +9,11 @@
 #  of the source tree.
 
 
-import os
+from typing import Tuple
+
 from rdkit import Chem
-from rdkit.Chem.MolStandardize import rdMolStandardize
 from rdkit.Chem import AllChem
-
-
-def kekulize_mol(m):
-    Chem.Kekulize(m)
-    return m
+from rdkit.Chem.MolStandardize import rdMolStandardize
 
 
 # derived from the MolVS set, with ChEMBL-specific additions
@@ -48,7 +44,7 @@ _normalizer = rdMolStandardize.NormalizerFromData(
 )
 
 
-def flatten_tartrate_mol(m):
+def flatten_tartrate_mol(m: Chem.Mol) -> Chem.Mol:
     tartrate = Chem.MolFromSmarts("OC(=O)C(O)C(O)C(=O)O")
     # make sure we only match free tartrate/tartaric acid fragments
     params = Chem.AdjustQueryParameters.NoAdjustments()
@@ -64,12 +60,12 @@ def flatten_tartrate_mol(m):
     return m
 
 
-_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
-_solvents_file = os.path.join(_data_dir, "solvents.smi")
-_salts_file = os.path.join(_data_dir, "salts.smi")
-
-
-def md_minimize_energy(mol):
+def md_minimize_energy(mol: Chem.Mol) -> Tuple[Chem.Mol, bool]:
+    """
+    Run Constrained Energy minimisation with MMF94
+    :param mol: input conformer
+    :return: optimised conformer
+    """
     # Prepare the MMFF properties and force field
     mmff_props = AllChem.MMFFGetMoleculeProperties(mol, mmffVariant="MMFF94")
     forcefield = AllChem.MMFFGetMoleculeForceField(mol, mmff_props, confId=0)
@@ -85,12 +81,18 @@ def md_minimize_energy(mol):
     return mol, res
 
 
-def standardize_mol(mol, optimize_geometry: bool = True):
+def standardize_mol(mol: Chem.Mol, optimize_geometry: bool = True) -> Chem.Mol:
+    """
+    Molecule Standardization
+    :param mol: input conformer
+    :param optimize_geometry: if MMFF94 optimisation is required
+    :return: standardized conformer
+    """
     try:
         # Leave only largest fragment
         m = rdMolStandardize.FragmentParent(mol)
         # Kekulize
-        m = kekulize_mol(m)
+        m = Chem.Kekulize(m)
         # Flatten Tartrates
         m = flatten_tartrate_mol(m)
 

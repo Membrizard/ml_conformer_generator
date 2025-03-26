@@ -1,6 +1,6 @@
 # ML Conformer Generator (ChemBl)
 
-A tool to generate random molecules, which have a conformer similar in shape to a reference.
+A tool for shape-constrained molecule generation.
 
 The solution utilises an Equivariant Diffusion Model (EDM) [] to generate atom coordinates and types using a shape constrain,
 which are then used by a GCN model [] for atom adjacency prediction. Both models outputs are combined to construct
@@ -41,8 +41,8 @@ Frontend requirements are in ./frontend/fronted_requirements.txt
 
 ## Usage
 
-### Python Interface
-Look for interactive example in `./ml_conformer_generator_app_demo.ipynb`
+### Python API
+Look for interactive example in `./python_api_demo.ipynb`
 
 ```
 from rdkit import Chem

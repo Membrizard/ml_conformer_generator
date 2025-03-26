@@ -1,9 +1,8 @@
-import typing
+from typing import Tuple
+from typing import Tuple
 
 import torch
 import torch.nn as nn
-
-from typing import Tuple
 
 
 class GCL(nn.Module):
@@ -14,7 +13,7 @@ class GCL(nn.Module):
         input_nf: int,
         output_nf: int,
         hidden_nf: int,
-        normalization_factor,
+        normalization_factor: float = 100.0,
         edges_in_d: int = 0,
         nodes_att_dim: int = 0,
     ):
@@ -37,7 +36,13 @@ class GCL(nn.Module):
 
         self.att_mlp = nn.Sequential(nn.Linear(hidden_nf, 1), nn.Sigmoid())
 
-    def edge_model(self, source, target, edge_attr, edge_mask):
+    def edge_model(
+        self,
+        source: torch.Tensor,
+        target: torch.Tensor,
+        edge_attr: torch.Tensor,
+        edge_mask: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         out = torch.cat([source, target, edge_attr], dim=1)
         mij = self.edge_mlp(out)
 
@@ -47,7 +52,9 @@ class GCL(nn.Module):
         out = out * edge_mask
         return out, mij
 
-    def node_model(self, x, edge_index, edge_attr):
+    def node_model(
+        self, x: torch.Tensor, edge_index: torch.Tensor, edge_attr: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         row = edge_index[0]
 
         agg = unsorted_segment_sum(
@@ -63,12 +70,12 @@ class GCL(nn.Module):
 
     def forward(
         self,
-        h,
-        edge_index,
-        edge_attr,
-        node_mask,
-        edge_mask,
-    ):
+        h: torch.Tensor,
+        edge_index: torch.Tensor,
+        edge_attr: torch.Tensor,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         row = edge_index[0]
         col = edge_index[1]
 
@@ -83,9 +90,9 @@ class EquivariantUpdate(nn.Module):
     def __init__(
         self,
         hidden_nf: int,
-        normalization_factor,
+        normalization_factor: float = 100.0,
         edges_in_d: int = 1,
-        coords_range=10.0,
+        coords_range: float = 10.0,
     ):
         super(EquivariantUpdate, self).__init__()
 
@@ -102,7 +109,15 @@ class EquivariantUpdate(nn.Module):
         )
         self.normalization_factor = normalization_factor
 
-    def coord_model(self, h, coord, edge_index, coord_diff, edge_attr, edge_mask):
+    def coord_model(
+        self,
+        h: torch.Tensor,
+        coord: torch.Tensor,
+        edge_index: torch.Tensor,
+        coord_diff: torch.Tensor,
+        edge_attr: torch.Tensor,
+        edge_mask: torch.Tensor,
+    ) -> torch.Tensor:
         row = edge_index[0]
         col = edge_index[1]
         input_tensor = torch.cat([h[row], h[col], edge_attr], dim=1)
@@ -122,14 +137,14 @@ class EquivariantUpdate(nn.Module):
 
     def forward(
         self,
-        h,
-        coord,
-        edge_index,
-        coord_diff,
-        edge_attr,
-        node_mask,
-        edge_mask,
-    ):
+        h: torch.Tensor,
+        coord: torch.Tensor,
+        edge_index: torch.Tensor,
+        coord_diff: torch.Tensor,
+        edge_attr: torch.Tensor,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+    ) -> torch.Tensor:
         coord = self.coord_model(h, coord, edge_index, coord_diff, edge_attr, edge_mask)
         coord = coord * node_mask
         return coord
@@ -141,11 +156,11 @@ class EquivariantBlock(nn.Module):
         hidden_nf: int = 2,
         edge_feat_nf: int = 2,
         coords_range: float = 15.0,
-        normalization_factor=100,
+        normalization_factor: float = 100.0,
     ):
         super(EquivariantBlock, self).__init__()
         self.hidden_nf = hidden_nf
-        self.coords_range_layer = float(coords_range)
+        self.coords_range_layer = coords_range
         self.normalization_factor = normalization_factor
 
         self.gcl_0 = GCL(
@@ -171,7 +186,15 @@ class EquivariantBlock(nn.Module):
             normalization_factor=normalization_factor,
         )
 
-    def forward(self, h, x, edge_index, node_mask, edge_mask, edge_attr):
+    def forward(
+        self,
+        h: torch.Tensor,
+        x: torch.Tensor,
+        edge_index: torch.Tensor,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+        edge_attr: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         distances, coord_diff = coord2diff(x, edge_index)
 
         edge_attr = torch.cat([distances, edge_attr], dim=1)
@@ -205,8 +228,8 @@ class EGNN(nn.Module):
         self,
         in_node_nf: int,
         hidden_nf: int,
-        coords_range: float = 15,
-        normalization_factor=100,
+        coords_range: float = 15.0,
+        normalization_factor: float = 100.0,
     ):
         super(EGNN, self).__init__()
         self.hidden_nf = hidden_nf
@@ -281,8 +304,13 @@ class EGNN(nn.Module):
         )
 
     def forward(
-        self, h, x, edge_index, node_mask, edge_mask
-    ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
+        self,
+        h: torch.Tensor,
+        x: torch.Tensor,
+        edge_index: torch.Tensor,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         distances, _ = coord2diff(x, edge_index)
 
         h = self.embedding(h)
@@ -392,7 +420,7 @@ def unsorted_segment_sum(
     data: torch.Tensor,
     segment_ids: torch.Tensor,
     num_segments: int,
-    normalization_factor: int,
+    normalization_factor: float,
 ) -> torch.Tensor:
     """
     Custom PyTorch op to replicate TensorFlow's `unsorted_segment_sum`.
@@ -426,7 +454,7 @@ class EGNNDynamics(nn.Module):
         n_dims: int = 3,
         hidden_nf: int = 420,  # -> 420 our default
         device: torch.device = torch.device("cpu"),
-        normalization_factor=100,
+        normalization_factor: float = 100.0,
     ):
         super().__init__()
 

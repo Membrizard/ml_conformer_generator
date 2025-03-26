@@ -1,9 +1,11 @@
+import random
+from typing import List, Tuple
+
 import torch
 from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 
 from .molgraph import MolGraph
-from rdkit.Geometry import Point3D
 
 bond_type_dict = {
     1: Chem.rdchem.BondType.SINGLE,
@@ -15,10 +17,18 @@ bond_type_dict = {
 
 def samples_to_rdkit_mol(
     positions,
-    one_hot,
-    node_mask=None,
+    one_hot: torch.Tensor,
+    node_mask: torch.Tensor = None,
     atom_decoder: dict = None,
-):
+) -> List[Chem.Mol]:
+    """
+    Convert EDM Samples to RDKit mol objects
+    :param positions:
+    :param one_hot:
+    :param node_mask:
+    :param atom_decoder:
+    :return: a list of samples as RDKit Mol objects without bond information
+    """
     rdkit_mols = []
 
     if node_mask is not None:
@@ -46,7 +56,9 @@ def samples_to_rdkit_mol(
     return rdkit_mols
 
 
-def get_moment_of_inertia_tensor(coord: torch.Tensor, weights: torch.Tensor):
+def get_moment_of_inertia_tensor(
+    coord: torch.Tensor, weights: torch.Tensor
+) -> torch.Tensor:
     """
     Calculate a Moment of Inertia tensor
     :return: Moment of Inertia Tensor in input coordinates
@@ -54,30 +66,31 @@ def get_moment_of_inertia_tensor(coord: torch.Tensor, weights: torch.Tensor):
     x, y, z = coord[:, 0], coord[:, 1], coord[:, 2]
 
     # Diagonal elements
-    Ixx = torch.sum(weights * (y**2 + z**2))
-    Iyy = torch.sum(weights * (x**2 + z**2))
-    Izz = torch.sum(weights * (x**2 + y**2))
+    i_xx = torch.sum(weights * (y**2 + z**2))
+    i_yy = torch.sum(weights * (x**2 + z**2))
+    i_zz = torch.sum(weights * (x**2 + y**2))
 
     # Off-diagonal elements
-    Ixy = -torch.sum(x * y)
-    Ixz = -torch.sum(x * z)
-    Iyz = -torch.sum(y * z)
+    i_xy = -torch.sum(x * y)
+    i_xz = -torch.sum(x * z)
+    i_yz = -torch.sum(y * z)
 
     # Construct the MOI tensor
     moi_tensor = torch.tensor(
-        [[Ixx, Ixy, Ixz], [Ixy, Iyy, Iyz], [Ixz, Iyz, Izz]], dtype=torch.float32
+        [[i_xx, i_xy, i_xz], [i_xy, i_yy, i_yz], [i_xz, i_yz, i_zz]],
+        dtype=torch.float32,
     )
 
     return moi_tensor
 
 
-def get_context_shape(coord):
+def get_context_shape(coord: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Finds the principal axes for the conformer,
     and calculates Moment of Inertia tensor for the conformer in principal axes.
     All atom masses are considered qual to one, to capture shape only.
     :param coord: initial coordinates of the atoms
-    :return:
+    :return: Principal components of MOI tensor, and coordinates rotated to a principal frame as a tuple of tensors
     """
     masses = torch.ones(coord.size(0))
     moi_tensor = get_moment_of_inertia_tensor(coord, masses)
@@ -93,7 +106,12 @@ def get_context_shape(coord):
     return context, rotated_points
 
 
-def canonicalise(mol):
+def canonicalise(mol: Chem.Mol) -> Chem.Mol:
+    """
+    Bring order of atoms in the molecule to canonical based on generic one-order connectivity
+    :param mol: Mol object with unordered atoms
+    :return: Mol object with canonicalised order of atoms
+    """
     # Guess simple 1-order connectivity and re-order the molecule
     rdDetermineBonds.DetermineConnectivity(mol)
     _ = Chem.MolToSmiles(mol)
@@ -124,7 +142,9 @@ def distance_matrix(coordinates: torch.Tensor) -> torch.Tensor:
     return dist_matrix
 
 
-def prepare_adj_mat_seer_input(mols, n_samples, dimension, device):
+def prepare_adj_mat_seer_input(
+    mols: List[Chem.Mol], n_samples: int, dimension: int, device: torch.device
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, List[Chem.Mol]]:
     canonicalised_samples = []
 
     elements_batch = torch.zeros(n_samples, dimension, dtype=torch.long, device=device)
@@ -165,16 +185,12 @@ def prepare_adj_mat_seer_input(mols, n_samples, dimension, device):
     return elements_batch, dist_mat_batch, adj_mat_batch, canonicalised_samples
 
 
-def redefine_bonds(mol, adj_mat):
+def redefine_bonds(mol: Chem.Mol, adj_mat: torch.Tensor) -> Chem.Mol:
     n = mol.GetNumAtoms()
     # Pass the molecule through xyz block to remove bonds and all extra atom properties
     i_xyz = Chem.MolToXYZBlock(mol)
     c_mol = Chem.MolFromXYZBlock(i_xyz)
     ed_mol = Chem.EditableMol(c_mol)
-
-    # Remove existing bonds
-    # for bond in mol.GetBonds():
-    #     ed_mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
 
     repr_m = torch.tril(torch.argmax(adj_mat, dim=2))
     repr_m = repr_m * (1 - torch.eye(repr_m.size(0), repr_m.size(0)))
@@ -192,42 +208,46 @@ def redefine_bonds(mol, adj_mat):
     return new_mol
 
 
-# def set_conformer_positions(mol, coord):
-#     conf = mol.GetConformer()
-#     for i, point in enumerate(coord):
-#         x, y, z = point.tolist()
-#         conf.SetAtomPosition(i, Point3D(x, y, z))
-#
-#     return mol
-#
-# def redefine_bonds(mol, adj_mat):
-#     n = mol.GetNumAtoms()
-#
-#     empty_mol = Chem.Mol()
-#     ed_mol = Chem.EditableMol(empty_mol)
-#     coord = mol.GetConformer().GetPositions()
-#
-#     # Add atoms with no properties
-#     for atom in mol.GetAtoms():
-#         ed_mol.AddAtom(Chem.Atom(atom.GetAtomicNum()))
-#
-#     # Remove existing bonds
-#
-#     # for bond in mol.GetBonds():
-#     #     ed_mol.RemoveBond(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx())
-#
-#     repr_m = torch.tril(torch.argmax(adj_mat, dim=2))
-#     repr_m = repr_m * (1 - torch.eye(repr_m.size(0), repr_m.size(0)))
-#
-#     for i in range(n):
-#         for j in range(n):
-#             # Find out the bond type by indexing 1 in the matrix bond
-#             bond_type = repr_m[i, j].item()
-#
-#             if bond_type != 0:
-#                 ed_mol.AddBond(i, j, bond_type_dict[bond_type])
-#
-#     new_mol = ed_mol.GetMol()
-#     new_mol = set_conformer_positions(new_mol, coord)
-#
-#     return new_mol
+def prepare_edm_input(
+    n_samples: int,
+    reference_context: torch.Tensor,
+    context_norms: dict,
+    min_n_nodes: int,
+    max_n_nodes: int,
+    device: torch.device,
+):
+    # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
+    nodesxsample = []
+
+    for n in range(n_samples):
+        nodesxsample.append(random.randint(min_n_nodes, max_n_nodes))
+
+    nodesxsample = torch.tensor(nodesxsample)
+
+    batch_size = nodesxsample.size(0)
+
+    node_mask = torch.zeros(batch_size, max_n_nodes)
+    for i in range(batch_size):
+        node_mask[i, 0 : nodesxsample[i]] = 1
+
+    # Compute edge_mask
+
+    edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
+    diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
+    edge_mask *= diag_mask
+    edge_mask = edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1).to(device)
+    node_mask = node_mask.unsqueeze(2).to(device)
+
+    normed_context = (
+        (reference_context - context_norms["mean"]) / context_norms["mad"]
+    ).to(device)
+
+    batch_context = normed_context.unsqueeze(0).repeat(batch_size, 1)
+
+    batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
+
+    return (
+        node_mask,
+        edge_mask,
+        batch_context,
+    )

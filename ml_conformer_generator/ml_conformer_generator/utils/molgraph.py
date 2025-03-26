@@ -1,19 +1,12 @@
-import typing
+from typing import Tuple
 
-import torch
+import matplotlib.pyplot as plt
 import numpy
-
+import torch
 from rdkit import Chem
 from rdkit.Chem import rdmolops
 
-import networkx as nx
-import matplotlib.pyplot as plt
-
-from networkx import get_edge_attributes
-
-
 from .config import DIMENSION, NUM_BOND_TYPES
-
 
 # allowable node and edge features
 allowable_features = {
@@ -50,12 +43,6 @@ bonds_dict = {
 class MolGraph:
     """
     A class to handle molecular graphs using torch.Tensors:
-    - Generation of adjacency matrix
-    - Creation of the Graph from nodes and adjacency matrix
-    - Sorting and shuffling of a graph representation
-    - Creation from RdKit Mol object
-    - Capability to see if two molecular graphs are equal
-    - Visualisation
     """
 
     def __init__(
@@ -238,30 +225,6 @@ class MolGraph:
         mol = rw_mol.GetMol()
         return mol
 
-    def show(self, size: int = 7, title: str = "molecular graph"):
-        """
-        Visualises MolGraph as network_x graph object
-        :return: None
-        """
-        g = self.to_networkx()
-        node_color = [x[0] for x in self.x]
-        label_dict = {idx: round(x[1].item(), 3) for idx, x in enumerate(self.x)}
-        width = list(get_edge_attributes(g, "bond_type_idx").values())
-        plt.figure(figsize=(size, size))
-        plt.title(title)
-        plt.xticks([])
-        plt.yticks([])
-        nx.draw_networkx(
-            g,
-            pos=nx.spring_layout(g, seed=42),
-            with_labels=True,
-            labels=label_dict,
-            node_color=node_color,
-            width=width,
-            cmap="Set2",
-        )
-        plt.show()
-
     def elements_vector(self) -> torch.Tensor:
         """
         Returns a fixed-sized elements vector
@@ -273,79 +236,6 @@ class MolGraph:
             elements_vector[i] = self.x[i]
 
         return elements_vector
-
-    # def one_hot_elements_encoding(self) -> torch.Tensor:
-    #     """
-    #     Returns a one-hot encoded fixed-sized elements vector;
-    #     the number of types is the length of PERMITTED ELEMENTS set
-    #     :return: [, ...0...] size(DIMENSION, len(PERMITTED_ELEMENTS), 1)
-    #     """
-    #     one_hot = torch.zeros(DIMENSION, len(elements_decoder.keys()), dtype=torch.long)
-    #
-    #     for i in range(len(self.x)):
-    #         atom_type = elements_decoder[self.x[i].item()]
-    #         one_hot[i][atom_type] = 1
-    #
-    #     return one_hot
-
-    def sort(self, shielding: bool = False) -> typing.Tuple["MolGraph", torch.Tensor]:
-        """
-        The Functions sorts the nodes and modifies edges accordingly in the tensor representation of the graph,
-        leaving its structure intact. Nodes are sorted according to their atomic num
-        :return:
-        """
-        # Store Old order
-        old_atom_order = self.x.tolist()
-
-        # Create index_holder list
-        index_holder = [i for i in range(len(old_atom_order))]
-
-        # zip old_atom_order and index holder into container to retain old indexes
-        container = list(zip(old_atom_order, index_holder))
-
-        def zip_sort(e):
-            return e[0][0]
-
-        def s_sort(e):
-            return e[0][0], e[0][1]
-
-        if shielding:
-            f = s_sort
-        else:
-            f = zip_sort
-
-        # Sort the container
-        container.sort(reverse=False, key=f)
-        new_atom_order, old_ids = zip(*container)
-        new_atom_order = torch.tensor(new_atom_order, dtype=torch.float)
-
-        # Modify old adjacency matrix
-        old_matrix = self.adjacency_matrix()
-        new_matrix = torch.zeros(
-            DIMENSION, DIMENSION, NUM_BOND_TYPES, dtype=torch.float
-        )
-
-        n = len(old_atom_order)
-        for i in range(n):
-            for j in range(n):
-                new_matrix[i][j] = old_matrix[old_ids[i]][old_ids[j]]
-
-        # 1 is added to the index to account for "no-atom case" which is 0
-        rep_order = [i + 1 for i in old_ids]
-        rep_order = rep_order + [0] * (DIMENSION - len(rep_order))
-
-        return MolGraph.from_adjacency_matrix(
-            nodes=new_atom_order, adjacency_matrix=new_matrix
-        ), torch.tensor(rep_order, dtype=torch.long)
-
-    def to_networkx(self):
-        """
-        Converts MolGraph object required by the pytorch geometric package to
-        network x data object.
-        :return: network x object
-        """
-
-        return molgraph_to_networkx(self)
 
 
 def show_adjacency_matrix(
@@ -393,44 +283,11 @@ def show_bond_probabilities(
     plt.show()
 
 
-def molgraph_to_networkx(data: MolGraph):
-    """
-    Converts MolGraph object required by the pytorch geometric package to
-    network x data object. NB: Uses simplified atom and bond features,
-    and represent as indices.
-    :param data: MolGraph object
-    :return: network x object
-    """
-    G = nx.Graph()
-
-    # Atoms
-    atom_features = data.x.cpu().numpy()
-    num_atoms = atom_features.shape[0]
-
-    for i in range(num_atoms):
-        atomic_num_idx = atom_features[i]
-        G.add_node(i, atom_num_idx=atomic_num_idx)
-        pass
-
-    # Bonds
-    edge_index = data.edge_index.cpu().numpy()
-    edge_attr = data.edge_attr.cpu().numpy()
-    num_bonds = edge_index.shape[1]
-    for j in range(num_bonds):
-        begin_idx = int(edge_index[0][j])
-        end_idx = int(edge_index[1][j])
-        bond_type_idx = edge_attr[j]
-        if not G.has_edge(begin_idx, end_idx):
-            G.add_edge(begin_idx, end_idx, bond_type_idx=bond_type_idx)
-
-    return G
-
-
 def vector_graph_sort(
     elements: torch.Tensor,
     coordinates: torch.Tensor,
     adjacency_matrix: torch.Tensor,
-) -> tuple:
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     A function to efficiently sort the graph nodes order and
     rebuilds the adjacency matrix according to the sorted order

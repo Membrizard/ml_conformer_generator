@@ -1,17 +1,14 @@
 import logging
 import re
-
-
 from time import time
 
-from torch import cuda
-from fastapi import FastAPI, UploadFile, Depends, File
+from fastapi import Depends, FastAPI, File, UploadFile
 from pydantic import BaseModel, Field
 from rdkit import Chem
 from rdkit.Chem import Draw
+from torch import cuda
 
 from ml_conformer_generator import MLConformerGenerator, evaluate_samples
-
 
 VERSION = "0.0.3"
 

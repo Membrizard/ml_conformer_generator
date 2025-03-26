@@ -1,16 +1,15 @@
 import os
+import pickle
 import time
+
 import torch
+from rdkit import Chem
 
 from ml_conformer_generator.ml_conformer_generator import (
     MLConformerGenerator,
     evaluate_samples,
 )
 from ml_conformer_generator.ml_conformer_generator.utils import get_context_shape
-from rdkit import Chem
-
-import pickle
-
 
 device = "cuda"
 generator = MLConformerGenerator(device=device)

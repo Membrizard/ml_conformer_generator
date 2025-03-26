@@ -1,12 +1,13 @@
-from openbabel import openbabel
+import pickle
 import time
+
+from openbabel import openbabel
+from rdkit import Chem
 
 from ml_conformer_generator.ml_conformer_generator import (
     MLConformerGenerator,
     evaluate_samples,
 )
-from rdkit import Chem
-import pickle
 
 device = "cpu"
 generator = MLConformerGenerator(device=device)

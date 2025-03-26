@@ -1,11 +1,14 @@
-import typing
+from typing import Tuple
+
 import torch
 import torch.nn.functional as F
 
 from .egnn import EGNNDynamics
 
 
-def clip_noise_schedule(alphas2, clip_value: float = 0.001):
+def clip_noise_schedule(
+    alphas2: torch.Tensor, clip_value: float = 0.001
+) -> torch.Tensor:
     """
     For a noise schedule given by alpha^2, this clips alpha_t / alpha_t-1. This may help improve stability during
     sampling.
@@ -51,7 +54,7 @@ def remove_mean_with_mask(x, node_mask):
 
 
 def sample_center_gravity_zero_gaussian_with_mask(
-    size: typing.Tuple[int, int, int], device: torch.device, node_mask
+    size: Tuple[int, int, int], device: torch.device, node_mask
 ):
     assert len(size) == 3
     x = torch.randn(size, device=device)
@@ -65,7 +68,7 @@ def sample_center_gravity_zero_gaussian_with_mask(
 
 
 def sample_gaussian_with_mask(
-    size: typing.Tuple[int, int, int], device: torch.device, node_mask
+    size: Tuple[int, int, int], device: torch.device, node_mask
 ):
     x = torch.randn(size, device=device)
 
@@ -114,7 +117,7 @@ class EquivariantDiffusion(torch.nn.Module):
         n_dims: int = 3,
         timesteps: int = 1000,
         noise_precision: float = 1e-4,
-        norm_values: typing.Tuple[float, float] = (
+        norm_values: Tuple[float, float] = (
             1.0,
             9.0,
         ),  # (1, max number of atom classes)
@@ -146,7 +149,7 @@ class EquivariantDiffusion(torch.nn.Module):
         return net_out
 
     @staticmethod
-    def inflate_batch_array(array, target):
+    def inflate_batch_array(array: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
         """
         Inflates the batch array (array) with only a single axis (i.e. shape = (batch_size,), or possibly more empty
         axes (i.e. shape (batch_size, 1, ..., 1)) to match the target shape.
@@ -154,7 +157,7 @@ class EquivariantDiffusion(torch.nn.Module):
         target_shape = (array.size(0),) + (1,) * (len(target.size()) - 1)
         return array.view(target_shape)
 
-    def sigma(self, gamma, target_tensor):
+    def sigma(self, gamma: torch.Tensor, target_tensor: torch.Tensor) -> torch.Tensor:
         """Computes sigma given gamma."""
         return self.inflate_batch_array(torch.sqrt(torch.sigmoid(gamma)), target_tensor)
 
@@ -165,11 +168,13 @@ class EquivariantDiffusion(torch.nn.Module):
         )
 
     @staticmethod
-    def snr(gamma):
+    def snr(gamma: torch.Tensor) -> torch.Tensor:
         """Computes signal to noise ratio (alpha^2/sigma^2) given gamma."""
         return torch.exp(-gamma)
 
-    def unnormalize(self, x, h_cat, node_mask):
+    def unnormalize(
+        self, x: torch.Tensor, h_cat: torch.Tensor, node_mask: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         x = x * self.norm_values[0]
         h_cat = h_cat * self.norm_values[1]
 
@@ -179,7 +184,7 @@ class EquivariantDiffusion(torch.nn.Module):
 
     def sigma_and_alpha_t_given_s(
         self, gamma_t: torch.Tensor, gamma_s: torch.Tensor, target_tensor: torch.Tensor
-    ):
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Computes sigma t given s, using gamma_t and gamma_s. Used during sampling.
 
@@ -202,7 +207,9 @@ class EquivariantDiffusion(torch.nn.Module):
 
         return sigma2_t_given_s, sigma_t_given_s, alpha_t_given_s
 
-    def compute_x_pred(self, net_out, zt, gamma_t):
+    def compute_x_pred(
+        self, net_out: torch.Tensor, zt: torch.Tensor, gamma_t: torch.Tensor
+    ) -> torch.Tensor:
         """Commputes x_pred, i.e. the most likely prediction of x."""
 
         sigma_t = self.sigma(gamma_t, target_tensor=net_out)
@@ -212,7 +219,13 @@ class EquivariantDiffusion(torch.nn.Module):
 
         return x_pred
 
-    def sample_p_xh_given_z0(self, z0, node_mask, edge_mask, context):
+    def sample_p_xh_given_z0(
+        self,
+        z0: torch.Tensor,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+        context: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Samples x ~ p(x|z0)."""
         zeros = torch.zeros(size=(z0.size(0), 1), device=z0.device)
         gamma_0 = self.gamma(zeros)
@@ -232,7 +245,9 @@ class EquivariantDiffusion(torch.nn.Module):
         h = h_cat
         return x, h
 
-    def sample_normal(self, mu, sigma, node_mask):
+    def sample_normal(
+        self, mu: torch.Tensor, sigma: torch.Tensor, node_mask: torch.Tensor
+    ) -> torch.Tensor:
         """Samples from a Normal distribution."""
         bs = mu.size(0)
         eps = self.sample_combined_position_feature_noise(bs, mu.size(1), node_mask)
@@ -286,7 +301,7 @@ class EquivariantDiffusion(torch.nn.Module):
 
     def sample_combined_position_feature_noise(
         self, n_samples: int, n_nodes: int, node_mask: torch.Tensor
-    ):
+    ) -> torch.Tensor:
         """
         Samples mean-centered normal noise for z_x, and standard normal noise for z_h.
         """
@@ -308,7 +323,6 @@ class EquivariantDiffusion(torch.nn.Module):
         z = torch.cat([z_x, z_h], dim=2)
         return z
 
-    # Renamed from sample to allow compilation with torch.jit.script
     def forward(
         self,
         n_samples: int,
@@ -316,8 +330,7 @@ class EquivariantDiffusion(torch.nn.Module):
         node_mask: torch.Tensor,
         edge_mask: torch.Tensor,
         context: torch.Tensor,
-        num_steps: int = 100,
-    ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Draw samples from the generative model.
         Inference
