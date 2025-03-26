@@ -25,7 +25,7 @@ class MLConformerGenerator(torch.nn.Module):
 
     def __init__(
         self,
-        time_steps: int = 1000,
+        diffusion_steps: int = 1000,
         device: torch.device = "cpu",
         dimension: int = DIMENSION,
         num_bond_types: int = NUM_BOND_TYPES,
@@ -96,14 +96,14 @@ class MLConformerGenerator(torch.nn.Module):
 
         # Update diffusion steps
         generative_model.gamma = PredefinedNoiseSchedule(
-            timesteps=time_steps, precision=1e-5
+            timesteps=diffusion_steps, precision=1e-5
         )
 
         generative_model.timesteps = torch.flip(
-            torch.arange(0, time_steps, device=device), dims=[0]
+            torch.arange(0, diffusion_steps, device=device), dims=[0]
         )
 
-        generative_model.T = time_steps
+        generative_model.T = diffusion_steps
         # ----------------------------
 
         generative_model.to(device)

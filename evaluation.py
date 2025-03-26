@@ -67,12 +67,12 @@ references = Chem.SDMolSupplier("./data/100_ccdc_validation_set.sdf")
 n_ref = len(references)
 expected_n_samples = n_samples * n_ref
 
-n_dif_steps = [10, 50, 100, 300, 500]
+n_dif_steps = [20, 50, 100, 300, 500]
 folder = "./time_steps_experiments"
 os.makedirs(folder, exist_ok=True)
 
 for time_steps in n_dif_steps:
-    generator = MLConformerGenerator(device=device, time_steps=time_steps)
+    generator = MLConformerGenerator(device=device, diffusion_steps=time_steps)
     out_file_name = f"{folder}/{time_steps}_time_steps_generated_samples.sdf"
     writer = Chem.SDWriter(out_file_name)
 
