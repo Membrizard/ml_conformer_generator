@@ -1,12 +1,10 @@
 from typing import List
 
-import torch
 from rdkit import Chem
 
-from .adj_mat_seer import AdjMatSeer
-from .egnn import EGNNDynamics
-from .equivariant_diffusion import EquivariantDiffusion, PredefinedNoiseSchedule
-from .utils import (
+import onnxruntime
+
+from ml_conformer_generator.ml_conformer_generator.utils import (
     DIMENSION,
     NUM_BOND_TYPES,
     MIN_N_NODES,
@@ -22,44 +20,37 @@ from .utils import (
 )
 
 
-class MLConformerGenerator(torch.nn.Module):
+class MLConformerGeneratorONNX:
     """
+    PyTorch-free ONNX-based implementation
     ML pipeline interface to generates novel molecules based on the 3D shape of a given reference molecule
     or an arbitrary context (principal components of MOI tensor).
     """
 
     def __init__(
         self,
-        diffusion_steps: int = 100,
-        device: torch.device = "cpu",
-        dimension: int = DIMENSION,
-        num_bond_types: int = NUM_BOND_TYPES,
+        device: str = "cpu",
         min_n_nodes: int = MIN_N_NODES,
         max_n_nodes: int = MAX_N_NODES,
         context_norms: dict = CONTEXT_NORMS,
         atom_decoder: dict = ATOM_DECODER,
-        edm_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
-        adj_mat_seer_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/adj_mat_seer_chembl_15_39.weights",
+        edm_onnx: str = "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
+        adj_mat_seer_onnx: str = "./ml_conformer_generator/ml_conformer_generator/weights/adj_mat_seer_chembl_15_39.weights",
     ):
         """
         Initialise the generator.
 
-        :param diffusion_steps: Number of denoising steps - max 1000
-        :param device: device to run the model on
-        :param dimension: Maximal supported number of heavy atoms
-        :param num_bond_types: Number of supported bond types
+        :param device: device to run the ONNX model on
         :param min_n_nodes: Minimal value for number of heavy atoms in generated samples
         :param max_n_nodes: Maximal value for number of heavy atoms in generated samples
         :param context_norms: context normalisation parameters
         :param atom_decoder: decoder dict matching int atom encodings to string representations
-        :param edm_weights: path to Equivariant Diffusion model state dict
-        :param adj_mat_seer_weights: path to AdjMatSeer model state dict
+        :param edm_onnx: path to Equivariant Diffusion model in the ONNX format
+        :param adj_mat_seer_weights: path to AdjMatSeer model in the ONNX format
         """
         super().__init__()
 
         self.device = device
-
-        self.dimension = dimension
 
         self.context_norms = context_norms
 
@@ -68,65 +59,9 @@ class MLConformerGenerator(torch.nn.Module):
         self.min_n_nodes = min_n_nodes
         self.max_n_nodes = max_n_nodes
 
-        net_dynamics = EGNNDynamics(
-            in_node_nf=9,
-            context_node_nf=3,
-            hidden_nf=420,
-            device=device,
-        )
-
-        generative_model = EquivariantDiffusion(
-            dynamics=net_dynamics,
-            in_node_nf=8,
-            timesteps=1000,
-            noise_precision=1e-5,
-        )
-
-        adj_mat_seer = AdjMatSeer(
-            dimension=dimension,
-            n_hidden=2048,
-            embedding_dim=64,
-            num_embeddings=36,
-            num_bond_types=num_bond_types,
-            device=device,
-        )
-
-        generative_model.load_state_dict(
-            torch.load(
-                edm_weights,
-                map_location=device,
-            )
-        )
-
-        adj_mat_seer.load_state_dict(
-            torch.load(
-                adj_mat_seer_weights,
-                map_location=device,
-            )
-        )
-
-        # Update denoising steps for the Equivarinat Diffusion
-        generative_model.gamma = PredefinedNoiseSchedule(
-            timesteps=diffusion_steps, precision=1e-5
-        )
-
-        generative_model.timesteps = torch.flip(
-            torch.arange(0, diffusion_steps, device=device), dims=[0]
-        )
-
-        generative_model.T = diffusion_steps
-        # ----------------------------
-
-        generative_model.to(device)
-        adj_mat_seer.to(device)
-
-        generative_model.eval()
-        adj_mat_seer.eval()
-
         self.generative_model = generative_model
         self.adj_mat_seer = adj_mat_seer
 
-    @torch.no_grad()
     def edm_samples(
         self,
         reference_context: torch.Tensor,
@@ -159,8 +94,8 @@ class MLConformerGenerator(torch.nn.Module):
             device=self.device,
         )
         x, h = self.generative_model(
-            # n_samples,
-            # max_n_nodes,
+            n_samples,
+            max_n_nodes,
             node_mask,
             edge_mask,
             batch_context,
@@ -183,14 +118,15 @@ class MLConformerGenerator(torch.nn.Module):
         optimise_geometry: bool = True,
     ) -> List[Chem.Mol]:
         """
-        Main method to generate samples from either reference molecule or an arbitrary context.
-        :param reference_conformer: A 3D conformer of a reference molecule as an RDKit Mol object
-        :param n_samples: number of molecules to generate
+
+        :param reference_conformer:
+        :param n_samples:
         :param variance:
-        :param reference_context: Arbitrary Reference context if applicable, instead of reference_conformer
-        :param n_atoms: Reference number of atoms when generating using arbitrary context
-        :param optimise_geometry: If true will apply constrained MMFF94 geometry optimisation to generated molecules
-        :return: A list of valid standardised generated molecules as RDKit Mol objects.
+        :param reference_context:
+        :param n_atoms:
+        # :param fix_noise:
+        :param optimise_geometry:
+        :return: A list of valid standardised generated molecules as RDkit Mol objects.
         """
         if reference_conformer:
             # Ensure the initial mol is stripped off Hs
@@ -255,11 +191,3 @@ class MLConformerGenerator(torch.nn.Module):
                 optimised_conformers.append(std_mol)
 
         return optimised_conformers
-
-    def export_to_onnx(self):
-        """
-        Exports the model to ONNX format with static input shapes
-        :return: Exports EquivariantDiffusion and AdjMatSeer to ONNX with static input shapes
-                 to make them compatible with ONNX runtime
-        """
-        return None

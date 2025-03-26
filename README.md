@@ -22,7 +22,8 @@ the shape Tanimoto similarity of a generated molecule to a reference is calculat
 Example performance of the model as evaluated on 100k generated samples
 
 (Used 1000 compounds from ccdc GOLD Virtual Screening dataset for generation)
-*1000 Denoising Steps*:
+
+**1000 Denoising Steps:**
 
 - The average time for generation of 50 valid samples is 96 sec (NVidia H100)
 - Average Generation speed (NVidia H100) - 0.5 molecule/sec (valid)
@@ -36,7 +37,7 @@ Example performance of the model as evaluated on 100k generated samples
 - Average Generation speed (NVidia H100) - 0.5 molecule/sec (valid)
 - Freschet Fingerprint Distance (2048) [] to ChEMBL - 3.98 to PubChem - 2.57 to ZINC (250k drugs) - 5.38
 
-*100 Denoising Steps*:
+**100 Denoising Steps:**
 
 - The average time for generation of 50 valid samples is  sec (NVidia H100)
 - Average Generation speed (NVidia H100) -  molecule/sec (valid)
@@ -74,6 +75,11 @@ samples = model.generate_conformers(reference_conformer=reference, n_samples=20)
 aligned_reference, std_samples = evaluate_samples(reference, samples)
 
 ```
+
+### Export to ONNX
+
+EDM and AdjMatSeer can be export to ONNX and have a python ONNX wrapper -
+TODO: We wil not make and api server but include export scripts for static inputs
 
 ### API Server
 - Run `docker compose up -d --build`

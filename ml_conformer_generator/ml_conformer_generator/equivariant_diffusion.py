@@ -323,8 +323,8 @@ class EquivariantDiffusion(torch.nn.Module):
 
     def forward(
         self,
-        n_samples: int,
-        n_nodes: int,
+        # n_samples: int,
+        # n_nodes: int,
         node_mask: torch.Tensor,
         edge_mask: torch.Tensor,
         context: torch.Tensor,
@@ -333,6 +333,7 @@ class EquivariantDiffusion(torch.nn.Module):
         Draw samples from the generative model.
         Inference
         """
+        n_samples, n_nodes, _ = node_mask.size()
 
         z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
 

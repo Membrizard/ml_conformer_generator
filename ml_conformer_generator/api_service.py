@@ -6,18 +6,18 @@ from fastapi import Depends, FastAPI, File, UploadFile
 from pydantic import BaseModel, Field
 from rdkit import Chem
 from rdkit.Chem import Draw
-from torch import cuda
+import torch
 
 from ml_conformer_generator import MLConformerGenerator, evaluate_samples
 
-VERSION = "0.0.3"
+VERSION = "1.0.0"
+DIFFUSION_STEPS = 100
 
 app = FastAPI(
     title=f"ML Conformer Generator Service ver {VERSION}",
     description=f"A service that generates novel molecules based on the shape of a given reference molecule. {VERSION}",
 )
 
-# logger = logging.getLogger(__name__)
 logger = logging.getLogger("uvicorn")
 logger.setLevel(logging.INFO)
 
@@ -91,12 +91,12 @@ def generate_svg_string(compound: Chem.Mol):
 
 
 # Initiate the Generator
-if cuda.is_available():
-    device = "cuda"
+if torch.cuda.is_available():
+    device = torch.device("cuda")
 else:
-    device = "cpu"
+    device = torch.device("cpu")
 
-generator = MLConformerGenerator(device=device)
+generator = MLConformerGenerator(device=device, diffusion_steps=DIFFUSION_STEPS)
 
 
 @app.post("/generate_molecules")

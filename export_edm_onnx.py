@@ -59,9 +59,9 @@ def prepare_dummy_input(device):
         ),
     }
 
-    n_samples = 2
-    min_n_nodes = 18
-    max_n_nodes = 20
+    n_samples = 20
+    min_n_nodes = 15
+    max_n_nodes = 39
 
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
     nodesxsample = []
@@ -96,24 +96,23 @@ def prepare_dummy_input(device):
     batch_context = (
         batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
     )
-    return batch_size, max_n_nodes, node_mask, edge_mask, batch_context
+    return node_mask, edge_mask, batch_context
 
 
-n_samples, n_nodes, node_mask, edge_mask, context = prepare_dummy_input(device)
+node_mask, edge_mask, context = prepare_dummy_input(device)
 
 
-export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
+# export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
 onnx_model = torch.onnx.export(
     generative_model,
-    (n_samples, n_nodes, node_mask, edge_mask, context),
-    "moi_edm_chembl_15_39.onnx",
-    input_names=["n_samples", "n_nodes", "node_mask", "edge_mask", "context"],
+    (node_mask, edge_mask, context),
+    input_names=["node_mask", "edge_mask", "context"],
     output_names=["x", "h"],
-    export_options=export_options,
+    export_params=True,
     opset_version=18,
     verbose=True,
     dynamo=True,
 )
 
 onnx_model.optimize()
-onnx_model.save("opt_edm_moi_chembl_15_39.onnx")
+onnx_model.save("100_steps_edm_moi_chembl_15_39.onnx")
