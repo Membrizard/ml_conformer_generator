@@ -22,9 +22,10 @@ the shape Tanimoto similarity of a generated molecule to a reference is calculat
 Example performance of the model as evaluated on 100k generated samples
 
 (Used 1000 compounds from ccdc GOLD Virtual Screening dataset for generation)
+*1000 Denoising Steps*:
 
-- The average time for generation of 50 valid samples is 96 sec (NVidia H100, TorchScript)
-- Average Generation speed (NVidia H100, TorchScript) - 0.5 molecule/sec (valid)
+- The average time for generation of 50 valid samples is 96 sec (NVidia H100)
+- Average Generation speed (NVidia H100) - 0.5 molecule/sec (valid)
 - Estimated GPU memory Consumtion per single Generation thread - 2.5 GB
 - Average Shape Tanimoto similarity - 53.38%
 - Maximum Shape Tanimoto similarity - 99.21%
@@ -32,7 +33,23 @@ Example performance of the model as evaluated on 100k generated samples
 - % Of chemically unique molecules in reference to training dataset (not found in training dataset) - 99.81%
 - % Of valid molecules in generated batch (as defined by the standardisation pipeline) - 48.59%
 - % Of chemically unique molecules within the generated set (as evaluated on 80k generated molecules) - 99.80%
-- Average Generation speed (NVidia H100, TorchScript) - 0.5 molecule/sec (valid)
+- Average Generation speed (NVidia H100) - 0.5 molecule/sec (valid)
+- Freschet Fingerprint Distance (2048) [] to ChEMBL - 3.98 to PubChem - 2.57 to ZINC (250k drugs) - 5.38
+
+*100 Denoising Steps*:
+
+- The average time for generation of 50 valid samples is 96 sec (NVidia H100)
+- Average Generation speed (NVidia H100) - 0.5 molecule/sec (valid)
+- Estimated GPU memory Consumtion per single Generation thread - 2.5 GB
+- Average Shape Tanimoto similarity - 53.38%
+- Maximum Shape Tanimoto similarity - 99.21%
+- Average Chemical Tanimoto similarity - 10.8%
+- % Of chemically unique molecules in reference to training dataset (not found in training dataset) - 99.81%
+- % Of valid molecules in generated batch (as defined by the standardisation pipeline) - 48.59%
+- % Of chemically unique molecules within the generated set (as evaluated on 80k generated molecules) - 99.80%
+- Average Generation speed (NVidia H100) - 0.5 molecule/sec (valid)
+- Freschet Fingerprint Distance (2048) [] to ChEMBL - 3.98 to PubChem - 2.57 to ZINC (250k drugs) - 5.38
+
 
 Generator requirements are in  ./ml_conformer_generator/generator_requirements.txt
 
@@ -113,10 +130,3 @@ cd ./frontend
 streamlit run app_ui.py
 ```
 - To build the 3D viewer go to ./frontend/speck/fronted and run `npm start build`
-
-
-
-Notes
-- Fix the Generator for min and max variance instead of 1 value
-- Make generator add svg's of Molecules along with other data
-- Implement Cheminformatics service for preparation of molecules for 3D viewer

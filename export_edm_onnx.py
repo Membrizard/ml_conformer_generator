@@ -4,7 +4,7 @@ import torch
 
 from ml_conformer_generator.ml_conformer_generator.egnn import EGNNDynamics
 from ml_conformer_generator.ml_conformer_generator.equivariant_diffusion import (
-    EquivariantDiffusion,
+    EquivariantDiffusion, PredefinedNoiseSchedule
 )
 
 device = "cpu"
@@ -18,17 +18,29 @@ net_dynamics = EGNNDynamics(
 generative_model = EquivariantDiffusion(
     dynamics=net_dynamics,
     in_node_nf=8,
-    timesteps=10,
+    timesteps=1000,
     noise_precision=1e-5,
 )
 
-# generative_model.load_state_dict(
-#     torch.load(
-#         "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
-#         map_location=device,
-#     )
-# )
+generative_model.load_state_dict(
+    torch.load(
+        "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
+        map_location=device,
+    )
+)
 
+diffusion_steps = 100
+
+# Update denoising steps for the Equivarinat Diffusion
+generative_model.gamma = PredefinedNoiseSchedule(
+            timesteps=diffusion_steps, precision=1e-5
+        )
+
+generative_model.timesteps = torch.flip(
+            torch.arange(0, diffusion_steps, device=device), dims=[0]
+        )
+
+generative_model.T = diffusion_steps
 
 generative_model.to(device)
 generative_model.eval()
@@ -47,10 +59,9 @@ def prepare_dummy_input(device):
         ),
     }
 
-    n_samples = 100
+    n_samples = 2
     min_n_nodes = 18
     max_n_nodes = 20
-    fixed_max_n_nodes = 39
 
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
     nodesxsample = []
@@ -62,9 +73,9 @@ def prepare_dummy_input(device):
 
     batch_size = nodesxsample.size(0)
 
-    node_mask = torch.zeros(batch_size, fixed_max_n_nodes)
+    node_mask = torch.zeros(batch_size, max_n_nodes)
     for i in range(batch_size):
-        node_mask[i, 0 : nodesxsample[i]] = 1
+        node_mask[i, 0: nodesxsample[i]] = 1
 
     # Compute edge_mask
 
@@ -72,7 +83,7 @@ def prepare_dummy_input(device):
     diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
     edge_mask *= diag_mask
     edge_mask = edge_mask.view(
-        batch_size * fixed_max_n_nodes * fixed_max_n_nodes, 1
+        batch_size * max_n_nodes * max_n_nodes, 1
     ).to(device)
     node_mask = node_mask.unsqueeze(2).to(device)
 
@@ -83,9 +94,9 @@ def prepare_dummy_input(device):
     batch_context = normed_context.unsqueeze(0).repeat(batch_size, 1)
 
     batch_context = (
-        batch_context.unsqueeze(1).repeat(1, fixed_max_n_nodes, 1) * node_mask
+        batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
     )
-    return batch_size, fixed_max_n_nodes, node_mask, edge_mask, batch_context
+    return batch_size, max_n_nodes, node_mask, edge_mask, batch_context
 
 
 n_samples, n_nodes, node_mask, edge_mask, context = prepare_dummy_input(device)
@@ -107,4 +118,4 @@ onnx_model = torch.onnx.export(
 )
 
 onnx_model.optimize()
-onnx_model.save("edm_moi_chembl_15_39.onnx")
+onnx_model.save("opt_edm_moi_chembl_15_39.onnx")

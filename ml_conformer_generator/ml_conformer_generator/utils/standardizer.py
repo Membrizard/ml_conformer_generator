@@ -92,7 +92,7 @@ def standardize_mol(mol: Chem.Mol, optimize_geometry: bool = True) -> Chem.Mol:
         # Leave only largest fragment
         m = rdMolStandardize.FragmentParent(mol)
         # Kekulize
-        m = Chem.Kekulize(m)
+        Chem.Kekulize(m)
         # Flatten Tartrates
         m = flatten_tartrate_mol(m)
 

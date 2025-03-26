@@ -12,8 +12,6 @@ def clip_noise_schedule(
     """
     For a noise schedule given by alpha^2, this clips alpha_t / alpha_t-1. This may help improve stability during
     sampling.
-
-    Remark - rewritten in torch only
     """
 
     alphas2 = torch.cat((torch.ones(1), alphas2), dim=0)
@@ -335,14 +333,13 @@ class EquivariantDiffusion(torch.nn.Module):
         Draw samples from the generative model.
         Inference
         """
-        # Handle case of single sample generation? due to optimisations in flow of EGNN Dynamics
 
         z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
 
         # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
         for s in self.timesteps:
             s_array = torch.full([n_samples, 1], fill_value=s, device=z.device)
-            t_array = s_array + 1
+            t_array = s_array + 1.0
             s_array = s_array / self.T
             t_array = t_array / self.T
 
