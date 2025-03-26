@@ -1,19 +1,19 @@
+import base64
 import random
 import re
-import base64
+
 import streamlit as st
 import streamlit.components.v1 as components
 from rdkit import Chem
-
 from stspeck import speck
 from utils import (
     apply_custom_styling,
-    prepare_speck_model,
-    generate_samples_button,
-    display_search_results,
-    header_image,
-    stylable_container,
     container_css,
+    display_search_results,
+    generate_samples_button,
+    header_image,
+    prepare_speck_model,
+    stylable_container,
 )
 
 # Prepare session state values

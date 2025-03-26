@@ -1,11 +1,12 @@
 # """
-# Based on
+# The Implementation is based on
 # Grant, J.A., Pickup, B.T. (1997). Gaussian shape methods.
 # In: van Gunsteren, W.F., Weiner, P.K., Wilkinson, A.J. (eds)
 # Computer Simulation of Biomolecular Systems.
 # Computer Simulations of Biomolecular Systems, vol 3. Springer, Dordrecht.
 # https://doi.org/10.1007/978-94-017-1120-3_5
 # """
+from typing import Tuple, List, Union
 
 import numpy as np
 import torch
@@ -20,7 +21,7 @@ def get_shape_quadrupole_for_molecule(
     generic_atom_radius: float = ATOM_RADIUS,
     n_terms: int = 6,
     neighbour_threshold: float = 2 * AMPLITUDE,
-):
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Calculates shape quadrupole for a molecule in a principal frame
     :param coordinates: atom coordinates
@@ -205,7 +206,7 @@ def product_of_n_gaussians(
     centers: torch.Tensor,
     alpha: float,
     amplitude: float = AMPLITUDE,
-) -> tuple:
+) -> Tuple[torch.Tensor, Union[float, torch.Tensor], Union[float, torch.Tensor]]:
     """
     Calculates product of n Gaussians within a batch with the same amplitude and alpha, but different centers.
     :param centers: list of centers of Gaussians to be multiplied (n, subset_size, 3)
@@ -310,7 +311,7 @@ def find_r_cliques_fast(adj_mat: torch.Tensor, clique_order: int) -> torch.Tenso
     return torch.tensor(cliques_found, dtype=torch.long)
 
 
-def build_neighbor_sets(adj_mat: torch.Tensor):
+def build_neighbor_sets(adj_mat: torch.Tensor) -> List:
     """
     Converts (n,n) bool adjacency into a list of boolean masks for quick neighbor intersection.
 
@@ -323,7 +324,7 @@ def build_neighbor_sets(adj_mat: torch.Tensor):
     return neigh_masks
 
 
-def get_alpha(atom_radius: float = ATOM_RADIUS, gaussian_amplitude: float = AMPLITUDE):
+def get_alpha(atom_radius: float = ATOM_RADIUS, gaussian_amplitude: float = AMPLITUDE) -> float:
     # Calculate alpha
     lyambda_ = 4 * np.pi / 3 / gaussian_amplitude
     k_a = np.pi / lyambda_ ** (2 / 3)
@@ -433,7 +434,7 @@ def torch_evaluate_density_on_grid(
     grid: Grid,
     alpha: float,
     amplitude: float = AMPLITUDE,
-):
+) -> torch.Tensor:
     grid_points = grid.points
     dist_sq = torch.cdist(grid_points, coordinates) ** 2
     gaussian_vals = amplitude * torch.exp(-dist_sq * alpha)
@@ -442,7 +443,7 @@ def torch_evaluate_density_on_grid(
     return density
 
 
-def rotate_coord(coord, angles):
+def rotate_coord(coord: torch.Tensor, angles: torch.Tensor):
     cos_a = torch.cos(angles)
     sin_a = torch.sin(angles)
 

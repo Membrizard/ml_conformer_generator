@@ -1,26 +1,23 @@
 import logging
 import re
-
-
 from time import time
 
-from torch import cuda
-from fastapi import FastAPI, UploadFile, Depends, File
+from fastapi import Depends, FastAPI, File, UploadFile
 from pydantic import BaseModel, Field
 from rdkit import Chem
 from rdkit.Chem import Draw
+import torch
 
 from ml_conformer_generator import MLConformerGenerator, evaluate_samples
 
-
-VERSION = "0.0.3"
+VERSION = "1.0.0"
+DIFFUSION_STEPS = 100
 
 app = FastAPI(
     title=f"ML Conformer Generator Service ver {VERSION}",
     description=f"A service that generates novel molecules based on the shape of a given reference molecule. {VERSION}",
 )
 
-# logger = logging.getLogger(__name__)
 logger = logging.getLogger("uvicorn")
 logger.setLevel(logging.INFO)
 
@@ -92,13 +89,14 @@ def generate_svg_string(compound: Chem.Mol):
     # svg = "<div>" + svg + "</div>"
     return svg
 
-# Initiate the Generator
-if cuda.is_available():
-    device = 'cuda'
-else:
-    device = 'cpu'
 
-generator = MLConformerGenerator(device=device)
+# Initiate the Generator
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
+
+generator = MLConformerGenerator(device=device, diffusion_steps=DIFFUSION_STEPS)
 
 
 @app.post("/generate_molecules")
@@ -186,7 +184,9 @@ if __name__ == "__main__":
 
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
 
-    if device == 'cuda':
+    if device == "cuda":
         logger.info("--- Model server is running on GPU ---")
     else:
-        logger.info("--- Model server is running on CPU. The generation will take more time ---")
+        logger.info(
+            "--- Model server is running on CPU. The generation will take more time ---"
+        )

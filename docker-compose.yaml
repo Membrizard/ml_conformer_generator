@@ -11,13 +11,7 @@ services:
     restart: "always"
     networks:
       - ml_conformer_generator_network
-#    deploy:
-#      resources:
-#        reservations:
-#          devices:
-#            - driver: nvidia
-#              count: all
-#              capabilities: [ gpu ]
+
 
 networks:
   ml_conformer_generator_network:

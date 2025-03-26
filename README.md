@@ -1,6 +1,6 @@
 # ML Conformer Generator (ChemBl)
 
-A tool to generate random molecules, which have a conformer similar in shape to a reference.
+A tool for shape-constrained molecule generation.
 
 The solution utilises an Equivariant Diffusion Model (EDM) [] to generate atom coordinates and types using a shape constrain,
 which are then used by a GCN model [] for atom adjacency prediction. Both models outputs are combined to construct
@@ -13,21 +13,44 @@ The standardiser pipeline uses the following steps:
 - Checks for atom valence
 - Kekulises molecules
 - RDkit Sanitization
-- Molecular Dynamics geometry optimisation with MMFF
+- Molecular Dynamics geometry optimisation with MMFF94
 
 The evaluation pipeline assesses the shape similarity of the generated molecules to a reference. 
 The assessment is based on a shape tanimoto similarity score [], calculated using Gaussian Molecular Volume intersections.
 the shape Tanimoto similarity of a generated molecule to a reference is calculated ignoring hydrogens in both reference and generated sample.
 
-Example performance of the model as evaluated on 100k samples
-(Used 1000 compounds from ccdc GOLD Virtual Screening dataset)
-- The estimated average time for generation of 50 valid samples is 90-160 sec (GPU)
+Example performance of the model as evaluated on 100k generated samples
+
+(Used 1000 compounds from ccdc GOLD Virtual Screening dataset for generation)
+
+**1000 Denoising Steps:**
+
+- The average time for generation of 50 valid samples is 96 sec (NVidia H100)
+- Average Generation speed (NVidia H100) - 0.5 molecule/sec (valid)
+- Estimated GPU memory Consumtion per single Generation thread - up to 4.0 GB
 - Average Shape Tanimoto similarity - 53.38%
+- Maximum Shape Tanimoto similarity - 99.21%
 - Average Chemical Tanimoto similarity - 10.8%
 - % Of chemically unique molecules in reference to training dataset (not found in training dataset) - 99.81%
 - % Of valid molecules in generated batch (as defined by the standardisation pipeline) - 48.59%
 - % Of chemically unique molecules within the generated set (as evaluated on 80k generated molecules) - 99.80%
-- Frechet Chemical Distance (as evaluated on 80k generated molecules) - 
+- Average Generation speed (NVidia H100) - 0.5 molecule/sec (valid)
+- Freschet Fingerprint Distance (2048) [] to ChEMBL - 3.98 to PubChem - 2.57 to ZINC (250k drugs) - 5.38
+
+**100 Denoising Steps:**
+
+- The average time for generation of 50 valid samples is  sec (NVidia H100)
+- Average Generation speed (NVidia H100) -  molecule/sec (valid)
+- Estimated GPU memory Consumtion per single Generation thread - 2.5 GB
+- Average Shape Tanimoto similarity - %
+- Maximum Shape Tanimoto similarity - %
+- Average Chemical Tanimoto similarity - %
+- % Of chemically unique molecules in reference to training dataset (not found in training dataset) - %
+- % Of valid molecules in generated batch (as defined by the standardisation pipeline) - %
+- % Of chemically unique molecules within the generated set (as evaluated on 80k generated molecules) - %
+- Average Generation speed (NVidia H100) -  molecule/sec (valid)
+- Freschet Fingerprint Distance (2048) [] to ChEMBL -  to PubChem -  to ZINC (250k drugs) - 
+
 
 Generator requirements are in  ./ml_conformer_generator/generator_requirements.txt
 
@@ -36,15 +59,14 @@ Frontend requirements are in ./frontend/fronted_requirements.txt
 
 ## Usage
 
-### Python Interface
-Look for interactive example in `./ml_conformer_generator_app_demo.ipynb`
+### Python API
+Look for interactive example in `./python_api_demo.ipynb`
 
 ```
 from rdkit import Chem
 from ml_conformer_generator import MLConformerGenerator, evaluate_samples
 
-
-model = MLConformerGenerator(device="cpu")
+model = MLConformerGenerator(device="cpu", diffusion_steps=100)
 
 reference = Сhem.MolFromMolFile('')
 
@@ -53,6 +75,11 @@ samples = model.generate_conformers(reference_conformer=reference, n_samples=20)
 aligned_reference, std_samples = evaluate_samples(reference, samples)
 
 ```
+
+### Export to ONNX
+
+EDM and AdjMatSeer can be export to ONNX and have a python ONNX wrapper -
+TODO: We wil not make and api server but include export scripts for static inputs
 
 ### API Server
 - Run `docker compose up -d --build`
@@ -109,10 +136,3 @@ cd ./frontend
 streamlit run app_ui.py
 ```
 - To build the 3D viewer go to ./frontend/speck/fronted and run `npm start build`
-
-
-
-Notes
-- Fix the Generator for min and max variance instead of 1 value
-- Make generator add svg's of Molecules along with other data
-- Implement Cheminformatics service for preparation of molecules for 3D viewer
