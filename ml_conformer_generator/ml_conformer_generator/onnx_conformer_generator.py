@@ -1,11 +1,9 @@
 from typing import List
 
-import torch
+import numpy
 from rdkit import Chem
 
-from .adj_mat_seer import AdjMatSeer
-from .egnn import EGNNDynamics
-from .equivariant_diffusion import EquivariantDiffusion, PredefinedNoiseSchedule
+
 from .utils import (
     DIMENSION,
     NUM_BOND_TYPES,
@@ -22,44 +20,26 @@ from .utils import (
 )
 
 
-class MLConformerGenerator(torch.nn.Module):
+class MLConformerGeneratorONNX:
     """
-    ML pipeline interface to generates novel molecules based on the 3D shape of a given reference molecule
+    PyTorch - free ONNX implementation.
+    pipeline interface to generates novel molecules based on the 3D shape of a given reference molecule
     or an arbitrary context (principal components of MOI tensor).
     """
 
     def __init__(
         self,
-        diffusion_steps: int = 100,
-        device: torch.device = "cpu",
-        dimension: int = DIMENSION,
-        num_bond_types: int = NUM_BOND_TYPES,
+        device: str = "cpu",
         min_n_nodes: int = MIN_N_NODES,
         max_n_nodes: int = MAX_N_NODES,
         context_norms: dict = CONTEXT_NORMS,
         atom_decoder: dict = ATOM_DECODER,
-        edm_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
-        adj_mat_seer_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/adj_mat_seer_chembl_15_39.weights",
+        edm_onnx: str = "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
+        adj_mat_seer_onnx: str = "./ml_conformer_generator/ml_conformer_generator/weights/adj_mat_seer_chembl_15_39.weights",
     ):
-        """
-        Initialise the generator.
-
-        :param diffusion_steps: Number of denoising steps - max 1000
-        :param device: device to run the model on
-        :param dimension: Maximal supported number of heavy atoms
-        :param num_bond_types: Number of supported bond types
-        :param min_n_nodes: Minimal value for number of heavy atoms in generated samples
-        :param max_n_nodes: Maximal value for number of heavy atoms in generated samples
-        :param context_norms: context normalisation parameters
-        :param atom_decoder: decoder dict matching int atom encodings to string representations
-        :param edm_weights: path to Equivariant Diffusion model state dict
-        :param adj_mat_seer_weights: path to AdjMatSeer model state dict
-        """
-        super().__init__()
 
         self.device = device
 
-        self.dimension = dimension
 
         self.context_norms = context_norms
 
@@ -68,68 +48,12 @@ class MLConformerGenerator(torch.nn.Module):
         self.min_n_nodes = min_n_nodes
         self.max_n_nodes = max_n_nodes
 
-        net_dynamics = EGNNDynamics(
-            in_node_nf=9,
-            context_node_nf=3,
-            hidden_nf=420,
-            device=device,
-        )
-
-        generative_model = EquivariantDiffusion(
-            dynamics=net_dynamics,
-            in_node_nf=8,
-            timesteps=1000,
-            noise_precision=1e-5,
-        )
-
-        adj_mat_seer = AdjMatSeer(
-            dimension=dimension,
-            n_hidden=2048,
-            embedding_dim=64,
-            num_embeddings=36,
-            num_bond_types=num_bond_types,
-            device=device,
-        )
-
-        generative_model.load_state_dict(
-            torch.load(
-                edm_weights,
-                map_location=device,
-            )
-        )
-
-        adj_mat_seer.load_state_dict(
-            torch.load(
-                adj_mat_seer_weights,
-                map_location=device,
-            )
-        )
-
-        # Update denoising steps for the Equivarinat Diffusion
-        generative_model.gamma = PredefinedNoiseSchedule(
-            timesteps=diffusion_steps, precision=1e-5
-        )
-
-        generative_model.timesteps = torch.flip(
-            torch.arange(0, diffusion_steps, device=device), dims=[0]
-        )
-
-        generative_model.T = diffusion_steps
-        # ----------------------------
-
-        generative_model.to(device)
-        adj_mat_seer.to(device)
-
-        generative_model.eval()
-        adj_mat_seer.eval()
-
         self.generative_model = generative_model
         self.adj_mat_seer = adj_mat_seer
 
-    @torch.no_grad()
     def edm_samples(
         self,
-        reference_context: torch.Tensor,
+        reference_context: numpy.ndarray,
         n_samples: int = 100,
         max_n_nodes: int = 32,
         min_n_nodes: int = 25,

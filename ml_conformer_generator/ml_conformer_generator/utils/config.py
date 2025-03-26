@@ -1,5 +1,7 @@
 import torch
 
+# Configuration file for high-level framework parameters
+
 DIMENSION = 42
 NUM_BOND_TYPES = 5
 CONTEXT_NORMS = {
