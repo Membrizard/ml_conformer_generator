@@ -104,6 +104,7 @@ class MLConformerGenerator(torch.nn.Module):
         )
 
         generative_model.T = time_steps
+        # ----------------------------
 
         generative_model.to(device)
         adj_mat_seer.to(device)
