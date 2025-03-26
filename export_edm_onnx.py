@@ -5,7 +5,7 @@ from ml_conformer_generator.ml_conformer_generator.compilable_equivariant_diffus
     EquivariantDiffusion,
 )
 
-device = "cuda"
+device = "cpu"
 net_dynamics = EGNNDynamics(
     in_node_nf=9,
     context_node_nf=3,
@@ -43,7 +43,6 @@ def prepare_dummy_input(device):
     min_n_nodes = 18
     max_n_nodes = 20
     fixed_max_n_nodes = 39
-
 
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
     nodesxsample = []
