@@ -1,7 +1,7 @@
 import torch
 import random
-from ml_conformer_generator.ml_conformer_generator.compilable_egnn import EGNNDynamics
-from ml_conformer_generator.ml_conformer_generator.compilable_equivariant_diffusion import (
+from ml_conformer_generator.ml_conformer_generator.egnn import EGNNDynamics
+from ml_conformer_generator.ml_conformer_generator.equivariant_diffusion import (
     EquivariantDiffusion,
 )
 
