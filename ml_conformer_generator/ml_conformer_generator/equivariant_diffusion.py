@@ -316,6 +316,7 @@ class EquivariantDiffusion(torch.nn.Module):
         node_mask: torch.Tensor,
         edge_mask: torch.Tensor,
         context: torch.Tensor,
+        num_steps: int = 100,
     ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
         """
         Draw samples from the generative model.

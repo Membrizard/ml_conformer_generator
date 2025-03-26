@@ -3,7 +3,7 @@ import torch
 import random
 
 from .egnn import EGNNDynamics
-from .equivariant_diffusion import EquivariantDiffusion
+from .equivariant_diffusion import EquivariantDiffusion, PredefinedNoiseSchedule
 from .adj_mat_seer import AdjMatSeer
 
 from .utils import (
@@ -25,6 +25,7 @@ class MLConformerGenerator(torch.nn.Module):
 
     def __init__(
         self,
+        time_steps: int = 1000,
         device: torch.device = "cpu",
         dimension: int = DIMENSION,
         num_bond_types: int = NUM_BOND_TYPES,
@@ -92,6 +93,17 @@ class MLConformerGenerator(torch.nn.Module):
                 map_location=device,
             )
         )
+
+        # Update diffusion steps
+        generative_model.gamma = PredefinedNoiseSchedule(
+            timesteps=time_steps, precision=1e-5
+        )
+
+        generative_model.timesteps = torch.flip(
+            torch.arange(0, time_steps, device=device), dims=[0]
+        )
+
+        generative_model.T = time_steps
 
         generative_model.to(device)
         adj_mat_seer.to(device)

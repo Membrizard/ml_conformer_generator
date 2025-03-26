@@ -16,7 +16,7 @@ net_dynamics = EGNNDynamics(
 generative_model = EquivariantDiffusion(
     dynamics=net_dynamics,
     in_node_nf=8,
-    timesteps=1000,
+    timesteps=100,
     noise_precision=1e-5,
 )
 
