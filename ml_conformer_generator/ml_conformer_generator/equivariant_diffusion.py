@@ -140,6 +140,10 @@ class EquivariantDiffusion(torch.nn.Module):
             torch.arange(0, timesteps, device=dynamics.device), dims=[0]
         )
 
+        # self.register_buffer("timesteps", torch.flip(
+        #        torch.arange(0, timesteps, device=dynamics.device), dims=[0])
+        #                      )
+
         self.norm_values = norm_values
 
     def phi(self, x, t, node_mask, edge_mask, context):
@@ -323,8 +327,6 @@ class EquivariantDiffusion(torch.nn.Module):
 
     def forward(
         self,
-        # n_samples: int,
-        # n_nodes: int,
         node_mask: torch.Tensor,
         edge_mask: torch.Tensor,
         context: torch.Tensor,
