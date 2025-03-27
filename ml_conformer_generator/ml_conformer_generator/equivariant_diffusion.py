@@ -134,19 +134,23 @@ class EquivariantDiffusion(torch.nn.Module):
 
         self.num_classes = self.in_node_nf
 
-        # Declare timesteps-related tensors
+        # Declare time steps-related tensors
         self.T = timesteps
-        self.timesteps = torch.flip(
+        self.time_steps = torch.flip(
             torch.arange(0, timesteps, device=dynamics.device), dims=[0]
         )
 
-        # self.register_buffer("timesteps", torch.flip(
-        #        torch.arange(0, timesteps, device=dynamics.device), dims=[0])
-        #                      )
-
         self.norm_values = norm_values
 
-    def phi(self, x, t, node_mask, edge_mask, context):
+    def phi(self,
+            x: torch.Tensor,
+            t: torch.Tensor,
+            node_mask: torch.Tensor,
+            edge_mask: torch.Tensor,
+            context: torch.Tensor) -> torch.Tensor:
+        """
+        Denoising pass
+        """
         net_out = self.dynamics(t, x, node_mask, edge_mask, context)
         return net_out
 
@@ -340,7 +344,7 @@ class EquivariantDiffusion(torch.nn.Module):
         z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
 
         # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
-        for s in self.timesteps:
+        for s in self.time_steps:
             s_array = torch.full([n_samples, 1], fill_value=s, device=z.device)
             t_array = s_array + 1.0
             s_array = s_array / self.T

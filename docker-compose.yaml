@@ -6,8 +6,8 @@ services:
     container_name: ml-conformer-generator
     environment:
       PORT: 8000
-    ports:
-      - '8000:8000'
+    expose:
+      - 8000
     restart: "always"
     networks:
       - ml_conformer_generator_network
