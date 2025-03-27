@@ -159,8 +159,6 @@ class MLConformerGenerator(torch.nn.Module):
             device=self.device,
         )
         x, h = self.generative_model(
-            # n_samples,
-            # max_n_nodes,
             node_mask,
             edge_mask,
             batch_context,
