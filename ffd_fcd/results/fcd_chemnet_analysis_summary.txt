@@ -1,0 +1,103 @@
+FCD ChemNet Analysis Summary
+==================================================
+
+Analysis Date: 2025-03-26 18:20:44
+Number of molecule sets analyzed: 13
+Total number of comparisons: 78
+Total processing time: 1371.90 seconds
+
+Molecule Sets:
+- 93k_OPENBABEL_samples 1: 50018 molecules
+- 100_time_steps_generated_samples: 5045 molecules
+- 50_time_steps_generated_samples: 4968 molecules
+- 48k_STRUCTURE_SEER_samples 1: 48166 molecules
+- 20_time_steps_generated_samples: 4796 molecules
+- 300_time_steps_generated_samples: 5089 molecules
+- chembl_molecules_100k_filtered: 100000 molecules
+- zinc_samples_unfiltered_100k: 100000 molecules
+- zinc_samples_filtered_100k: 100000 molecules
+- chembl_molecules_100k: 100000 molecules
+- pubchem_molecules_100k_filtered: 100000 molecules
+- pubchem_molecules_100k: 99990 molecules
+- 250k_rndm_zinc_drugs_clean_3: 249455 molecules
+
+Results Summary:
+                                Set1                              Set2   Size1   Size2           FCD
+0            93k_OPENBABEL_samples 1  100_time_steps_generated_samples   50018    5045  1.107682e-04
+1            93k_OPENBABEL_samples 1   50_time_steps_generated_samples   50018    4968  1.441910e-04
+2            93k_OPENBABEL_samples 1      48k_STRUCTURE_SEER_samples 1   50018   48166  7.439427e-05
+3            93k_OPENBABEL_samples 1   20_time_steps_generated_samples   50018    4796  2.930758e-04
+4            93k_OPENBABEL_samples 1  300_time_steps_generated_samples   50018    5089  1.005715e-04
+5            93k_OPENBABEL_samples 1    chembl_molecules_100k_filtered   50018  100000  3.542882e-04
+6            93k_OPENBABEL_samples 1      zinc_samples_unfiltered_100k   50018  100000  1.380823e-03
+7            93k_OPENBABEL_samples 1        zinc_samples_filtered_100k   50018  100000  1.389341e-03
+8            93k_OPENBABEL_samples 1             chembl_molecules_100k   50018  100000  3.185689e-03
+9            93k_OPENBABEL_samples 1   pubchem_molecules_100k_filtered   50018  100000  3.064085e-03
+10           93k_OPENBABEL_samples 1            pubchem_molecules_100k   50018   99990  5.450697e-03
+11           93k_OPENBABEL_samples 1      250k_rndm_zinc_drugs_clean_3   50018  249455  3.569152e-03
+12  100_time_steps_generated_samples   50_time_steps_generated_samples    5045    4968  4.915373e-06
+13  100_time_steps_generated_samples      48k_STRUCTURE_SEER_samples 1    5045   48166  9.937167e-06
+14  100_time_steps_generated_samples   20_time_steps_generated_samples    5045    4796  7.532313e-05
+15  100_time_steps_generated_samples  300_time_steps_generated_samples    5045    5089  1.215525e-05
+16  100_time_steps_generated_samples    chembl_molecules_100k_filtered    5045  100000  6.011694e-04
+17  100_time_steps_generated_samples      zinc_samples_unfiltered_100k    5045  100000  1.093373e-03
+18  100_time_steps_generated_samples        zinc_samples_filtered_100k    5045  100000  1.100108e-03
+19  100_time_steps_generated_samples             chembl_molecules_100k    5045  100000  4.339774e-03
+20  100_time_steps_generated_samples   pubchem_molecules_100k_filtered    5045  100000  2.703276e-03
+21  100_time_steps_generated_samples            pubchem_molecules_100k    5045   99990  6.280318e-03
+22  100_time_steps_generated_samples      250k_rndm_zinc_drugs_clean_3    5045  249455  2.747597e-03
+23   50_time_steps_generated_samples      48k_STRUCTURE_SEER_samples 1    4968   48166  2.201302e-05
+24   50_time_steps_generated_samples   20_time_steps_generated_samples    4968    4796  5.229342e-05
+25   50_time_steps_generated_samples  300_time_steps_generated_samples    4968    5089  2.022577e-05
+26   50_time_steps_generated_samples    chembl_molecules_100k_filtered    4968  100000  6.715763e-04
+27   50_time_steps_generated_samples      zinc_samples_unfiltered_100k    4968  100000  1.121240e-03
+28   50_time_steps_generated_samples        zinc_samples_filtered_100k    4968  100000  1.127782e-03
+29   50_time_steps_generated_samples             chembl_molecules_100k    4968  100000  4.509932e-03
+30   50_time_steps_generated_samples   pubchem_molecules_100k_filtered    4968  100000  2.704192e-03
+31   50_time_steps_generated_samples            pubchem_molecules_100k    4968   99990  6.410459e-03
+32   50_time_steps_generated_samples      250k_rndm_zinc_drugs_clean_3    4968  249455  2.708173e-03
+33      48k_STRUCTURE_SEER_samples 1   20_time_steps_generated_samples   48166    4796  1.217019e-04
+34      48k_STRUCTURE_SEER_samples 1  300_time_steps_generated_samples   48166    5089  9.525445e-06
+35      48k_STRUCTURE_SEER_samples 1    chembl_molecules_100k_filtered   48166  100000  5.342338e-04
+36      48k_STRUCTURE_SEER_samples 1      zinc_samples_unfiltered_100k   48166  100000  1.035855e-03
+37      48k_STRUCTURE_SEER_samples 1        zinc_samples_filtered_100k   48166  100000  1.042193e-03
+38      48k_STRUCTURE_SEER_samples 1             chembl_molecules_100k   48166  100000  4.169210e-03
+39      48k_STRUCTURE_SEER_samples 1   pubchem_molecules_100k_filtered   48166  100000  2.791976e-03
+40      48k_STRUCTURE_SEER_samples 1            pubchem_molecules_100k   48166   99990  6.257378e-03
+41      48k_STRUCTURE_SEER_samples 1      250k_rndm_zinc_drugs_clean_3   48166  249455  2.840942e-03
+42   20_time_steps_generated_samples  300_time_steps_generated_samples    4796    5089  1.347281e-04
+43   20_time_steps_generated_samples    chembl_molecules_100k_filtered    4796  100000  7.727879e-04
+44   20_time_steps_generated_samples      zinc_samples_unfiltered_100k    4796  100000  1.243660e-03
+45   20_time_steps_generated_samples        zinc_samples_filtered_100k    4796  100000  1.252740e-03
+46   20_time_steps_generated_samples             chembl_molecules_100k    4796  100000  4.797120e-03
+47   20_time_steps_generated_samples   pubchem_molecules_100k_filtered    4796  100000  2.247416e-03
+48   20_time_steps_generated_samples            pubchem_molecules_100k    4796   99990  6.173775e-03
+49   20_time_steps_generated_samples      250k_rndm_zinc_drugs_clean_3    4796  249455  2.371612e-03
+50  300_time_steps_generated_samples    chembl_molecules_100k_filtered    5089  100000  6.358367e-04
+51  300_time_steps_generated_samples      zinc_samples_unfiltered_100k    5089  100000  1.061757e-03
+52  300_time_steps_generated_samples        zinc_samples_filtered_100k    5089  100000  1.066855e-03
+53  300_time_steps_generated_samples             chembl_molecules_100k    5089  100000  4.364883e-03
+54  300_time_steps_generated_samples   pubchem_molecules_100k_filtered    5089  100000  2.987624e-03
+55  300_time_steps_generated_samples            pubchem_molecules_100k    5089   99990  6.579335e-03
+56  300_time_steps_generated_samples      250k_rndm_zinc_drugs_clean_3    5089  249455  2.919025e-03
+57    chembl_molecules_100k_filtered      zinc_samples_unfiltered_100k  100000  100000  1.412359e-03
+58    chembl_molecules_100k_filtered        zinc_samples_filtered_100k  100000  100000  1.428248e-03
+59    chembl_molecules_100k_filtered             chembl_molecules_100k  100000  100000  2.305455e-03
+60    chembl_molecules_100k_filtered   pubchem_molecules_100k_filtered  100000  100000  2.047458e-03
+61    chembl_molecules_100k_filtered            pubchem_molecules_100k  100000   99990  3.792044e-03
+62    chembl_molecules_100k_filtered      250k_rndm_zinc_drugs_clean_3  100000  249455  3.267950e-03
+63      zinc_samples_unfiltered_100k        zinc_samples_filtered_100k  100000  100000  1.068996e-07
+64      zinc_samples_unfiltered_100k             chembl_molecules_100k  100000  100000  6.983649e-03
+65      zinc_samples_unfiltered_100k   pubchem_molecules_100k_filtered  100000  100000  2.606772e-03
+66      zinc_samples_unfiltered_100k            pubchem_molecules_100k  100000   99990  9.072391e-03
+67      zinc_samples_unfiltered_100k      250k_rndm_zinc_drugs_clean_3  100000  249455  1.277718e-03
+68        zinc_samples_filtered_100k             chembl_molecules_100k  100000  100000  7.014925e-03
+69        zinc_samples_filtered_100k   pubchem_molecules_100k_filtered  100000  100000  2.635555e-03
+70        zinc_samples_filtered_100k            pubchem_molecules_100k  100000   99990  9.124206e-03
+71        zinc_samples_filtered_100k      250k_rndm_zinc_drugs_clean_3  100000  249455  1.287480e-03
+72             chembl_molecules_100k   pubchem_molecules_100k_filtered  100000  100000  6.529096e-03
+73             chembl_molecules_100k            pubchem_molecules_100k  100000   99990  1.966397e-03
+74             chembl_molecules_100k      250k_rndm_zinc_drugs_clean_3  100000  249455  1.060731e-02
+75   pubchem_molecules_100k_filtered            pubchem_molecules_100k  100000   99990  4.530164e-03
+76   pubchem_molecules_100k_filtered      250k_rndm_zinc_drugs_clean_3  100000  249455  1.309908e-03
+77            pubchem_molecules_100k      250k_rndm_zinc_drugs_clean_3   99990  249455  1.000782e-02
