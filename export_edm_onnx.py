@@ -64,7 +64,7 @@ def prepare_dummy_input(device):
         ),
     }
 
-    n_samples = 20
+    n_samples = 10
     min_n_nodes = 15
     max_n_nodes = 20
     f_max_n_nodes = 39
