@@ -5,11 +5,8 @@ from rdkit.Chem import rdFingerprintGenerator
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 from rdkit.Geometry import Point3D
 
-from .shape_similarity import (
-    get_shape_quadrupole_for_molecule,
-    rotate_coord,
-    tanimoto_score,
-)
+from .shape_similarity import (get_shape_quadrupole_for_molecule, rotate_coord,
+                               tanimoto_score)
 
 FP_SIZE = 2048
 GENERATOR = rdFingerprintGenerator.GetMorganGenerator(

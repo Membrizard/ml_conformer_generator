@@ -3,9 +3,7 @@ import json
 from rdkit import Chem
 
 from ml_conformer_generator.ml_conformer_generator import (
-    MLConformerGenerator,
-    evaluate_samples,
-)
+    MLConformerGenerator, evaluate_samples)
 
 device = "cuda"
 generator = MLConformerGenerator(device=device)

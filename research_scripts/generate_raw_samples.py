@@ -6,10 +6,9 @@ import torch
 from rdkit import Chem
 
 from ml_conformer_generator.ml_conformer_generator import (
-    MLConformerGenerator,
-    evaluate_samples,
-)
-from ml_conformer_generator.ml_conformer_generator.utils import get_context_shape
+    MLConformerGenerator, evaluate_samples)
+from ml_conformer_generator.ml_conformer_generator.utils import \
+    get_context_shape
 
 device = "cuda"
 generator = MLConformerGenerator(device=device)

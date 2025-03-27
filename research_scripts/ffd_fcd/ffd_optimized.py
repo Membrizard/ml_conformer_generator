@@ -3,20 +3,20 @@ This module implements an optimized version of the Fréchet Fingerprint Distance
 It includes vectorized operations and parallel processing for improved performance.
 """
 
-from rdkit import Chem
-from rdkit.Chem import AllChem
-from rdkit.Chem import rdFingerprintGenerator
-import numpy as np
-from scipy.linalg import sqrtm
+import gc
+import glob
 import json
 import os
-import glob
-import pandas as pd
-from rdkit import RDLogger
+import time
 from concurrent.futures import ProcessPoolExecutor
 from functools import partial
-import time
-import gc
+
+import numpy as np
+import pandas as pd
+from rdkit import Chem, RDLogger
+from rdkit.Chem import AllChem, rdFingerprintGenerator
+from scipy.linalg import sqrtm
+
 
 def get_morgan_fingerprints(mol, radius=2, nBits=2048):
     """Generate Morgan fingerprints for a molecule using RDKit's Morgan fingerprint generator

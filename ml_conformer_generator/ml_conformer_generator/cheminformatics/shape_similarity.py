@@ -6,7 +6,7 @@
 # Computer Simulations of Biomolecular Systems, vol 3. Springer, Dordrecht.
 # https://doi.org/10.1007/978-94-017-1120-3_5
 # """
-from typing import Tuple, List, Union
+from typing import List, Tuple, Union
 
 import numpy as np
 import torch

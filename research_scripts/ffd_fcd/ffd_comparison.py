@@ -4,16 +4,16 @@ FFD is a metric that measures the similarity between two sets of molecules using
 The distance is calculated using the Fréchet distance formula applied to the distribution of molecular fingerprints.
 """
 
-from rdkit import Chem
-from rdkit.Chem import AllChem
-from rdkit.Chem import rdFingerprintGenerator
-import numpy as np
-from scipy.linalg import sqrtm
+import glob
 import json
 import os
-import glob
+
+import numpy as np
 import pandas as pd
-from rdkit import RDLogger
+from rdkit import Chem, RDLogger
+from rdkit.Chem import AllChem, rdFingerprintGenerator
+from scipy.linalg import sqrtm
+
 
 def get_morgan_fingerprints(mol, radius=2, nBits=2048):
     """Generate Morgan fingerprints for a molecule using RDKit's Morgan fingerprint generator

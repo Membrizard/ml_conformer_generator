@@ -2,7 +2,8 @@ import random
 
 import torch
 
-from ml_conformer_generator.ml_conformer_generator.adj_mat_seer import AdjMatSeer
+from ml_conformer_generator.ml_conformer_generator.adj_mat_seer import \
+    AdjMatSeer
 
 device = "cpu"
 adj_mat_seer = AdjMatSeer(
