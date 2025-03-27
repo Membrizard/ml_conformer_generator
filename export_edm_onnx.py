@@ -7,7 +7,7 @@ from ml_conformer_generator.ml_conformer_generator.equivariant_diffusion import 
     EquivariantDiffusion, PredefinedNoiseSchedule
 )
 
-device = "cuda"
+device = "cpu"
 net_dynamics = EGNNDynamics(
     in_node_nf=9,
     context_node_nf=3,
