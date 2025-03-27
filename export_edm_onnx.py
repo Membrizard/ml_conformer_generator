@@ -30,7 +30,7 @@ generative_model.load_state_dict(
     strict=False,
 )
 
-diffusion_steps = 100
+diffusion_steps = 50
 
 # Update denoising steps for the Equivarinat Diffusion
 generative_model.gamma = PredefinedNoiseSchedule(
@@ -64,7 +64,7 @@ def prepare_dummy_input(device):
         ),
     }
 
-    n_samples = 10
+    n_samples = 100
     min_n_nodes = 15
     max_n_nodes = 20
     f_max_n_nodes = 39
