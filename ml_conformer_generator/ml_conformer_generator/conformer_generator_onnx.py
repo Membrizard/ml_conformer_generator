@@ -1,23 +1,12 @@
 from typing import List
 
+import onnxruntime
 from rdkit import Chem
 
-import onnxruntime
-
 from ml_conformer_generator.ml_conformer_generator.utils import (
-    DIMENSION,
-    NUM_BOND_TYPES,
-    MIN_N_NODES,
-    MAX_N_NODES,
-    CONTEXT_NORMS,
-    ATOM_DECODER,
-    get_context_shape,
-    prepare_adj_mat_seer_input,
-    prepare_edm_input,
-    redefine_bonds,
-    samples_to_rdkit_mol,
-    standardize_mol,
-)
+    ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES, MIN_N_NODES,
+    NUM_BOND_TYPES, get_context_shape, prepare_adj_mat_seer_input,
+    prepare_edm_input, redefine_bonds, samples_to_rdkit_mol, standardize_mol)
 
 
 class MLConformerGeneratorONNX:

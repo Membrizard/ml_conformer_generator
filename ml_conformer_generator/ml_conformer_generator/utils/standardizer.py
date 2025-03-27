@@ -15,7 +15,6 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem.MolStandardize import rdMolStandardize
 
-
 # derived from the MolVS set, with ChEMBL-specific additions
 _normalization_transforms = """
 //	Name	SMIRKS

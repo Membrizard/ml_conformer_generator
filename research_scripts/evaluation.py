@@ -4,9 +4,7 @@ import time
 from rdkit import Chem
 
 from ml_conformer_generator.ml_conformer_generator import (
-    MLConformerGenerator,
-    evaluate_samples,
-)
+    MLConformerGenerator, evaluate_samples)
 
 # def exact_match(mol, source):
 #     whs_mol = Chem.RemoveHs(mol)

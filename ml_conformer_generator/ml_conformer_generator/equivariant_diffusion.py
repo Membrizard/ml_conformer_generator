@@ -167,7 +167,7 @@ class EquivariantDiffusion(torch.nn.Module):
         """Computes sigma given gamma."""
         return self.inflate_batch_array(torch.sqrt(torch.sigmoid(gamma)), target_tensor)
 
-    def alpha(self, gamma, target_tensor):
+    def alpha(self, gamma: torch.Tensor, target_tensor: torch.Tensor) -> torch.Tensor:
         """Computes alpha given gamma."""
         return self.inflate_batch_array(
             torch.sqrt(torch.sigmoid(-gamma)), target_tensor
@@ -267,7 +267,7 @@ class EquivariantDiffusion(torch.nn.Module):
         node_mask: torch.Tensor,
         edge_mask: torch.Tensor,
         context: torch.Tensor,
-    ):
+    ) -> torch.Tensor:
         """Samples from zs ~ p(zs | zt). Only used during sampling."""
         gamma_s = self.gamma(s)
         gamma_t = self.gamma(t)

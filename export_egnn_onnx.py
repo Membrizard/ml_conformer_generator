@@ -4,8 +4,7 @@ import torch
 
 from ml_conformer_generator.ml_conformer_generator.egnn import EGNNDynamics
 from ml_conformer_generator.ml_conformer_generator.equivariant_diffusion import (
-    EquivariantDiffusion, PredefinedNoiseSchedule
-)
+    EquivariantDiffusion, PredefinedNoiseSchedule)
 
 device = "cpu"
 net_dynamics = EGNNDynamics(

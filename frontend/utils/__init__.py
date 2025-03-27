@@ -1,15 +1,9 @@
 from .cheminformatics_utils import prepare_speck_model
-from .streamlit_utils import (
-    apply_custom_styling,
-    container_css,
-    display_search_results,
-    draw_compound_image,
-    generate_mock_results,
-    generate_samples_button,
-    header_image,
-    stylable_container,
-    view_mol_button,
-)
+from .streamlit_utils import (apply_custom_styling, container_css,
+                              display_search_results, draw_compound_image,
+                              generate_mock_results, generate_samples_button,
+                              header_image, stylable_container,
+                              view_mol_button)
 
 __all__ = [
     "prepare_speck_model",

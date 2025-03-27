@@ -2,11 +2,11 @@ import logging
 import re
 from time import time
 
+import torch
 from fastapi import Depends, FastAPI, File, UploadFile
 from pydantic import BaseModel, Field
 from rdkit import Chem
 from rdkit.Chem import Draw
-import torch
 
 from ml_conformer_generator import MLConformerGenerator, evaluate_samples
 
@@ -190,3 +190,15 @@ if __name__ == "__main__":
         logger.info(
             "--- Model server is running on CPU. The generation will take more time ---"
         )
+
+# if __name__ == "__main__":
+#     import uvicorn
+#     import os  # Add this import
+#
+#     logger.info("--- Starting server ---")
+#
+#     # Read PORT from environment variable, default to 8000 if not set
+#     port = int(os.environ.get("PORT", 8000))
+#     logger.info(f"Starting server on port {port}")
+#
+#     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

@@ -4,20 +4,20 @@ FCD is a metric that measures the similarity between two sets of molecules using
 The distance is calculated using the Fréchet distance formula applied to the distribution of molecular embeddings.
 """
 
-from rdkit import Chem
-from rdkit.Chem import AllChem
-import numpy as np
-from scipy.linalg import sqrtm
+import glob
 import json
 import os
-import glob
+import time
+
+import numpy as np
 import pandas as pd
-from rdkit import RDLogger
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from rdkit.Chem import rdmolops
-import time
+from rdkit import Chem, RDLogger
+from rdkit.Chem import AllChem, rdmolops
+from scipy.linalg import sqrtm
+
 
 # Define ChemNet model for molecular embeddings
 class MolecularGraphEncoder(nn.Module):
