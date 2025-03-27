@@ -110,7 +110,7 @@ class MLConformerGenerator(torch.nn.Module):
             timesteps=diffusion_steps, precision=1e-5
         )
 
-        generative_model.timesteps = torch.flip(
+        generative_model.time_steps = torch.flip(
             torch.arange(0, diffusion_steps, device=device), dims=[0]
         )
 

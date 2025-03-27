@@ -1,25 +1,25 @@
 from typing import Tuple
 
-import torch
-import torch.nn.functional as F
+import numpy as np
+from typing import Tuple
 
-from .egnn import EGNNDynamics
+import onnxruntime
 
 
 def clip_noise_schedule(
-    alphas2: torch.Tensor, clip_value: float = 0.001
-) -> torch.Tensor:
+    alphas2: np.ndarray, clip_value: float = 0.001
+) -> np.ndarray:
     """
     For a noise schedule given by alpha^2, this clips alpha_t / alpha_t-1. This may help improve stability during
     sampling.
     """
 
-    alphas2 = torch.cat((torch.ones(1), alphas2), dim=0)
+    alphas2 = np.concatenate((np.ones(1), alphas2), dim=0)
 
     alphas_step = alphas2[1:] / alphas2[:-1]
 
-    alphas_step = torch.clip(alphas_step, min=clip_value, max=1.0)
-    alphas2 = torch.cumprod(alphas_step, dim=0)
+    alphas_step = np.clip(alphas_step, min=clip_value, max=1.0)
+    alphas2 = np.cumprod(alphas_step, dim=0)
 
     return alphas2
 
@@ -31,8 +31,8 @@ def polynomial_schedule(timesteps: int, s: float = 1e-4, power: int = 2):
     Remark - rewritten in torch only
     """
     steps = timesteps + 1
-    x = torch.linspace(0, steps, steps)
-    alphas2 = (1 - torch.pow(x / steps, power)) ** 2
+    x = np.linspace(0, steps, steps)
+    alphas2 = (1 - np.pow(x / steps, power)) ** 2
 
     alphas2 = clip_noise_schedule(alphas2, clip_value=0.001)
 
@@ -44,18 +44,18 @@ def polynomial_schedule(timesteps: int, s: float = 1e-4, power: int = 2):
 
 
 def remove_mean_with_mask(x, node_mask):
-    n = torch.sum(node_mask, 1, keepdim=True)
+    n = np.sum(node_mask, 1, keepdim=True)
 
-    mean = torch.sum(x, dim=1, keepdim=True) / n
+    mean = np.sum(x, dim=1, keepdim=True) / n
     x = x - mean * node_mask
     return x
 
 
 def sample_center_gravity_zero_gaussian_with_mask(
-    size: Tuple[int, int, int], device: torch.device, node_mask
+    size: Tuple[int, int, int], node_mask: np.ndarray
 ):
     assert len(size) == 3
-    x = torch.randn(size, device=device)
+    x = np.random.randn(size)
 
     x_masked = x * node_mask
 
@@ -66,21 +66,25 @@ def sample_center_gravity_zero_gaussian_with_mask(
 
 
 def sample_gaussian_with_mask(
-    size: Tuple[int, int, int], device: torch.device, node_mask
+    size: Tuple[int, int, int], node_mask: np.ndarray
 ):
-    x = torch.randn(size, device=device)
+    x = np.random.randn(size)
 
     x_masked = x * node_mask
     return x_masked
 
 
-class PredefinedNoiseSchedule(torch.nn.Module):
+class PredefinedNoiseSchedule:
     """
     Predefined noise schedule. Essentially creates a lookup array for predefined (non-learned) noise schedules.
     """
 
-    def __init__(self, timesteps: int, precision: float, power: int = 2):
-        super(PredefinedNoiseSchedule, self).__init__()
+    def __init__(self,
+                 timesteps: int,
+                 precision: float,
+                 power: int = 2
+                 ):
+
         self.timesteps = timesteps
 
         # Default Schedule - polynomial with power 2
@@ -89,28 +93,27 @@ class PredefinedNoiseSchedule(torch.nn.Module):
 
         sigmas2 = 1 - alphas2
 
-        log_alphas2 = torch.log(alphas2)
-        log_sigmas2 = torch.log(sigmas2)
+        log_alphas2 = np.log(alphas2)
+        log_sigmas2 = np.log(sigmas2)
 
         log_alphas2_to_sigmas2 = log_alphas2 - log_sigmas2
 
-        self.gamma = torch.nn.Parameter(
-            (-log_alphas2_to_sigmas2).float(), requires_grad=False
-        )
+        self.gamma = (-log_alphas2_to_sigmas2).astype(np.float32)
 
-    def forward(self, t: torch.Tensor):
-        t_int = torch.round(t * self.timesteps).long()
+    def __call__(self, t: np.ndarray):
+        t_int = np.round(t * self.timesteps).long()
         return self.gamma[t_int]
 
 
-class EquivariantDiffusion(torch.nn.Module):
+class EquivariantDiffusionONNX:
     """
+    PyTorch - free implementation of
     The E(n) Diffusion Module.
     """
 
     def __init__(
         self,
-        dynamics: EGNNDynamics,
+        egnn_onnx: str,
         in_node_nf: int,
         n_dims: int = 3,
         timesteps: int = 1000,
@@ -127,31 +130,27 @@ class EquivariantDiffusion(torch.nn.Module):
         )
 
         # The network that will predict the denoising.
-        self.dynamics = dynamics
 
-        self.in_node_nf = in_node_nf
-        self.n_dims = n_dims
+        self.dynamics = onnxruntime.InferenceSession(egnn_onnx)
 
-        self.num_classes = self.in_node_nf
+        # self.in_node_nf = in_node_nf
+        # self.n_dims = n_dims
+        #
+        # self.num_classes = self.in_node_nf
 
         # Declare time steps-related tensors
         self.T = timesteps
-        self.time_steps = torch.flip(
-            torch.arange(0, timesteps, device=dynamics.device), dims=[0]
-        )
+        self.time_steps = np.flip(np.arange(0, timesteps))
 
         self.norm_values = norm_values
 
-    def phi(self,
-            x: torch.Tensor,
-            t: torch.Tensor,
-            node_mask: torch.Tensor,
-            edge_mask: torch.Tensor,
-            context: torch.Tensor) -> torch.Tensor:
-        """
-        Denoising pass
-        """
-        net_out = self.dynamics(t, x, node_mask, edge_mask, context)
+    def phi(self, x, t, node_mask, edge_mask, context):
+
+        inputs = {
+            "t": t, "xh": x, "node_mask": node_mask, "edge_mask": edge_mask, "context": context,
+        }
+
+        net_out = self.dynamics.run(None, inputs)
         return net_out
 
     @staticmethod
@@ -329,12 +328,12 @@ class EquivariantDiffusion(torch.nn.Module):
         z = torch.cat([z_x, z_h], dim=2)
         return z
 
-    def forward(
+    def __call__(
         self,
-        node_mask: torch.Tensor,
-        edge_mask: torch.Tensor,
-        context: torch.Tensor,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        node_mask: np.ndarray,
+        edge_mask: np.ndarray,
+        context: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Draw samples from the generative model.
         Inference
@@ -345,7 +344,7 @@ class EquivariantDiffusion(torch.nn.Module):
 
         # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
         for s in self.time_steps:
-            s_array = torch.full([n_samples, 1], fill_value=s, device=z.device)
+            s_array = np.full([n_samples, 1], fill_value=s, device=z.device)
             t_array = s_array + 1.0
             s_array = s_array / self.T
             t_array = t_array / self.T

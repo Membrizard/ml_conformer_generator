@@ -30,28 +30,15 @@ generative_model.load_state_dict(
     strict=False,
 )
 
-diffusion_steps = 100
 
-# Update denoising steps for the Equivarinat Diffusion
-generative_model.gamma = PredefinedNoiseSchedule(
-            timesteps=diffusion_steps, precision=1e-5
-        )
-
-generative_model.timesteps = torch.flip(
-            torch.arange(0, diffusion_steps, device=device), dims=[0]
-        )
-
-# generative_model.register_buffer("timesteps", torch.flip(
-#     torch.arange(0, diffusion_steps, device=device), dims=[0])
-#                      )
-
-generative_model.T = diffusion_steps
 
 generative_model.to(device)
 generative_model.eval()
 
+model = generative_model.dynamics
 
-def prepare_dummy_input(device):
+
+def prepare_egnn_dummy_input(device, generative_model, s: int = 50, timesteps: int = 100):
     reference_context = torch.tensor(
         [53.6424, 108.3042, 151.4399], dtype=torch.float32, device=device
     )
@@ -64,10 +51,9 @@ def prepare_dummy_input(device):
         ),
     }
 
-    n_samples = 10
-    min_n_nodes = 15
+    n_samples = 100
+    min_n_nodes = 18
     max_n_nodes = 20
-    f_max_n_nodes = 39
 
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
     nodesxsample = []
@@ -79,7 +65,7 @@ def prepare_dummy_input(device):
 
     batch_size = nodesxsample.size(0)
 
-    node_mask = torch.zeros(batch_size, f_max_n_nodes)
+    node_mask = torch.zeros(batch_size, max_n_nodes)
     for i in range(batch_size):
         node_mask[i, 0: nodesxsample[i]] = 1
 
@@ -89,34 +75,43 @@ def prepare_dummy_input(device):
     diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
     edge_mask *= diag_mask
     edge_mask = edge_mask.view(
-        batch_size * f_max_n_nodes * f_max_n_nodes, 1
+        batch_size * max_n_nodes * max_n_nodes, 1
     ).to(device)
     node_mask = node_mask.unsqueeze(2).to(device)
 
     normed_context = (
-        (reference_context - context_norms["mean"]) / context_norms["mad"]
+            (reference_context - context_norms["mean"]) / context_norms["mad"]
     ).to(device)
 
     batch_context = normed_context.unsqueeze(0).repeat(batch_size, 1)
 
     batch_context = (
-        batch_context.unsqueeze(1).repeat(1, f_max_n_nodes, 1) * node_mask
+            batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
     )
-    return node_mask, edge_mask, batch_context
+
+    z = generative_model.sample_combined_position_feature_noise(n_samples, max_n_nodes, node_mask)
+    s_array = torch.full([n_samples, 1], fill_value=s, device=device)
+    t_array = s_array + 1.0
+    t_array = t_array / timesteps
+
+    return t_array, z, node_mask, edge_mask, batch_context
 
 
-node_mask, edge_mask, context = prepare_dummy_input(device)
+t_array, z, node_mask, edge_mask, context = prepare_egnn_dummy_input(device, generative_model)
 
 
-# export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
-torch.onnx.export(
-    generative_model,
-    (node_mask, edge_mask, context),
-    "100_steps_edm_moi_chembl_15_39.onnx",
-    input_names=["node_mask", "edge_mask", "context"],
-    output_names=["x", "h"],
+export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
+onnx_model = torch.onnx.export(
+    model,
+    (t_array, z, node_mask, edge_mask, context),
+    input_names=["t", "xh", "node_mask", "edge_mask", "context"],
+    output_names=["out"],
+    export_options=export_options,
+    dynamic_shapes={},
+    opset_version=18,
     verbose=True,
+    dynamo=True
 )
 
-# onnx_model.optimize()
-# onnx_model.save("100_steps_edm_moi_chembl_15_39.onnx")
+onnx_model.optimize()
+onnx_model.save("egnn_moi_chembl_15_39.onnx")
