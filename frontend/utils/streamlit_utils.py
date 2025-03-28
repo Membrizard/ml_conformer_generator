@@ -57,7 +57,7 @@ def view_mol_button(mol_index):
 
 # Working with results, rendering mol images
 def generate_mock_results():
-    with open("./generation_examples/generation_example_4.json") as json_file:
+    with open("./generation_examples/generation_example_1.json") as json_file:
         data = json.load(json_file)
 
         def s_f(x):
@@ -72,7 +72,7 @@ def generate_mock_results():
 
 
 def generate_results():
-    with open("./generation_examples/generation_example_4.json") as json_file:
+    with open("./generation_examples/generation_example_5.json") as json_file:
         data = json.load(json_file)
 
         def s_f(x):
