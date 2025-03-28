@@ -1,11 +1,19 @@
 import random
 
+import onnxruntime
+import onnx
 import torch
-from torch.export import Dim
 
 from ml_conformer_generator.ml_conformer_generator.egnn import EGNNDynamics
 from ml_conformer_generator.ml_conformer_generator.equivariant_diffusion import (
     EquivariantDiffusion, PredefinedNoiseSchedule)
+
+session = onnxruntime.InferenceSession('./egnn_moi_chembl_15_39.onnx')
+
+input_shapes = [x.shape for x in session.get_inputs()]
+input_names = [x.name for x in session.get_inputs()]
+
+output_names = [x.name for x in session.get_outputs()]
 
 device = "cpu"
 net_dynamics = EGNNDynamics(
@@ -22,20 +30,13 @@ generative_model = EquivariantDiffusion(
     noise_precision=1e-5,
 )
 
-generative_model.load_state_dict(
-    torch.load(
-        "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
-        map_location=device,
-    ),
-    strict=False,
-)
-
-
-
-generative_model.to(device)
-generative_model.eval()
-
-model = generative_model.dynamics
+# generative_model.load_state_dict(
+#     torch.load(
+#         "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
+#         map_location=device,
+#     ),
+#     strict=False,
+# )
 
 
 def prepare_egnn_dummy_input(device, generative_model, s: int = 50, timesteps: int = 100):
@@ -98,34 +99,20 @@ def prepare_egnn_dummy_input(device, generative_model, s: int = 50, timesteps: i
 
 
 inputs = prepare_egnn_dummy_input(device, generative_model)
-# out = model(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4])
-# print(out)
+
+np_inputs = []
+for m in inputs:
+    np_inputs.append(torch.nan_to_num(m, nan=0.0, posinf=1.0, neginf=-1.0).numpy())
+
+t_array, z, node_mask, edge_mask, context = np_inputs
+print(context)
 
 
-batch_size = Dim("batch_size")
-num_nodes = Dim("num_nodes")
-num_edges = Dim("num_edges")
+print(input_names)
+print(input_shapes)
+print(output_names)
 
-export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
-onnx_model = torch.onnx.export(
-    model,
-    inputs,
-    input_names=["t", "xh", "node_mask", "edge_mask", "context"],
-    output_names=["out"],
-    export_options=export_options,
-    export_params=True,
-    dynamic_shapes={
-        "t": {0: batch_size},
-        "xh": {0: batch_size, 1: num_nodes},
-        "node_mask": {0: batch_size, 1: num_nodes},
-        "edge_mask": {0: num_edges},
-        "context": {0: batch_size, 1: num_nodes},
-        "out": {0: batch_size, 1: num_nodes},
-    },
-    opset_version=18,
-    verbose=True,
-    dynamo=True
-)
+out = session.run(None, {"t": t_array, "xh": z, "node_mask": node_mask, "edge_mask": edge_mask, "context": context})
 
-# onnx_model.optimize() -> causes numerical issues
-onnx_model.save("egnn_moi_chembl_15_39.onnx")
+print(out)
+

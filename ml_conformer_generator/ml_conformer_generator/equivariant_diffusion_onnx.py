@@ -12,12 +12,12 @@ def clip_noise_schedule(
     sampling.
     """
 
-    alphas2 = np.concatenate((np.ones(1), alphas2), dim=0)
+    alphas2 = np.concatenate((np.ones(1), alphas2), axis=0)
 
     alphas_step = alphas2[1:] / alphas2[:-1]
 
-    alphas_step = np.clip(alphas_step, min=clip_value, max=1.0)
-    alphas2 = np.cumprod(alphas_step, dim=0)
+    alphas_step = np.clip(alphas_step, a_min=clip_value, a_max=1.0)
+    alphas2 = np.cumprod(alphas_step, axis=0)
 
     return alphas2
 
@@ -30,7 +30,7 @@ def polynomial_schedule(timesteps: int, s: float = 1e-4, power: int = 2):
     """
     steps = timesteps + 1
     x = np.linspace(0, steps, steps)
-    alphas2 = (1 - np.pow(x / steps, power)) ** 2
+    alphas2 = (1 - np.power(x / steps, power)) ** 2
 
     alphas2 = clip_noise_schedule(alphas2, clip_value=0.001)
 
@@ -42,9 +42,9 @@ def polynomial_schedule(timesteps: int, s: float = 1e-4, power: int = 2):
 
 
 def remove_mean_with_mask(x, node_mask):
-    n = np.sum(node_mask, 1, keepdim=True)
+    n = np.sum(node_mask, 1, keepdims=True)
 
-    mean = np.sum(x, dim=1, keepdim=True) / n
+    mean = np.sum(x, 1, keepdims=True) / n
     x = x - mean * node_mask
     return x
 
@@ -52,8 +52,7 @@ def remove_mean_with_mask(x, node_mask):
 def sample_center_gravity_zero_gaussian_with_mask(
     size: Tuple[int, int, int], node_mask: np.ndarray
 ):
-    assert len(size) == 3
-    x = np.random.randn(size)
+    x = np.random.rand(size[0], size[1], size[2])
 
     x_masked = x * node_mask
 
@@ -66,7 +65,7 @@ def sample_center_gravity_zero_gaussian_with_mask(
 def sample_gaussian_with_mask(
     size: Tuple[int, int, int], node_mask: np.ndarray
 ):
-    x = np.random.randn(size)
+    x = np.random.randn(size[0], size[1], size[2])
 
     x_masked = x * node_mask
     return x_masked
@@ -99,7 +98,7 @@ class PredefinedNoiseSchedule:
         self.gamma = (-log_alphas2_to_sigmas2).astype(np.float32)
 
     def __call__(self, t: np.ndarray):
-        t_int = np.round(t * self.timesteps).long()
+        t_int = np.round(t * self.timesteps).astype(int)
         return self.gamma[t_int]
 
 
@@ -144,11 +143,15 @@ class EquivariantDiffusionONNX:
     def phi(self, x, t, node_mask, edge_mask, context):
 
         inputs = {
-            "t": t, "xh": x, "node_mask": node_mask, "edge_mask": edge_mask, "context": context,
+            "t": t.astype(np.float32),
+            "xh": x.astype(np.float32),
+            "node_mask": node_mask.astype(np.float32),
+            "edge_mask": edge_mask.astype(np.float32),
+            "context": context.astype(np.float32),
         }
 
         net_out = self.dynamics.run(None, inputs)
-        return net_out
+        return net_out[0]
 
     @staticmethod
     def sigmoid(z: Union[np.ndarray, float]):
@@ -182,7 +185,7 @@ class EquivariantDiffusionONNX:
     def alpha(self, gamma: np.ndarray, target_tensor: np.ndarray):
         """Computes alpha given gamma."""
         return self.inflate_batch_array(
-            np.sqrt(np.sigmoid(-gamma)), target_tensor
+            np.sqrt(self.sigmoid(-gamma)), target_tensor
         )
 
     @staticmethod
@@ -245,7 +248,7 @@ class EquivariantDiffusionONNX:
         context: np.ndarray,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Samples x ~ p(x|z0)."""
-        zeros = np.zeros(shape=(z0.size(0), 1))
+        zeros = np.zeros(shape=(z0.shape[0], 1))
         gamma_0 = self.gamma(zeros)
         # Computes sqrt(sigma_0^2 / alpha_0^2)
         sigma_x = np.expand_dims(self.snr(-0.5 * gamma_0), 1)
@@ -259,7 +262,7 @@ class EquivariantDiffusionONNX:
 
         x, h_cat = self.unnormalize(x, z0[:, :, self.n_dims: -1], node_mask)
 
-        h_cat = self.one_hot(np.argmax(h_cat, dim=2), self.num_classes) * node_mask
+        h_cat = self.one_hot(np.argmax(h_cat, axis=2), self.num_classes) * node_mask
         h = h_cat
         return x, h
 
@@ -267,8 +270,8 @@ class EquivariantDiffusionONNX:
         self, mu: np.ndarray, sigma: np.ndarray, node_mask: np.ndarray
     ) -> np.ndarray:
         """Samples from a Normal distribution."""
-        bs = mu.size(0)
-        eps = self.sample_combined_position_feature_noise(bs, mu.size(1), node_mask)
+        bs = mu.shape[0]
+        eps = self.sample_combined_position_feature_noise(bs, mu.shape[1], node_mask)
         return mu + sigma * eps
 
     def sample_p_zs_given_zt(
@@ -313,7 +316,7 @@ class EquivariantDiffusionONNX:
                 remove_mean_with_mask(zs[:, :, : self.n_dims], node_mask),
                 zs[:, :, self.n_dims:],
             ],
-            dim=2,
+            axis=2,
         )
         return zs
 
@@ -336,7 +339,8 @@ class EquivariantDiffusionONNX:
             ),
             node_mask=node_mask,
         )
-        z = np.concatenate([z_x, z_h], dim=2)
+
+        z = np.concatenate([z_x, z_h], axis=2)
         return z
 
     def __call__(
@@ -349,7 +353,7 @@ class EquivariantDiffusionONNX:
         Draw samples from the generative model.
         Inference
         """
-        n_samples, n_nodes, _ = node_mask.size()
+        n_samples, n_nodes, _ = node_mask.shape
 
         z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
 
