@@ -21,7 +21,7 @@ the shape Tanimoto similarity of a generated molecule to a reference is calculat
 
 Example performance of the model as evaluated on 100k generated samples
 
-(Used 1000 compounds from ccdc GOLD Virtual Screening dataset for generation)
+(Used 1000 compounds from CCDC Virtual Screening dataset for generation)
 
 **100 Denoising Steps:**
 

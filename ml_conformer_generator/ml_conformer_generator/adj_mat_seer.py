@@ -1,5 +1,3 @@
-import typing
-
 import torch
 import torch.nn as nn
 
@@ -89,7 +87,6 @@ class AdjMatSeer(nn.Module):
 
         self.nodes_embedding = nn.Embedding(num_embeddings, embedding_dim)
         self.nodes_coord_fc = nn.Linear(dimension, dimension * embedding_dim)
-        self.nodes_scale = nn.Linear(embedding_dim, embedding_dim * dimension)
 
         # ___________________________________________________
 
@@ -131,7 +128,7 @@ class AdjMatSeer(nn.Module):
             elements
         )  # size (batch_size, DIMENSION, EMBEDDING_DIM)
 
-        # Scale shielding
+        # Scale embedding
         nodes_weighted_emb = torch.reshape(
             self.nodes_coord_fc(emb),
             (nodes_embedded.size(dim=0), self.dimension, self.embedding_dim),

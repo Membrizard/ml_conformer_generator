@@ -60,8 +60,6 @@ class MolGraph:
     ) -> "MolGraph":
         """
         Create a Molecular Graph from Nodes tensor and given 0-1 normalised adjacency matrix of a proper dimension.
-        Nodes tensor as [[atomic_num, shielding]..] or separate tensors - atoms_vector as [atomic_num] and
-        shieldings_vector as [shielding] can be used
         :param nodes: [[atomic_num, shielding]..] dtype = torch.float
         :param adjacency_matrix: torch tensor of size (DIMENSION, DIMENSION)
         :return: MolGraph object
@@ -113,7 +111,6 @@ class MolGraph:
         3 - Triple
         4 - Aromatic
         :param mol: rdkit mol object
-        :param shielding: include shielding constants to atoms or not
         :param remove_hs: if H atoms are to be removed
         :return: graph data object with the attributes: x, edge_index, edge_attr
         """

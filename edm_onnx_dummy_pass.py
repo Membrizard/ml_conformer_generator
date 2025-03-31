@@ -1,7 +1,6 @@
 import random
+import time
 
-import onnx
-import onnxruntime
 import torch
 
 from ml_conformer_generator.ml_conformer_generator.egnn import EGNNDynamics
@@ -9,33 +8,17 @@ from ml_conformer_generator.ml_conformer_generator.equivariant_diffusion import 
     EquivariantDiffusion,
     PredefinedNoiseSchedule,
 )
+from ml_conformer_generator.ml_conformer_generator.equivariant_diffusion_onnx import (
+    EquivariantDiffusionONNX,
+)
 
-session = onnxruntime.InferenceSession("./egnn_moi_chembl_15_39.onnx")
-
-input_shapes = [x.shape for x in session.get_inputs()]
-input_names = [x.name for x in session.get_inputs()]
-
-output_names = [x.name for x in session.get_outputs()]
-
+onnx_model = EquivariantDiffusionONNX(
+    egnn_onnx="./egnn_moi_chembl_15_39.onnx", in_node_nf=8, timesteps=100
+)
 device = "cpu"
-net_dynamics = EGNNDynamics(
-    in_node_nf=9,
-    context_node_nf=3,
-    hidden_nf=420,
-    device=device,
-)
-
-generative_model = EquivariantDiffusion(
-    dynamics=net_dynamics,
-    in_node_nf=8,
-    timesteps=1000,
-    noise_precision=1e-5,
-)
 
 
-def prepare_egnn_dummy_input(
-    device, generative_model, s: int = 50, timesteps: int = 100
-):
+def prepare_edm_dummy_input(device):
     reference_context = torch.tensor(
         [53.6424, 108.3042, 151.4399], dtype=torch.float32, device=device
     )
@@ -48,8 +31,8 @@ def prepare_egnn_dummy_input(
         ),
     }
 
-    n_samples = 2
-    min_n_nodes = 10
+    n_samples = 4
+    min_n_nodes = 16
     max_n_nodes = 20
 
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
@@ -81,40 +64,11 @@ def prepare_egnn_dummy_input(
     batch_context = normed_context.unsqueeze(0).repeat(batch_size, 1)
 
     batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
-
-    z = generative_model.sample_combined_position_feature_noise(
-        n_samples, max_n_nodes, node_mask
-    )
-    s_array = torch.full([n_samples, 1], fill_value=s, device=device)
-    t_array = s_array + 1.0
-    t_array = t_array / timesteps
-
-    return t_array, z, node_mask, edge_mask, batch_context
+    return node_mask.numpy(), edge_mask.numpy(), batch_context.numpy()
 
 
-inputs = prepare_egnn_dummy_input(device, generative_model)
+inputs = prepare_edm_dummy_input(device)
 
-np_inputs = []
-for m in inputs:
-    np_inputs.append(m.numpy())
-
-t_array, z, node_mask, edge_mask, context = np_inputs
-print(context)
-
-
-print(input_names)
-print(input_shapes)
-print(output_names)
-
-out = session.run(
-    None,
-    {
-        "t": t_array,
-        "xh": z,
-        "node_mask": node_mask,
-        "edge_mask": edge_mask,
-        "context": context,
-    },
-)
-
-print(out)
+start = time.time()
+onnx_out = onnx_model(node_mask=inputs[0], edge_mask=inputs[1], context=inputs[2])
+print(f"Generation complete in {time.time() - start}")

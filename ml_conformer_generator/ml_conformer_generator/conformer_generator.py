@@ -5,12 +5,21 @@ from rdkit import Chem
 
 from .adj_mat_seer import AdjMatSeer
 from .egnn import EGNNDynamics
-from .equivariant_diffusion import (EquivariantDiffusion,
-                                    PredefinedNoiseSchedule)
-from .utils import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
-                    MIN_N_NODES, NUM_BOND_TYPES, get_context_shape,
-                    prepare_adj_mat_seer_input, prepare_edm_input,
-                    redefine_bonds, samples_to_rdkit_mol, standardize_mol)
+from .equivariant_diffusion import EquivariantDiffusion, PredefinedNoiseSchedule
+from .utils import (
+    ATOM_DECODER,
+    CONTEXT_NORMS,
+    DIMENSION,
+    MAX_N_NODES,
+    MIN_N_NODES,
+    NUM_BOND_TYPES,
+    get_context_shape,
+    prepare_adj_mat_seer_input,
+    prepare_edm_input,
+    redefine_bonds,
+    samples_to_rdkit_mol,
+    standardize_mol,
+)
 
 
 class MLConformerGenerator(torch.nn.Module):
@@ -52,7 +61,9 @@ class MLConformerGenerator(torch.nn.Module):
 
         self.dimension = dimension
 
-        self.context_norms = context_norms
+        self.context_norms = {
+            key: torch.tensor(value) for key, value in context_norms.items()
+        }
 
         self.atom_decoder = atom_decoder
 
@@ -245,10 +256,30 @@ class MLConformerGenerator(torch.nn.Module):
 
         return optimised_conformers
 
+    def forward(
+        self,
+        reference_conformer: Chem.Mol = None,
+        n_samples: int = 10,
+        variance: int = 2,
+        reference_context: torch.Tensor = None,
+        n_atoms: int = None,
+        optimise_geometry: bool = True,
+    ) -> List[Chem.Mol]:
+        out = self.generate_conformers(
+            reference_conformer,
+            n_samples,
+            variance,
+            reference_context,
+            n_atoms,
+            optimise_geometry,
+        )
+
+        return out
+
     def export_to_onnx(self):
         """
-        Exports the model to ONNX format with static input shapes
-        :return: Exports EquivariantDiffusion and AdjMatSeer to ONNX with static input shapes
-                 to make them compatible with ONNX runtime
+        Exports the model to ONNX format
+        :return: Exports Denoising EGNN and AdjMatSeer to ONNX to make them compatible with ONNX runtime,
+        returns an instance MLConformerGeneratorONNX which is a PyTorch - free ONNX based implementation of the model
         """
         return None

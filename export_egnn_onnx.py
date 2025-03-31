@@ -5,7 +5,9 @@ from torch.export import Dim
 
 from ml_conformer_generator.ml_conformer_generator.egnn import EGNNDynamics
 from ml_conformer_generator.ml_conformer_generator.equivariant_diffusion import (
-    EquivariantDiffusion, PredefinedNoiseSchedule)
+    EquivariantDiffusion,
+    PredefinedNoiseSchedule,
+)
 
 device = "cpu"
 net_dynamics = EGNNDynamics(
@@ -31,14 +33,15 @@ generative_model.load_state_dict(
 )
 
 
-
 generative_model.to(device)
 generative_model.eval()
 
 model = generative_model.dynamics
 
 
-def prepare_egnn_dummy_input(device, generative_model, s: int = 50, timesteps: int = 100):
+def prepare_egnn_dummy_input(
+    device, generative_model, s: int = 50, timesteps: int = 100
+):
     reference_context = torch.tensor(
         [53.6424, 108.3042, 151.4399], dtype=torch.float32, device=device
     )
@@ -67,29 +70,27 @@ def prepare_egnn_dummy_input(device, generative_model, s: int = 50, timesteps: i
 
     node_mask = torch.zeros(batch_size, max_n_nodes)
     for i in range(batch_size):
-        node_mask[i, 0: nodesxsample[i]] = 1
+        node_mask[i, 0 : nodesxsample[i]] = 1
 
     # Compute edge_mask
 
     edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
     diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
     edge_mask *= diag_mask
-    edge_mask = edge_mask.view(
-        batch_size * max_n_nodes * max_n_nodes, 1
-    ).to(device)
+    edge_mask = edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1).to(device)
     node_mask = node_mask.unsqueeze(2).to(device)
 
     normed_context = (
-            (reference_context - context_norms["mean"]) / context_norms["mad"]
+        (reference_context - context_norms["mean"]) / context_norms["mad"]
     ).to(device)
 
     batch_context = normed_context.unsqueeze(0).repeat(batch_size, 1)
 
-    batch_context = (
-            batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
-    )
+    batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
 
-    z = generative_model.sample_combined_position_feature_noise(n_samples, max_n_nodes, node_mask)
+    z = generative_model.sample_combined_position_feature_noise(
+        n_samples, max_n_nodes, node_mask
+    )
     s_array = torch.full([n_samples, 1], fill_value=s, device=device)
     t_array = s_array + 1.0
     t_array = t_array / timesteps
@@ -124,8 +125,7 @@ onnx_model = torch.onnx.export(
     },
     opset_version=18,
     verbose=True,
-    dynamo=True
+    dynamo=True,
 )
 
-# onnx_model.optimize() -> causes numerical issues
 onnx_model.save("egnn_moi_chembl_15_39.onnx")
