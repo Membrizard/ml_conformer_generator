@@ -324,7 +324,9 @@ def build_neighbor_sets(adj_mat: torch.Tensor) -> List:
     return neigh_masks
 
 
-def get_alpha(atom_radius: float = ATOM_RADIUS, gaussian_amplitude: float = AMPLITUDE) -> float:
+def get_alpha(
+    atom_radius: float = ATOM_RADIUS, gaussian_amplitude: float = AMPLITUDE
+) -> float:
     # Calculate alpha
     lyambda_ = 4 * np.pi / 3 / gaussian_amplitude
     k_a = np.pi / lyambda_ ** (2 / 3)

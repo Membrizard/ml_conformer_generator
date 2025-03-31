@@ -1,12 +1,10 @@
-import torch
-
 # Configuration file for high-level framework parameters
 
 DIMENSION = 42
 NUM_BOND_TYPES = 5
 CONTEXT_NORMS = {
-    "mean": torch.tensor([105.0766, 473.1938, 537.4675]),
-    "mad": torch.tensor([52.0409, 219.7475, 232.9718]),
+    "mean": [105.0766, 473.1938, 537.4675],
+    "mad": [52.0409, 219.7475, 232.9718],
 }
 ATOM_DECODER = {
     0: "C",

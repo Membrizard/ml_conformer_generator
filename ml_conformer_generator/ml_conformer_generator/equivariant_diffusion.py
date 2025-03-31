@@ -111,7 +111,7 @@ class EquivariantDiffusion(torch.nn.Module):
     def __init__(
         self,
         dynamics: EGNNDynamics,
-        in_node_nf: int,
+        in_node_nf: int = 8,
         n_dims: int = 3,
         timesteps: int = 1000,
         noise_precision: float = 1e-4,
@@ -142,12 +142,14 @@ class EquivariantDiffusion(torch.nn.Module):
 
         self.norm_values = norm_values
 
-    def phi(self,
-            x: torch.Tensor,
-            t: torch.Tensor,
-            node_mask: torch.Tensor,
-            edge_mask: torch.Tensor,
-            context: torch.Tensor) -> torch.Tensor:
+    def phi(
+        self,
+        x: torch.Tensor,
+        t: torch.Tensor,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+        context: torch.Tensor,
+    ) -> torch.Tensor:
         """
         Denoising pass
         """

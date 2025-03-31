@@ -4,9 +4,7 @@ import numpy as np
 import onnxruntime
 
 
-def clip_noise_schedule(
-    alphas2: np.ndarray, clip_value: float = 0.001
-) -> np.ndarray:
+def clip_noise_schedule(alphas2: np.ndarray, clip_value: float = 0.001) -> np.ndarray:
     """
     For a noise schedule given by alpha^2, this clips alpha_t / alpha_t-1. This may help improve stability during
     sampling.
@@ -62,9 +60,7 @@ def sample_center_gravity_zero_gaussian_with_mask(
     return x_projected
 
 
-def sample_gaussian_with_mask(
-    size: Tuple[int, int, int], node_mask: np.ndarray
-):
+def sample_gaussian_with_mask(size: Tuple[int, int, int], node_mask: np.ndarray):
     x = np.random.randn(size[0], size[1], size[2])
 
     x_masked = x * node_mask
@@ -76,12 +72,7 @@ class PredefinedNoiseSchedule:
     Predefined noise schedule. Essentially creates a lookup array for predefined (non-learned) noise schedules.
     """
 
-    def __init__(self,
-                 timesteps: int,
-                 precision: float,
-                 power: int = 2
-                 ):
-
+    def __init__(self, timesteps: int, precision: float, power: int = 2):
         self.timesteps = timesteps
 
         # Default Schedule - polynomial with power 2
@@ -111,7 +102,7 @@ class EquivariantDiffusionONNX:
     def __init__(
         self,
         egnn_onnx: str,
-        in_node_nf: int,
+        in_node_nf: int = 8,
         n_dims: int = 3,
         timesteps: int = 1000,
         noise_precision: float = 1e-4,
@@ -141,7 +132,6 @@ class EquivariantDiffusionONNX:
         self.norm_values = norm_values
 
     def phi(self, x, t, node_mask, edge_mask, context):
-
         inputs = {
             "t": t.astype(np.float32),
             "xh": x.astype(np.float32),
@@ -184,9 +174,7 @@ class EquivariantDiffusionONNX:
 
     def alpha(self, gamma: np.ndarray, target_tensor: np.ndarray):
         """Computes alpha given gamma."""
-        return self.inflate_batch_array(
-            np.sqrt(self.sigmoid(-gamma)), target_tensor
-        )
+        return self.inflate_batch_array(np.sqrt(self.sigmoid(-gamma)), target_tensor)
 
     @staticmethod
     def snr(gamma: np.ndarray) -> np.ndarray:
@@ -260,7 +248,7 @@ class EquivariantDiffusionONNX:
 
         x = xh[:, :, : self.n_dims]
 
-        x, h_cat = self.unnormalize(x, z0[:, :, self.n_dims: -1], node_mask)
+        x, h_cat = self.unnormalize(x, z0[:, :, self.n_dims : -1], node_mask)
 
         h_cat = self.one_hot(np.argmax(h_cat, axis=2), self.num_classes) * node_mask
         h = h_cat
@@ -314,7 +302,7 @@ class EquivariantDiffusionONNX:
         zs = np.concatenate(
             [
                 remove_mean_with_mask(zs[:, :, : self.n_dims], node_mask),
-                zs[:, :, self.n_dims:],
+                zs[:, :, self.n_dims :],
             ],
             axis=2,
         )

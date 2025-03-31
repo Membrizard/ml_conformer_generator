@@ -88,7 +88,7 @@ def get_context_shape(coord: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Finds the principal axes for the conformer,
     and calculates Moment of Inertia tensor for the conformer in principal axes.
-    All atom masses are considered qual to one, to capture shape only.
+    All atom masses are considered equal to one, to capture shape only.
     :param coord: initial coordinates of the atoms
     :return: Principal components of MOI tensor, and coordinates rotated to a principal frame as a tuple of tensors
     """
@@ -215,7 +215,7 @@ def prepare_edm_input(
     min_n_nodes: int,
     max_n_nodes: int,
     device: torch.device,
-):
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
     nodesxsample = []
 
