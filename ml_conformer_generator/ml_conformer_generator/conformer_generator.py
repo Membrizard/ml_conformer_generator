@@ -35,7 +35,7 @@ class MLConformerGenerator(torch.nn.Module):
     def __init__(
         self,
         diffusion_steps: int = 100,
-        device: torch.device = "cpu",
+        device: torch.device = torch.device("cpu"),
         dimension: int = DIMENSION,
         num_bond_types: int = NUM_BOND_TYPES,
         min_n_nodes: int = MIN_N_NODES,
@@ -295,7 +295,7 @@ class MLConformerGenerator(torch.nn.Module):
         When running export it is recommended to create a model on cpu MLConformerGenerator(device="cpu"),
         if using accelerators indicate the exact devie i.e
         MLConformerGenerator(device="mps:0") or MLConformerGenerator(device="cuda:0")
-      
+
         :param egnn_save_path: save path for EGNN model in ONNX format
         :param adj_mat_seer_save_path: save path for AdjMatSeer model in ONNX format
         :param mock_molecules: a list of paths to mock molecules to use as dummy pass for AdjMatSeer conversion

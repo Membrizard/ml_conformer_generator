@@ -45,4 +45,5 @@ __all__ = [
     "MAX_N_NODES",
     "CONTEXT_NORMS",
     "ATOM_DECODER",
+    "MOCK_MOLECULES",
 ]
