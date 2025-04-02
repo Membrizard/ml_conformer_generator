@@ -1,78 +1,128 @@
-# ML Conformer Generator
+# 🧬 ML Conformer Generator
 
-A tool for shape-constrained molecule generation.
+**ML Conformer Generator** 
+is a tool for shape-constrained molecule generation using an Equivariant Diffusion Model (EDM)
+and a Graph Convolutional Network (GCN). It is designed to generate 3D molecular conformations
+that are both chemically valid and spatially aligned with a reference shape.
 
-The solution utilises an Equivariant Diffusion Model (EDM) [1] to generate atom coordinates and types using a shape constraint,
-which are then used by a GCN model [2] for atom adjacency prediction. Outputs of the models are combined to construct
-molecules, which are then passed through a standardisation pipeline.
+---
+## Installation
+`pip install ml-conformer-generator`
 
-The EDM and GCN models were trained on 1.6M compounds having 15-39 heavy atoms selected from the ChEMBL database.
-The solution may use the following elements for the molecule generation: H, C, N, O, F, P, S, Cl, Br
+## 🚀 Overview
 
-The standardiser pipeline uses the following steps:
-- Checks for atom valence
-- Kekulises molecules
-- RDkit Sanitization
-- Molecular Dynamics geometry optimisation with MMFF94
+This solution employs:
 
-The evaluation pipeline assesses the shape similarity of the generated molecules to a reference. 
-The assessment is based on a shape tanimoto similarity score [3], calculated using Gaussian Molecular Volume intersections.
-The shape Tanimoto similarity of a generated molecule to a reference is calculated ignoring hydrogens in both reference and generated sample.
+- **Equivariant Diffusion Model (EDM) [1]**: For generating atom coordinates and types under a shape constraint.
+- **Graph Convolutional Network (GCN) [2]**: For predicting atom adjacency matrices.
+- **Deterministic Standardization Pipeline**: For refining and validating generated molecules.
 
-Example performance of the model as evaluated on 100k generated samples
+Together, these components construct chemically meaningful molecules that align with a given reference conformation.
 
-(Used 1000 compounds from CCDC Virtual Screening dataset for generation)
+---
 
-**100 Denoising Steps:**
+## 🧠 Model Training
 
-- The average time for generation of 50 valid samples is 11.46 sec (NVidia H100)
-- Average Generation speed (NVidia H100) - 4.18 molecule/sec (valid)
-- Estimated GPU memory Consumtion per single Generation thread - up to 4.0 GB
-- Average Shape Tanimoto similarity - 53.32%
-- Maximum Shape Tanimoto similarity - 99.69%
-- Average Chemical Tanimoto similarity -10.87 %
-- % Of chemically unique molecules in reference to training dataset (not found in training dataset) - 99.84 %
-- % Of valid molecules in generated batch (as defined by the standardisation pipeline) - 48%
-- % Of chemically unique molecules within the generated set (as evaluated on 80k generated molecules) - 99.94%
-- Freschet Fingerprint Distance (2048 bit fingerprints) [4] to ChEMBL - 4.13 to PubChem - 2.64 to ZINC (250k drugs) - 4.95
+- Trained on **1.6 million** compounds from the **ChEMBL** database.
+- Filtered to molecules with **15–39 heavy atoms**.
+- Supported elements: `H, C, N, O, F, P, S, Cl, Br`.
 
+---
 
-Generator requirements are in  ./ml_conformer_generator/generator_requirements.txt
+## 🧪 Standardization Pipeline
 
-Frontend requirements are in ./frontend/fronted_requirements.txt
+The generated molecules are post-processed through the following steps:
 
+- Largest Fragment picker
+- Valence check
+- Kekulization
+- RDKit sanitization
+- Constrained Geometry optimization via **MMFF94** Molecular Dynamics
 
-## Usage
+---
 
-### Python API
-Look for interactive example in `./python_api_demo.ipynb`
+## 📏 Evaluation Pipeline
 
-```
+Evaluates shape similarity between generated molecules and a reference using
+**Shape Tanimoto Similarity [3]** via Gaussian Molecular Volume overlap.
+
+> Hydrogens are ignored in both reference and generated samples for this metric.
+
+---
+
+## 📊 Performance (100 Denoising Steps)
+
+*Tested on 100,000 samples using 1,000 CCDC Virtual Screening reference compounds.*
+
+- ⏱ **Avg time to generate 50 valid samples**: 11.46 sec (NVIDIA H100)
+- ⚡️ **Generation speed**: 4.18 valid molecules/sec
+- 💾 **GPU memory (per generation thread)**: Up to 4.0 GB
+- 📐 **Avg Shape Tanimoto Similarity**: 53.32%
+- 🎯 **Max Shape Tanimoto Similarity**: 99.69%
+- 🔬 **Avg Chemical Tanimoto Similarity (2-hop 2048-bit Morgan Fingerprints)**: 10.87%
+- 🧬 **% Chemically novel (vs. training set)**: 99.84%
+- ✔️ **% Valid molecules (post-standardization)**: 48%
+- 🔁 **% Unique molecules in generated set**: 99.94%
+- 📎 **Fréchet Fingerprint Distance (2-hop 2048-bit Morgan Fingerprints)**:  
+  - To ChEMBL: 4.13  
+  - To PubChem: 2.64  
+  - To ZINC (250k): 4.95
+
+---
+
+## 🐍 Python API
+
+See interactive example: `./python_api_demo.ipynb`
+
+```python
 from rdkit import Chem
 from ml_conformer_generator import MLConformerGenerator, evaluate_samples
 
-model = MLConformerGenerator(device="cpu", diffusion_steps=100)
+model = MLConformerGenerator(diffusion_steps=100)
 
-reference = Сhem.MolFromMolFile('')
+reference = Chem.MolFromMolFile('MOL_FILE_NAME.mol')
 
 samples = model.generate_conformers(reference_conformer=reference, n_samples=20)
-    
+
 aligned_reference, std_samples = evaluate_samples(reference, samples)
+```
+---
+
+## Export to ONNX
+
+Convert the model to ONNX for runtime flexibility:
+```python
+from ml_conformer_generator import MLConformerGenerator
+
+generator = MLConformerGenerator()
+generator.export_to_onnx()
+```
+This will compiles and saves the models to:
+`./ml_conformer_generator/ml_conformer_generator/weights/`
+
+## ONNX Inference:
+
+After the export is complete the PyTorch-free interface for the model can be used:
+
+```python
+from ml_conformer_generator import MLConformerGeneratorONNX
+from rdkit import Chem
+
+generator = MLConformerGeneratorONNX(diffusion_steps=100)
+reference = Chem.MolFromMolFile('MOL_FILE_NAME.mol')
+samples = generator.generate_conformers(reference_conformer=reference, n_samples=20)
 
 ```
+Install ONNX GPU runtime (if needed):
+`pip install onnxruntime-gpu`
 
-### Export to ONNX
-
-EDM and AdjMatSeer can be export to ONNX and have a python ONNX wrapper -
-TODO: We wil not make an api server but include export scripts for static inputs
-
-### API Server
+## API Server
 - Run `docker compose up -d --build`
 - The api server should be available at http:/0.0.0.0:8000
 - The Swagger documentation is available at http:/0.0.0.0:8000/docs
 - Generation endpoint http:/0.0.0.0:8000/generate
 
-#### Request Schema
+### Request Schema
 ```
 {
   "reference_mol": {
@@ -83,7 +133,7 @@ TODO: We wil not make an api server but include export scripts for static inputs
   "variance": 0
 }
 ```
-#### Response Schema
+### Response Schema
 ```
 {
   "results": {
@@ -102,9 +152,9 @@ TODO: We wil not make an api server but include export scripts for static inputs
 
 ```
 
-### Frontend 
+## Frontend 
 
-#### Running
+### Running
 - To bring the app UI up:
 ```
 cd ./frontend
@@ -112,7 +162,7 @@ streamlit run app_ui.py
 ```
 
 
-#### Development
+### Development
 - To switch 3D viewer (stspeck) to development set `_RELEASE=False` in `./frontend/stspeck/__init__.py`
 - Go to ./frontend/speck/fronted and run `npm run start` after that dev speck will run on http://localhost:3001
 - After that run streamlit app from ./frontend
@@ -126,3 +176,4 @@ streamlit run app_ui.py
 [1]
 [2]
 [3]
+[4]
