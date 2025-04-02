@@ -96,8 +96,6 @@ if torch.cuda.is_available():
 else:
     device = torch.device("cpu")
 
-generator = MLConformerGenerator(device=device, diffusion_steps=DIFFUSION_STEPS)
-
 
 @app.post("/generate_molecules")
 async def generate_molecules(
@@ -143,6 +141,10 @@ async def generate_molecules(
 
         logger.info("Starting Generation")
         start = time()
+
+        # Spawn model per request to allow async handling
+        generator = MLConformerGenerator(device=device, diffusion_steps=DIFFUSION_STEPS)
+
         samples = generator.generate_conformers(
             reference_conformer=ref_mol,
             n_samples=generation_request.n_samples,
@@ -177,28 +179,28 @@ async def generate_molecules(
     return response
 
 
-if __name__ == "__main__":
-    import uvicorn
-
-    logger.info("--- Starting server ---")
-
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-
-    if device == "cuda":
-        logger.info("--- Model server is running on GPU ---")
-    else:
-        logger.info(
-            "--- Model server is running on CPU. The generation will take more time ---"
-        )
-
 # if __name__ == "__main__":
 #     import uvicorn
-#     import os  # Add this import
 #
 #     logger.info("--- Starting server ---")
 #
-#     # Read PORT from environment variable, default to 8000 if not set
-#     port = int(os.environ.get("PORT", 8000))
-#     logger.info(f"Starting server on port {port}")
+#     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
 #
-#     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+#     if device == "cuda":
+#         logger.info("--- Model server is running on GPU ---")
+#     else:
+#         logger.info(
+#             "--- Model server is running on CPU. The generation will take more time ---"
+#         )
+
+if __name__ == "__main__":
+    import uvicorn
+    import os  # Add this import
+
+    logger.info("--- Starting server ---")
+
+    # Read PORT from environment variable, default to 8000 if not set
+    port = int(os.environ.get("PORT", 8000))
+    logger.info(f"Starting server on port {port}")
+
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")

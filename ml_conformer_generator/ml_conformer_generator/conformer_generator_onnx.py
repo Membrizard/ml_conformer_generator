@@ -1,4 +1,5 @@
 from typing import List
+from pathlib import Path
 
 import numpy as np
 import onnxruntime
@@ -35,8 +36,8 @@ class MLConformerGeneratorONNX:
         max_n_nodes: int = MAX_N_NODES,
         context_norms: dict = CONTEXT_NORMS,
         atom_decoder: dict = ATOM_DECODER,
-        egnn_onnx: str = "./ml_conformer_generator/ml_conformer_generator/weights/egnn_chembl_15_39.onnx",
-        adj_mat_seer_onnx: str = "./ml_conformer_generator/ml_conformer_generator/weights/adj_mat_seer_chembl_15_39.onnx",
+        egnn_onnx: str = "weights/egnn_chembl_15_39.onnx",
+        adj_mat_seer_onnx: str = "weights/adj_mat_seer_chembl_15_39.onnx",
     ):
         """
         Initialise the generator.
@@ -62,6 +63,10 @@ class MLConformerGeneratorONNX:
 
         self.min_n_nodes = min_n_nodes
         self.max_n_nodes = max_n_nodes
+
+        base_path = Path(__file__).parent
+        egnn_onnx = str(base_path / egnn_onnx)
+        adj_mat_seer_onnx = str(base_path / adj_mat_seer_onnx)
 
         self.generative_model = EquivariantDiffusionONNX(
             egnn_onnx=egnn_onnx,
