@@ -1,4 +1,5 @@
 from typing import List
+from pathlib import Path
 
 import torch
 from rdkit import Chem
@@ -13,12 +14,15 @@ from .utils import (
     MAX_N_NODES,
     MIN_N_NODES,
     NUM_BOND_TYPES,
+    MOCK_MOLECULES,
     get_context_shape,
     prepare_adj_mat_seer_input,
     prepare_edm_input,
     redefine_bonds,
     samples_to_rdkit_mol,
     standardize_mol,
+    egnn_onnx_export,
+    adj_mat_seer_onnx_export,
 )
 
 
@@ -38,8 +42,8 @@ class MLConformerGenerator(torch.nn.Module):
         max_n_nodes: int = MAX_N_NODES,
         context_norms: dict = CONTEXT_NORMS,
         atom_decoder: dict = ATOM_DECODER,
-        edm_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/edm_moi_chembl_15_39.weights",
-        adj_mat_seer_weights: str = "./ml_conformer_generator/ml_conformer_generator/weights/adj_mat_seer_chembl_15_39.weights",
+        edm_weights: str = "weights/edm_moi_chembl_15_39.weights",
+        adj_mat_seer_weights: str = "weights/adj_mat_seer_chembl_15_39.weights",
     ):
         """
         Initialise the generator.
@@ -92,6 +96,10 @@ class MLConformerGenerator(torch.nn.Module):
             num_bond_types=num_bond_types,
             device=device,
         )
+
+        base_path = Path(__file__).parent
+        edm_weights = base_path / edm_weights
+        adj_mat_seer_weights = base_path / adj_mat_seer_weights
 
         generative_model.load_state_dict(
             torch.load(
@@ -276,10 +284,39 @@ class MLConformerGenerator(torch.nn.Module):
 
         return out
 
-    def export_to_onnx(self):
+    def export_to_onnx(
+        self,
+        egnn_save_path: str = "./weights/egnn_chembl_15_39.onnx",
+        adj_mat_seer_save_path: str = "./weights/adj_mat_seer_chembl_15_39.onnx",
+        mock_molecules: List[str] = MOCK_MOLECULES,
+    ) -> None:
         """
-        Exports the model to ONNX format
-        :return: Exports Denoising EGNN and AdjMatSeer to ONNX to make them compatible with ONNX runtime,
-        returns an instance MLConformerGeneratorONNX which is a PyTorch - free ONNX based implementation of the model
+        Exports the model to ONNX format.
+        When running export it is recommended to create a model on cpu MLConformerGenerator(device="cpu"),
+        if using accelerators indicate the exact devie i.e
+        MLConformerGenerator(device="mps:0") or MLConformerGenerator(device="cuda:0")
+      
+        :param egnn_save_path: save path for EGNN model in ONNX format
+        :param adj_mat_seer_save_path: save path for AdjMatSeer model in ONNX format
+        :param mock_molecules: a list of paths to mock molecules to use as dummy pass for AdjMatSeer conversion
+        :return: Exports Denoising EGNN and AdjMatSeer to ONNX to make them compatible with ONNX runtime.
+        To Load ONNX model use MLConformerGeneratorONNX a PyTorch - free ONNX based implementation.
+
         """
+
+        base_path = Path(__file__).parent
+
+        egnn_save_path = base_path / egnn_save_path
+        adj_mat_seer_save_path = base_path / adj_mat_seer_save_path
+
+        m = [str(base_path / x) for x in mock_molecules]
+
+        egnn_onnx_export(
+            generative_model=self.generative_model, save_path=egnn_save_path
+        )
+        adj_mat_seer_onnx_export(
+            adj_mat_seer=self.adj_mat_seer,
+            save_path=adj_mat_seer_save_path,
+            mock_molecules=m,
+        )
         return None

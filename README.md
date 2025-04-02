@@ -1,12 +1,12 @@
-# ML Conformer Generator (ChemBl)
+# ML Conformer Generator
 
 A tool for shape-constrained molecule generation.
 
-The solution utilises an Equivariant Diffusion Model (EDM) [] to generate atom coordinates and types using a shape constrain,
-which are then used by a GCN model [] for atom adjacency prediction. Both models outputs are combined to construct
+The solution utilises an Equivariant Diffusion Model (EDM) [1] to generate atom coordinates and types using a shape constraint,
+which are then used by a GCN model [2] for atom adjacency prediction. Outputs of the models are combined to construct
 molecules, which are then passed through a standardisation pipeline.
 
-The EDM and GCN models were trained on a 1.6M compounds having 15-39 heavy atoms selected from the ChEMBL database.
+The EDM and GCN models were trained on 1.6M compounds having 15-39 heavy atoms selected from the ChEMBL database.
 The solution may use the following elements for the molecule generation: H, C, N, O, F, P, S, Cl, Br
 
 The standardiser pipeline uses the following steps:
@@ -16,8 +16,8 @@ The standardiser pipeline uses the following steps:
 - Molecular Dynamics geometry optimisation with MMFF94
 
 The evaluation pipeline assesses the shape similarity of the generated molecules to a reference. 
-The assessment is based on a shape tanimoto similarity score [], calculated using Gaussian Molecular Volume intersections.
-the shape Tanimoto similarity of a generated molecule to a reference is calculated ignoring hydrogens in both reference and generated sample.
+The assessment is based on a shape tanimoto similarity score [3], calculated using Gaussian Molecular Volume intersections.
+The shape Tanimoto similarity of a generated molecule to a reference is calculated ignoring hydrogens in both reference and generated sample.
 
 Example performance of the model as evaluated on 100k generated samples
 
@@ -34,7 +34,7 @@ Example performance of the model as evaluated on 100k generated samples
 - % Of chemically unique molecules in reference to training dataset (not found in training dataset) - 99.84 %
 - % Of valid molecules in generated batch (as defined by the standardisation pipeline) - 48%
 - % Of chemically unique molecules within the generated set (as evaluated on 80k generated molecules) - 99.94%
-- Freschet Fingerprint Distance (2048) [] to ChEMBL - 4.13 to PubChem - 2.64 to ZINC (250k drugs) - 4.95
+- Freschet Fingerprint Distance (2048 bit fingerprints) [4] to ChEMBL - 4.13 to PubChem - 2.64 to ZINC (250k drugs) - 4.95
 
 
 Generator requirements are in  ./ml_conformer_generator/generator_requirements.txt
@@ -121,3 +121,8 @@ cd ./frontend
 streamlit run app_ui.py
 ```
 - To build the 3D viewer go to ./frontend/speck/fronted and run `npm start build`
+
+## References
+[1]
+[2]
+[3]
