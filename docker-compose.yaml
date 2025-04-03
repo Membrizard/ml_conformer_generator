@@ -9,11 +9,5 @@ services:
     expose:
       - 8000
     restart: "always"
-    networks:
-      - ml_conformer_generator_network
-
-
-networks:
-  ml_conformer_generator_network:
 
 

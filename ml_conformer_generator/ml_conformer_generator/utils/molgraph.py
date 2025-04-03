@@ -1,6 +1,5 @@
 from typing import Tuple
 
-import matplotlib.pyplot as plt
 import numpy
 import torch
 from rdkit import Chem
@@ -233,51 +232,6 @@ class MolGraph:
             elements_vector[i] = self.x[i]
 
         return elements_vector
-
-
-def show_adjacency_matrix(
-    matrix: torch.Tensor,
-    title: str = "Matrix",
-    size: int = DIMENSION,
-) -> None:
-    """
-    Show 2-dimensional matrix
-    :param matrix: torch.Tensor of 3 dim (DIMENSION, DIMENSION, NUM_BOND_TYPES)
-    :param title: Title of the figure
-    :param size:
-    :return: plot
-    """
-    matrix_repr = torch.argmax(matrix, dim=2)
-    matrix_repr = matrix_repr[:size, :size]
-
-    plt.matshow(matrix_repr.cpu().detach().numpy())
-    plt.title(title)
-    plt.colorbar()
-    plt.show()
-
-
-def show_bond_probabilities(
-    matrix: torch.Tensor,
-    title: str = "Matrix",
-    size: int = DIMENSION,
-) -> None:
-    """
-    Show 2-dimensional matrix
-    :param matrix: torch.Tensor of 3 dim (DIMENSION, DIMENSION, NUM_BOND_TYPES)
-    :param title: Title of the figure
-    :param size: The size of the matrix to be displayed
-    :return: plot
-    """
-
-    matrix_repr = torch.zeros(DIMENSION, DIMENSION, dtype=torch.float)
-    softmax = torch.nn.functional.softmax(matrix, dim=2)
-    matrix_repr[:, :] = 1 - softmax[:, :, 0]
-    matrix_repr = matrix_repr[:size, :size]
-
-    plt.matshow(matrix_repr.cpu().detach().numpy())
-    plt.title(title)
-    plt.colorbar()
-    plt.show()
 
 
 def vector_graph_sort(

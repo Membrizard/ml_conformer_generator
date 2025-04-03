@@ -42,8 +42,8 @@ class MLConformerGenerator(torch.nn.Module):
         max_n_nodes: int = MAX_N_NODES,
         context_norms: dict = CONTEXT_NORMS,
         atom_decoder: dict = ATOM_DECODER,
-        edm_weights: str = "weights/edm_moi_chembl_15_39.weights",
-        adj_mat_seer_weights: str = "weights/adj_mat_seer_chembl_15_39.weights",
+        edm_weights: str = "weights/edm_moi_chembl_15_39.pt",
+        adj_mat_seer_weights: str = "weights/adj_mat_seer_chembl_15_39.pt",
     ):
         """
         Initialise the generator.
@@ -105,14 +105,14 @@ class MLConformerGenerator(torch.nn.Module):
             torch.load(
                 edm_weights,
                 map_location=device,
-            )
+            )["state_dict"]
         )
 
         adj_mat_seer.load_state_dict(
             torch.load(
                 adj_mat_seer_weights,
                 map_location=device,
-            )
+            )["state_dict"]
         )
 
         # Update denoising steps for the Equivarinat Diffusion

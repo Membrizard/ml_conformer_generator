@@ -4,4 +4,4 @@ from .ml_conformer_generator import (
     evaluate_samples,
 )
 
-__all__ = ["MLConformerGenerator", "evaluate_samples", "MLConformerGeneratorONNX"]
+__all__ = ["MLConformerGenerator", "MLConformerGeneratorONNX", "evaluate_samples"]
