@@ -11,11 +11,13 @@ RUN apt-get update && \
     apt-get install -y \
     libxrender1 \
     libxext6 \
+    libexpat1 \
     && rm -rf /var/lib/apt/lists/*
+
 
 #
 RUN pip install --upgrade pip
-RUN pip install -r /ml_conformer_generator/generator_requirements.txt
+RUN pip install -r /ml_conformer_generator/package_requirements.txt
 
 #
-CMD ["python", "/ml_conformer_generator/api_service.py"]
+CMD ["python", "/ml_conformer_generator/api_server.py"]

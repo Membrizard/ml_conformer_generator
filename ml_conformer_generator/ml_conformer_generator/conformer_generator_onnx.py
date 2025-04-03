@@ -164,7 +164,7 @@ class MLConformerGeneratorONNX:
 
         else:
             raise ValueError(
-                "Either a reference RDkit Mol object or context as torch.Tensor should be provided for generation."
+                "Either a reference RDkit Mol object or context as numpy.ndarray should be provided for generation."
             )
 
         edm_samples = self.edm_samples(

@@ -10,7 +10,7 @@ from rdkit.Chem import Draw
 
 from ml_conformer_generator import MLConformerGenerator, evaluate_samples
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 DIFFUSION_STEPS = 100
 
 app = FastAPI(
@@ -92,7 +92,7 @@ def generate_svg_string(compound: Chem.Mol):
 
 # Initiate the Generator
 if torch.cuda.is_available():
-    device = torch.device("cuda")
+    device = torch.device("cuda:0")
 else:
     device = torch.device("cpu")
 
@@ -178,20 +178,6 @@ async def generate_molecules(
 
     return response
 
-
-# if __name__ == "__main__":
-#     import uvicorn
-#
-#     logger.info("--- Starting server ---")
-#
-#     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
-#
-#     if device == "cuda":
-#         logger.info("--- Model server is running on GPU ---")
-#     else:
-#         logger.info(
-#             "--- Model server is running on CPU. The generation will take more time ---"
-#         )
 
 if __name__ == "__main__":
     import uvicorn
