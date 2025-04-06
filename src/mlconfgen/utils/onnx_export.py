@@ -30,26 +30,31 @@ def egnn_onnx_export(
     num_nodes = Dim("num_nodes")
     num_edges = Dim("num_edges")
 
-    export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
-    onnx_model = torch.onnx.export(
-        egnn,
-        egnn_inputs,
-        input_names=["t", "xh", "node_mask", "edge_mask", "context"],
-        output_names=["out"],
-        export_options=export_options,
-        export_params=True,
-        dynamic_shapes={
-            "t": {0: batch_size},
-            "xh": {0: batch_size, 1: num_nodes},
-            "node_mask": {0: batch_size, 1: num_nodes},
-            "edge_mask": {0: num_edges},
-            "context": {0: batch_size, 1: num_nodes},
-            "out": {0: batch_size, 1: num_nodes},
-        },
-        opset_version=18,
-        verbose=True,
-        dynamo=True,
-    )
+    try:
+        export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
+        onnx_model = torch.onnx.export(
+            egnn,
+            egnn_inputs,
+            input_names=["t", "xh", "node_mask", "edge_mask", "context"],
+            output_names=["out"],
+            export_options=export_options,
+            export_params=True,
+            dynamic_shapes={
+                "t": {0: batch_size},
+                "xh": {0: batch_size, 1: num_nodes},
+                "node_mask": {0: batch_size, 1: num_nodes},
+                "edge_mask": {0: num_edges},
+                "context": {0: batch_size, 1: num_nodes},
+                "out": {0: batch_size, 1: num_nodes},
+            },
+            opset_version=18,
+            verbose=True,
+            dynamo=True,
+        )
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(
+            'Failed to export ONNX model. To resolve run `pip install "mlconfgen[onnx]"`\n'
+        ) from e
 
     onnx_model.save(save_path)
 

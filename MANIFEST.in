@@ -1,0 +1,17 @@
+graft src
+
+include README.md
+include LICENSE*
+include modelcard.md
+include pyproject.toml
+
+prune frontend
+prune research_scripts
+prune server
+exclude docker-compose.yaml
+exclude *.ipynb
+
+global-exclude *~ *.py[cod]
+global-exclude *.pt
+global-exclude *.stl
+global-exclude *.xyz

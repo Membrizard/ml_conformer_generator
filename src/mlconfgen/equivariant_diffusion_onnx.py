@@ -1,8 +1,6 @@
 from typing import Tuple, Union
 
 import numpy as np
-import onnxruntime
-
 
 def clip_noise_schedule(alphas2: np.ndarray, clip_value: float = 0.001) -> np.ndarray:
     """
@@ -111,6 +109,13 @@ class EquivariantDiffusionONNX:
             9.0,
         ),  # (1, max number of atom classes)
     ):
+        try:
+            import onnxruntime
+        except ImportError as e:
+            raise ImportError(
+                'Failed to import onnxruntime. To resolve run `pip install "mlconfgen[onnx]"`\n'
+            ) from e
+
         super().__init__()
 
         self.gamma = PredefinedNoiseSchedule(

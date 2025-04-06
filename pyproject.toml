@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools >= 77.0.3", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mlconfgen"
+description = "Shape-constrained molecule generator via Equivariant Diffusion and GCN"
+readme = "README.md"
+version = "0.0.1a1"
+# dynamic = ["version"]
+authors = [
+    {name = "Denis Sapegin", email = "dasapegin@gmail.com"},
+    {name = "Fedor Bakharev", email = "fbakharev@gmail.com"},
+    {name = "Azamat Gafurov", email = "azamat.gafurov@gmail.com"},
+]
+maintainers = [
+    {name = "Denis Sapegin", email = "dasapegin@gmail.com"},
+    {name = "Azamat Gafurov", email = "azamat.gafurov@gmail.com"},
+]
+dependencies = [
+    "torch>=2.0.1",
+    "rdkit>=2023.9.5",
+    "numpy>=1.26.4",
+]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+license = "LicenseRef-RAIL AND Apache-2.0"
+license-files = ["LICENSE*"]
+keywords = ["rdkit", "chemistry", "diffusion", "conformers"]
+
+[project.optional-dependencies]
+onnx = [
+    "onnx>=1.17.0",
+    "onnxruntime>=1.19.0",
+    "onnxscript>=0.2.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/Membrizard/conformer_generator_app"
+Issues = "https://github.com/Membrizard/conformer_generator_app/issues"
+
+[tool.setuptools_scm]
