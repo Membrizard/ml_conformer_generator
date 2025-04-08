@@ -7,7 +7,7 @@ that are both chemically valid and spatially aligned with a reference shape.
 
 ---
 ## Installation
-`pip install ml-conformer-generator`
+`pip install mlconfgen`
 
 ## 🚀 Overview
 
@@ -76,7 +76,7 @@ See interactive example: `./python_api_demo.ipynb`
 
 ```python
 from rdkit import Chem
-from ml_conformer_generator import MLConformerGenerator, evaluate_samples
+from mlconfgen import MLConformerGenerator, evaluate_samples
 
 model = MLConformerGenerator(diffusion_steps=100)
 
@@ -92,20 +92,20 @@ aligned_reference, std_samples = evaluate_samples(reference, samples)
 
 Convert the model to ONNX for runtime flexibility:
 ```python
-from ml_conformer_generator import MLConformerGenerator
+from mlconfgen import MLConformerGenerator
 
 generator = MLConformerGenerator()
 generator.export_to_onnx()
 ```
 This will compiles and saves the models to:
-`./ml_conformer_generator/ml_conformer_generator/weights/`
+`./src/mlconfgen/weights/`
 
 ## ONNX Inference:
 
 After the export is complete the PyTorch-free interface for the model can be used:
 
 ```python
-from ml_conformer_generator import MLConformerGeneratorONNX
+from mlconfgen import MLConformerGeneratorONNX
 from rdkit import Chem
 
 generator = MLConformerGeneratorONNX(diffusion_steps=100)

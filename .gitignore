@@ -1,10 +1,10 @@
 data/*
-.DS_Store
 **/.DS_Store
 .idea/
 __pycache__/
-/.ipynb_checkpoints/
-/venv
+.ipynb_checkpoints/
+venv/
 /frontend/stspeck/frontend/node_modules
-/ml_conformer_generator/ml_conformer_generator/weights/egnn_chembl_15_39.onnx
-/ml_conformer_generator/ml_conformer_generator/weights/adj_mat_seer_chembl_15_39.onnx
+*.onnx
+dist/
+*.egg-info/

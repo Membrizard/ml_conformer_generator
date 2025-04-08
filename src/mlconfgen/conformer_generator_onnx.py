@@ -2,7 +2,6 @@ from typing import List
 from pathlib import Path
 
 import numpy as np
-import onnxruntime
 from rdkit import Chem
 
 from .equivariant_diffusion_onnx import EquivariantDiffusionONNX
@@ -49,6 +48,13 @@ class MLConformerGeneratorONNX:
         :param egnn_onnx: path to EGNN model in the ONNX format
         :param adj_mat_seer_onnx: path to AdjMatSeer model in the ONNX format
         """
+        try:
+            import onnxruntime
+        except ImportError as e:
+            raise ImportError(
+                'Failed to import onnxruntime. To resolve run `pip install "mlconfgen[onnx]"`\n'
+            ) from e
+
         super().__init__()
 
         # self.device = device
