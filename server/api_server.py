@@ -1,16 +1,14 @@
 import logging
-import re
 from time import time
 
 import torch
 from fastapi import Depends, FastAPI, File, UploadFile
 from pydantic import BaseModel, Field
 from rdkit import Chem
-from rdkit.Chem import Draw
 
-from ml_conformer_generator import MLConformerGenerator, evaluate_samples
+from mlconfgen import MLConformerGenerator, evaluate_samples
 
-VERSION = "1.1.0"
+VERSION = "2.0.0"
 DIFFUSION_STEPS = 100
 
 app = FastAPI(
@@ -37,7 +35,6 @@ class GeneratedMolecule(BaseModel):
     mol_block: str
     shape_tanimoto: float
     chemical_tanimoto: float
-    svg: str
 
 
 class GenerationResults(BaseModel):
@@ -47,47 +44,7 @@ class GenerationResults(BaseModel):
 
 class GenerationResponse(BaseModel):
     results: GenerationResults
-    errors: str = None
-
-
-SVG_PALETTE = {
-    1: (0.830, 0.830, 0.830),  # H
-    6: (0.000, 0.000, 0.000),  # C
-    7: (0.200, 0.600, 0.973),  # N
-    8: (1.000, 0.400, 0.400),  # O
-    9: (0.000, 0.800, 0.267),  # F
-    15: (1.000, 0.502, 0.000),  # P
-    16: (1.000, 1.000, 0.188),  # S
-    17: (0.750, 1.000, 0.000),  # Cl
-    35: (0.902, 0.361, 0.000),  # Br
-}
-
-
-def generate_svg_string(compound: Chem.Mol):
-    """
-    Renders an image for a compound with labelled atoms
-    :param compound: RDkit mol object
-    :return: path to the generated image
-    """
-    smiles_str = Chem.MolToSmiles(compound)
-    flat_mol = Chem.MolFromSmiles(smiles_str)
-    pattern = re.compile("<\?xml.*\?>")
-    # Create a drawer object
-    d2d = Draw.rdMolDraw2D.MolDraw2DSVG(160, 160)
-    # Specify the drawing options
-    dopts = d2d.drawOptions()
-    dopts.setAtomPalette(SVG_PALETTE)
-    dopts.bondLineWidth = 1
-    dopts.bondColor = (0, 0, 0)
-    dopts.clearBackground = False
-    # Generate and save an image
-
-    d2d.DrawMolecule(flat_mol)
-    d2d.FinishDrawing()
-    svg = d2d.GetDrawingText().replace("svg:", "")
-    svg = re.sub(pattern, "", svg)
-    # svg = "<div>" + svg + "</div>"
-    return svg
+    error: str = None
 
 
 # Initiate the Generator
@@ -130,14 +87,20 @@ async def generate_molecules(
 
         if ref_block_type == "mol":
             ref_mol = Chem.MolFromMolBlock(ref_block)
-        elif ref_block == "mol2":
+        elif ref_block_type == "mol2":
             ref_mol = Chem.MolFromMol2Block(ref_block)
-        elif ref_block == "pdb":
+        elif ref_block_type == "pdb":
             ref_mol = Chem.MolFromPDBBlock(ref_block)
-        elif ref_block == "xyz":
+        elif ref_block_type == "xyz":
             ref_mol = Chem.MolFromXYZBlock(ref_block)
         else:
             raise ValueError("Unsupported molecule file type.")
+
+        ref_mol = Chem.RemoveHs(ref_mol)
+        atom_count = ref_mol.GetNumAtoms()
+
+        if atom_count > 39 or atom_count < 15:
+            raise ValueError("The reference molecule should contain at least 15 but not more than 39 heavy atoms")
 
         logger.info("Starting Generation")
         start = time()
@@ -158,13 +121,11 @@ async def generate_molecules(
 
         gen_mols = []
         for i, sample in enumerate(std_samples):
-            svg_string = generate_svg_string(samples[i])
             gen_mols.append(
                 GeneratedMolecule(
                     mol_block=sample["mol_block"],
                     shape_tanimoto=sample["shape_tanimoto"],
                     chemical_tanimoto=sample["chemical_tanimoto"],
-                    svg=svg_string,
                 )
             )
 
