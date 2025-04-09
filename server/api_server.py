@@ -100,7 +100,9 @@ async def generate_molecules(
         atom_count = ref_mol.GetNumAtoms()
 
         if atom_count > 39 or atom_count < 15:
-            raise ValueError("The reference molecule should contain at least 15 but not more than 39 heavy atoms")
+            raise ValueError(
+                "The reference molecule should contain at least 15 but not more than 39 heavy atoms"
+            )
 
         logger.info("Starting Generation")
         start = time()
@@ -118,6 +120,11 @@ async def generate_molecules(
         start = time()
         aligned_ref, std_samples = evaluate_samples(ref_mol, samples)
         logger.info(f"Evaluation Complete in {round(time() - start, 2)} sec")
+
+        def s_f(x):
+            return x["shape_tanimoto"]
+
+        std_samples.sort(key=s_f, reverse=True)
 
         gen_mols = []
         for i, sample in enumerate(std_samples):

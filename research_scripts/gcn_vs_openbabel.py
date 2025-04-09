@@ -165,10 +165,10 @@ for i, reference in enumerate(references):
     for std_sample in std_samples:
         sample_mol = Chem.MolFromMolBlock(std_sample["mol_block"], removeHs=True)
 
-        # Check for sample uniqueness
-        match = exact_match(sample_mol, source_path)
-        if not match:
-            chem_unique_samples += 1
+        # # Check for sample uniqueness
+        # match = exact_match(sample_mol, source_path)
+        # if not match:
+        #     chem_unique_samples += 1
 
         sample_num_atoms = sample_mol.GetNumAtoms()
         variance = ref_n_atoms - sample_num_atoms  # -> Can be negative intentionally

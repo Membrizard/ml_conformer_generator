@@ -19,5 +19,3 @@ ATOM_DECODER = {
 
 MIN_N_NODES = 15
 MAX_N_NODES = 39
-
-MOCK_MOLECULES = ["utils/mol_examples/ceyyag.xyz", "utils/mol_examples/cpromz.xyz"]

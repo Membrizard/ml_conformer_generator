@@ -6,8 +6,8 @@ import torch
 from torch.export import Dim
 from rdkit import Chem
 
-from .config import CONTEXT_NORMS
-from .mol_utils import prepare_adj_mat_seer_input
+from mlconfgen.utils.config import CONTEXT_NORMS
+from mlconfgen.utils.mol_utils import prepare_adj_mat_seer_input
 
 
 def egnn_onnx_export(

@@ -1,0 +1,3 @@
+onnxscript==0.2.2
+mlconfgen
+torch>=2.0.1

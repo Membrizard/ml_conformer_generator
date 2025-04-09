@@ -2,6 +2,7 @@ from typing import Tuple, Union
 
 import numpy as np
 
+
 def clip_noise_schedule(alphas2: np.ndarray, clip_value: float = 0.001) -> np.ndarray:
     """
     For a noise schedule given by alpha^2, this clips alpha_t / alpha_t-1. This may help improve stability during

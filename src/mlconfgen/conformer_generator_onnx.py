@@ -57,8 +57,6 @@ class MLConformerGeneratorONNX:
 
         super().__init__()
 
-        # self.device = device
-
         self.context_norms = {
             key: np.array(value) for key, value in context_norms.items()
         }

@@ -1,4 +1,4 @@
-# 🧬 ML Conformer Generator
+# ML Conformer Generator
 
 **ML Conformer Generator** 
 is a tool for shape-constrained molecule generation using an Equivariant Diffusion Model (EDM)
@@ -7,17 +7,40 @@ that are both chemically valid and spatially aligned with a reference shape.
 
 ---
 ## Installation
+
+Install the package:
+
 `pip install mlconfgen`
+
+Load the weights:
+
+---
+
+## 🐍 Python API
+
+See interactive examples: `./python_api_demo.ipynb`
+
+```python
+from rdkit import Chem
+from mlconfgen import MLConformerGenerator, evaluate_samples
+
+model = MLConformerGenerator(diffusion_steps=100)
+
+reference = Chem.MolFromMolFile('MOL_FILE_NAME.mol')
+
+samples = model.generate_conformers(reference_conformer=reference, n_samples=20)
+
+aligned_reference, std_samples = evaluate_samples(reference, samples)
+```
+---
 
 ## 🚀 Overview
 
 This solution employs:
 
-- **Equivariant Diffusion Model (EDM) [1]**: For generating atom coordinates and types under a shape constraint.
-- **Graph Convolutional Network (GCN) [2]**: For predicting atom adjacency matrices.
+- **Equivariant Diffusion Model (EDM) [1](https://doi.org/10.48550/arXiv.2203.17003)**: For generating atom coordinates and types under a shape constraint.
+- **Graph Convolutional Network (GCN) [2](https://doi.org/10.1039/D3DD00178D)**: For predicting atom adjacency matrices.
 - **Deterministic Standardization Pipeline**: For refining and validating generated molecules.
-
-Together, these components construct chemically meaningful molecules that align with a given reference conformation.
 
 ---
 
@@ -43,8 +66,8 @@ The generated molecules are post-processed through the following steps:
 
 ## 📏 Evaluation Pipeline
 
-Evaluates shape similarity between generated molecules and a reference using
-**Shape Tanimoto Similarity [3]** via Gaussian Molecular Volume overlap.
+Aligns and Evaluates shape similarity between generated molecules and a reference using
+**Shape Tanimoto Similarity [3](https://doi.org/10.1007/978-94-017-1120-3_5 )** via Gaussian Molecular Volume overlap.
 
 > Hydrogens are ignored in both reference and generated samples for this metric.
 
@@ -52,7 +75,7 @@ Evaluates shape similarity between generated molecules and a reference using
 
 ## 📊 Performance (100 Denoising Steps)
 
-*Tested on 100,000 samples using 1,000 CCDC Virtual Screening reference compounds.*
+*Tested on 100,000 samples using 1,000 CCDC Virtual Screening [4](https://www.ccdc.cam.ac.uk/support-and-resources/downloads/) reference compounds.*
 
 - ⏱ **Avg time to generate 50 valid samples**: 11.46 sec (NVIDIA H100)
 - ⚡️ **Generation speed**: 4.18 valid molecules/sec
@@ -70,39 +93,18 @@ Evaluates shape similarity between generated molecules and a reference using
 
 ---
 
-## 🐍 Python API
+## Generation Examples
 
-See interactive example: `./python_api_demo.ipynb`
-
-```python
-from rdkit import Chem
-from mlconfgen import MLConformerGenerator, evaluate_samples
-
-model = MLConformerGenerator(diffusion_steps=100)
-
-reference = Chem.MolFromMolFile('MOL_FILE_NAME.mol')
-
-samples = model.generate_conformers(reference_conformer=reference, n_samples=20)
-
-aligned_reference, std_samples = evaluate_samples(reference, samples)
-```
----
-
-## Export to ONNX
-
-Convert the model to ONNX for runtime flexibility:
-```python
-from mlconfgen import MLConformerGenerator
-
-generator = MLConformerGenerator()
-generator.export_to_onnx()
-```
-This will compiles and saves the models to:
-`./src/mlconfgen/weights/`
+<img src="./assets/ref_mol/molecule_1.png" width="150" height="150">
+<img src="./assets/ref_mol/molecule_2.png" width="150" height="150">
+<img src="./assets/ref_mol/molecule_3.png" width="150" height="150">
+<img src="./assets/ref_mol/molecule_4.png" width="150" height="150">
 
 ## ONNX Inference:
 
-After the export is complete the PyTorch-free interface for the model can be used:
+Weights of the model in ONNX format are available at:
+> 
+
 
 ```python
 from mlconfgen import MLConformerGeneratorONNX
@@ -115,6 +117,18 @@ samples = generator.generate_conformers(reference_conformer=reference, n_samples
 ```
 Install ONNX GPU runtime (if needed):
 `pip install onnxruntime-gpu`
+
+---
+## Export to ONNX
+
+```python
+from mlconfgen import MLConformerGenerator
+from onnx_export import export_to_onnx
+
+generator = MLConformerGenerator()
+export_to_onnx(generator)
+```
+This compiles and saves the models to: `./`
 
 ## API Server
 - Run `docker compose up -d --build`
@@ -143,7 +157,6 @@ Install ONNX GPU runtime (if needed):
             "mol_block": "string",
             "shape_tanimoto": 0.1,
             "chemical_tanimoto": 0.1,
-            "svg": "string"
         }
     ]
   },
@@ -171,9 +184,3 @@ cd ./frontend
 streamlit run app_ui.py
 ```
 - To build the 3D viewer go to ./frontend/speck/fronted and run `npm start build`
-
-## References
-[1]
-[2]
-[3]
-[4]
