@@ -8,11 +8,16 @@ that are both chemically valid and spatially aligned with a reference shape.
 ---
 ## Installation
 
-Install the package:
+1. Install the package:
 
 `pip install mlconfgen`
 
-Load the weights:
+2. Load the weights from Huggingface
+> https://huggingface.co/Membrizard/ml_conformer_generator
+
+`edm_moi_chembl_15_39.pt`
+
+`adj_mat_seer_chembl_15_39.pt`
 
 ---
 
@@ -24,9 +29,13 @@ See interactive examples: `./python_api_demo.ipynb`
 from rdkit import Chem
 from mlconfgen import MLConformerGenerator, evaluate_samples
 
-model = MLConformerGenerator(diffusion_steps=100)
+model = MLConformerGeneratorONNX(
+                                 edm_weights="./edm_moi_chembl_15_39.pt",
+                                 adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+                                 diffusion_steps=100,
+                                )
 
-reference = Chem.MolFromMolFile('MOL_FILE_NAME.mol')
+reference = Chem.MolFromMolFile('./demo_files/ceyyag.mol')
 
 samples = model.generate_conformers(reference_conformer=reference, n_samples=20)
 
@@ -38,8 +47,8 @@ aligned_reference, std_samples = evaluate_samples(reference, samples)
 
 This solution employs:
 
-- **Equivariant Diffusion Model (EDM) [1](https://doi.org/10.48550/arXiv.2203.17003)**: For generating atom coordinates and types under a shape constraint.
-- **Graph Convolutional Network (GCN) [2](https://doi.org/10.1039/D3DD00178D)**: For predicting atom adjacency matrices.
+- **Equivariant Diffusion Model (EDM) [[1]](https://doi.org/10.48550/arXiv.2203.17003)**: For generating atom coordinates and types under a shape constraint.
+- **Graph Convolutional Network (GCN) [[2]](https://doi.org/10.1039/D3DD00178D)**: For predicting atom adjacency matrices.
 - **Deterministic Standardization Pipeline**: For refining and validating generated molecules.
 
 ---
@@ -67,7 +76,7 @@ The generated molecules are post-processed through the following steps:
 ## 📏 Evaluation Pipeline
 
 Aligns and Evaluates shape similarity between generated molecules and a reference using
-**Shape Tanimoto Similarity [3](https://doi.org/10.1007/978-94-017-1120-3_5 )** via Gaussian Molecular Volume overlap.
+**Shape Tanimoto Similarity [[3]](https://doi.org/10.1007/978-94-017-1120-3_5 )** via Gaussian Molecular Volume overlap.
 
 > Hydrogens are ignored in both reference and generated samples for this metric.
 
@@ -75,7 +84,7 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 
 ## 📊 Performance (100 Denoising Steps)
 
-*Tested on 100,000 samples using 1,000 CCDC Virtual Screening [4](https://www.ccdc.cam.ac.uk/support-and-resources/downloads/) reference compounds.*
+*Tested on 100,000 samples using 1,000 CCDC Virtual Screening [[4]](https://www.ccdc.cam.ac.uk/support-and-resources/downloads/) reference compounds.*
 
 - ⏱ **Avg time to generate 50 valid samples**: 11.46 sec (NVIDIA H100)
 - ⚡️ **Generation speed**: 4.18 valid molecules/sec
@@ -100,19 +109,48 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 <img src="./assets/ref_mol/molecule_3.png" width="150" height="150">
 <img src="./assets/ref_mol/molecule_4.png" width="150" height="150">
 
-## ONNX Inference:
+---
 
+## 💾 Access & Licensing
+
+The **Python package and inference code are available on GitHub** under Apache 2.0 License
+> https://github.com/Membrizard/ml_conformer_generator
+
+The trained model **Weights** are available at
+
+> https://huggingface.co/Membrizard/ml_conformer_generator
+
+And are licensed under CC BY-NC-ND 4.0
+
+The usage of the trained weights for any profit-generating activity is restricted.
+
+For commercial licensing and inference-as-a-service, contact:
+dasapegin@gmail.com
+
+---
+
+## ONNX Inference:
+For torch Free inference an ONNX version of the model is present
 Weights of the model in ONNX format are available at:
-> 
+> https://huggingface.co/Membrizard/ml_conformer_generator
+
+`egnn_chembl_15_39.onnx`
+
+`adj_mat_seer_chembl_15_39.onnx`
 
 
 ```python
 from mlconfgen import MLConformerGeneratorONNX
 from rdkit import Chem
 
-generator = MLConformerGeneratorONNX(diffusion_steps=100)
+model = MLConformerGeneratorONNX(
+                                 egnn_onnx="./egnn_chembl_15_39.onnx",
+                                 adj_mat_seer_onnx="./adj_mat_seer_chembl_15_39.onnx",
+                                 diffusion_steps=100,
+                                )
+
 reference = Chem.MolFromMolFile('MOL_FILE_NAME.mol')
-samples = generator.generate_conformers(reference_conformer=reference, n_samples=20)
+samples = model.generate_conformers(reference_conformer=reference, n_samples=20)
 
 ```
 Install ONNX GPU runtime (if needed):
@@ -120,15 +158,20 @@ Install ONNX GPU runtime (if needed):
 
 ---
 ## Export to ONNX
+An option to compile the model to ONNX is provided
+
+requires `onnxscript==0.2.2`
+
+`pip install onnxscript`
 
 ```python
 from mlconfgen import MLConformerGenerator
 from onnx_export import export_to_onnx
 
-generator = MLConformerGenerator()
-export_to_onnx(generator)
+model = MLConformerGenerator()
+export_to_onnx(model)
 ```
-This compiles and saves the models to: `./`
+This compiles and saves the ONNX files to: `./`
 
 ## API Server
 - Run `docker compose up -d --build`
@@ -165,22 +208,35 @@ This compiles and saves the models to: `./`
 
 ```
 
-## Frontend 
+## Web App
 
 ### Running
 - To bring the app UI up:
 ```
-cd ./frontend
+cd ./web_app
 streamlit run app_ui.py
 ```
 
+### Web App Development
 
-### Development
-- To switch 3D viewer (stspeck) to development set `_RELEASE=False` in `./frontend/stspeck/__init__.py`
-- Go to ./frontend/speck/fronted and run `npm run start` after that dev speck will run on http://localhost:3001
-- After that run streamlit app from ./frontend
-```
-cd ./frontend
-streamlit run app_ui.py
-```
-- To build the 3D viewer go to ./frontend/speck/fronted and run `npm start build`
+1. To enable development mode for the 3D viewer (`stspeck`), set `_RELEASE = False` in `./frontend/stspeck/__init__.py`.
+
+2. Navigate to the 3D viewer frontend and start the development server:
+   ```bash
+   cd ./frontend/speck/frontend
+   npm run start
+   ```
+   
+   This will launch the dev server at `http://localhost:3001`
+
+3. In a separate terminal, run the Streamlit app from the root frontend directory: 
+  ```bash
+  cd ./web_app
+  streamlit run app_ui.py
+  ```
+
+4. To build the production version of the 3D viewer, run:
+ ```bash
+  cd ./web_app/speck/frontend
+  npm run build
+  ```

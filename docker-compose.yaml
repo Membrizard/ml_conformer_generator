@@ -2,7 +2,7 @@ services:
   api_service:
     build:
       context: .
-      dockerfile: ./ml_conformer_generator/Dockerfile
+      dockerfile: ./server/Dockerfile
     container_name: ml-conformer-generator
     environment:
       PORT: 8000
