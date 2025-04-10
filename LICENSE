@@ -1,3 +1,5 @@
+Apache 2.0 License
+
 Copyright 2025 Denis Sapegin, Fedor Bakharev, Azamat Gafurov and Contributors
 
 Except for the trained model weights, this repository and its contents (`ml_conformer_generator`)
