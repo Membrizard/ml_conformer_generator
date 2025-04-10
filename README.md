@@ -180,7 +180,7 @@ This compiles and saves the ONNX files to: `./`
 - Generation endpoint `http:/0.0.0.0:8000/generate`
 
 ### Request Schema
-```
+```json
 {
   "reference_mol": {
     "type": "string",
@@ -191,7 +191,7 @@ This compiles and saves the ONNX files to: `./`
 }
 ```
 ### Response Schema
-```
+```json
 {
   "results": {
     "aligned_reference": "string",
