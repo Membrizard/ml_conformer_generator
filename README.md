@@ -104,10 +104,10 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 
 ## Generation Examples
 
-<img src="./assets/ref_mol/molecule_1.png" width="150" height="150">
-<img src="./assets/ref_mol/molecule_2.png" width="150" height="150">
-<img src="./assets/ref_mol/molecule_3.png" width="150" height="150">
-<img src="./assets/ref_mol/molecule_4.png" width="150" height="150">
+[ex1](./assets/ref_mol/molecule_1.png)
+[ex2](./assets/ref_mol/molecule_2.png)
+[ex3](./assets/ref_mol/molecule_3.png)
+[ex4](./assets/ref_mol/molecule_4.png)
 
 ---
 
