@@ -213,7 +213,13 @@ This compiles and saves the ONNX files to: `./`
 ![web_app](./assets/app_ui/web_app_ui.png)
 
 ### Running
-- To bring the app UI up:
+- Move the trained PyTorch weights into `./web_app`
+
+`./web_app/edm_moi_chembl_15_39.pt`
+
+`./web_app/adj_mat_seer_chembl_15_39.pt`
+
+- Bring the app UI up:
 ```
 cd ./web_app
 streamlit run app_ui.py
