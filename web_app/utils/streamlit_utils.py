@@ -8,7 +8,7 @@ import streamlit.components.v1 as components
 import torch
 from rdkit import Chem
 from rdkit.Chem import Draw
-from mlconfgen import MLConformerGenerator, evaluate_samples
+# from mlconfgen import MLConformerGenerator, evaluate_samples
 
 CMAP = matplotlib.cm.get_cmap("viridis")
 
@@ -57,7 +57,7 @@ def view_mol_button(mol_index):
 
 # Working with results, rendering mol images
 def generate_mock_results():
-    with open("./generation_examples/generation_example_1.json") as json_file:
+    with open("./generation_examples/samples_of_CHEMBL234460_P10000024.json") as json_file:
         data = json.load(json_file)
 
         def s_f(x):
@@ -71,16 +71,16 @@ def generate_mock_results():
     return ref, samples
 
 
-def generate_results(ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device):
-    generator = MLConformerGenerator(diffusion_steps=n_steps, device=device)
-    samples = generator(reference_conformer=ref_mol,
-                        n_samples=n_samples,
-                        variance=variance,
-                        )
-
-    aligned_ref, std_samples = evaluate_samples(samples)
-
-    return aligned_ref, std_samples
+# def generate_results(ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device):
+#     generator = MLConformerGenerator(diffusion_steps=n_steps, device=device)
+#     samples = generator(reference_conformer=ref_mol,
+#                         n_samples=n_samples,
+#                         variance=variance,
+#                         )
+#
+#     aligned_ref, std_samples = evaluate_samples(samples)
+#
+#     return aligned_ref, std_samples
 
 
 def draw_compound_image(compound: Chem.Mol):

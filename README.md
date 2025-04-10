@@ -210,6 +210,8 @@ This compiles and saves the ONNX files to: `./`
 
 ## Web App
 
+![web_app](./assets/app_ui/web_app_ui.png)
+
 ### Running
 - To bring the app UI up:
 ```

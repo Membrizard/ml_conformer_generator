@@ -70,7 +70,8 @@ with app_container:
             st.divider()
 
             uploaded_mol = st.file_uploader(
-                "Reference Structure: Mol, XYZ or PDB block "
+                "Reference Structure: Mol, XYZ or PDB block ",
+                accept_multiple_files=False,
             )
             n_samples_slider_c, _, variance_c = st.columns([3, 1, 3])
 
