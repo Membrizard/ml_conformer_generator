@@ -29,15 +29,15 @@ See interactive examples: `./python_api_demo.ipynb`
 from rdkit import Chem
 from mlconfgen import MLConformerGenerator, evaluate_samples
 
-model = MLConformerGeneratorONNX(
-                                 edm_weights="./edm_moi_chembl_15_39.pt",
-                                 adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
-                                 diffusion_steps=100,
-                                )
+model = MLConformerGenerator(
+                             edm_weights="./edm_moi_chembl_15_39.pt",
+                             adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+                             diffusion_steps=100,
+                            )
 
 reference = Chem.MolFromMolFile('./demo_files/ceyyag.mol')
 
-samples = model.generate_conformers(reference_conformer=reference, n_samples=20)
+samples = model.generate_conformers(reference_conformer=reference, n_samples=20, variance=2)
 
 aligned_reference, std_samples = evaluate_samples(reference, samples)
 ```
@@ -150,7 +150,7 @@ model = MLConformerGeneratorONNX(
                                 )
 
 reference = Chem.MolFromMolFile('MOL_FILE_NAME.mol')
-samples = model.generate_conformers(reference_conformer=reference, n_samples=20)
+samples = model.generate_conformers(reference_conformer=reference, n_samples=20, variance=2)
 
 ```
 Install ONNX GPU runtime (if needed):

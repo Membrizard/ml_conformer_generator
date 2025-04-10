@@ -1,14 +1,14 @@
 import base64
 import json
-import random
 import re
 
 import matplotlib
-import requests
 import streamlit as st
 import streamlit.components.v1 as components
+import torch
 from rdkit import Chem
-from rdkit.Chem import Draw, rdDistGeom
+from rdkit.Chem import Draw
+from mlconfgen import MLConformerGenerator, evaluate_samples
 
 CMAP = matplotlib.cm.get_cmap("viridis")
 
@@ -71,19 +71,16 @@ def generate_mock_results():
     return ref, samples
 
 
-def generate_results():
-    with open("./generation_examples/generation_example_5.json") as json_file:
-        data = json.load(json_file)
+def generate_results(ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device):
+    generator = MLConformerGenerator(diffusion_steps=n_steps, device=device)
+    samples = generator(reference_conformer=ref_mol,
+                        n_samples=n_samples,
+                        variance=variance,
+                        )
 
-        def s_f(x):
-            return x["shape_tanimoto"]
+    aligned_ref, std_samples = evaluate_samples(samples)
 
-        samples = data["generated_molecules"]
-
-        samples.sort(key=s_f, reverse=True)
-        ref = data["aligned_reference"]
-
-    return ref, samples
+    return aligned_ref, std_samples
 
 
 def draw_compound_image(compound: Chem.Mol):
@@ -223,7 +220,7 @@ def header_image(image_path: str = "./assets/header_background.png"):
     file_.close()
 
     st.html(
-        f'<img src="data:image/gif;base64,{data_url}" style="margin: -15px 0 -15px 0; width: 100%; height: 120px; object-fit: cover; object-position: 0 34%;">',
+        f'<img src="data:image/gif;base64,{data_url}" style="margin: -15px 0 -15px 0; width: 100%; height: 144px; object-fit: cover; object-position: 0 34%;">',
     )
     return None
 
