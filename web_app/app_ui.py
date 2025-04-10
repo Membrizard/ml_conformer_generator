@@ -71,14 +71,15 @@ with app_container:
 
             ref_mol = None
             uploaded_mol = st.file_uploader(
-                "Reference Structure: Mol, XYZ or PDB block ",
+                "Reference Structure: Mol or PDB file ",
                 accept_multiple_files=False,
-                type=["mol", "xyz", "pdb"]
+                type=["mol", "pdb"]
             )
 
             if uploaded_mol is not None:
                 mol_data = uploaded_mol.getvalue().decode("utf-8")
-                ref_mol = Chem.MolFromXYZBlock(mol_data)
+                ref_mol = Chem.MolFromMolBlock(mol_data)
+                # ref_mol = rdDetermineBonds.DetermineBonds(ref_mol)
 
             n_samples_slider_c, _, variance_c = st.columns([3, 1, 3])
 
