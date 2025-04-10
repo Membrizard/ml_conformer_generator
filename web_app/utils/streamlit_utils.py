@@ -8,7 +8,7 @@ import streamlit.components.v1 as components
 import torch
 from rdkit import Chem
 from rdkit.Chem import Draw
-# from mlconfgen import MLConformerGenerator, evaluate_samples
+from mlconfgen import MLConformerGenerator, evaluate_samples
 
 CMAP = matplotlib.cm.get_cmap("viridis")
 
@@ -36,15 +36,13 @@ SVG_PALETTE = {
 
 
 # Functions for buttons
-def generate_samples_button():
-    ref, mols = generate_mock_results()
+def generate_samples_button(ref_mol, n_samples, n_steps, variance, device):
+    with st.spinner("Generation in Progress..."):
+        ref, mols = generate_results(ref_mol=ref_mol, n_samples=n_samples, n_steps=n_steps, variance=variance, device=device)
+
     # Save generated molecules in session
     st.session_state.generated_mols = mols
 
-    # mock_ref = Chem.MolFromSmiles("C1CC(CC(C1)N)C(=O)O")
-    # mock_ref = Chem.AddHs(mock_ref)
-    # rdDistGeom.EmbedMolecule(mock_ref, forceTol=0.001, randomSeed=12)
-    # Save aligned reference molecule in session
     st.session_state.current_ref = ref
     return None
 
@@ -71,16 +69,16 @@ def generate_mock_results():
     return ref, samples
 
 
-# def generate_results(ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device):
-#     generator = MLConformerGenerator(diffusion_steps=n_steps, device=device)
-#     samples = generator(reference_conformer=ref_mol,
-#                         n_samples=n_samples,
-#                         variance=variance,
-#                         )
-#
-#     aligned_ref, std_samples = evaluate_samples(samples)
-#
-#     return aligned_ref, std_samples
+def generate_results(ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device):
+    generator = MLConformerGenerator(diffusion_steps=n_steps, device=device)
+    samples = generator(reference_conformer=ref_mol,
+                        n_samples=n_samples,
+                        variance=variance,
+                        )
+
+    aligned_ref, std_samples = evaluate_samples(ref_mol, samples)
+
+    return aligned_ref, std_samples
 
 
 def draw_compound_image(compound: Chem.Mol):

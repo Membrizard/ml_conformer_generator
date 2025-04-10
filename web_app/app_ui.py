@@ -69,10 +69,17 @@ with app_container:
             st.header("Input")
             st.divider()
 
+            ref_mol = None
             uploaded_mol = st.file_uploader(
                 "Reference Structure: Mol, XYZ or PDB block ",
                 accept_multiple_files=False,
+                type=["mol", "xyz", "pdb"]
             )
+
+            if uploaded_mol is not None:
+                mol_data = uploaded_mol.getvalue().decode("utf-8")
+                ref_mol = Chem.MolFromXYZBlock(mol_data)
+
             n_samples_slider_c, _, variance_c = st.columns([3, 1, 3])
 
             with n_samples_slider_c:
@@ -100,10 +107,12 @@ with app_container:
                 )
 
             _, generate_button_c = st.columns([1.4, 1])
+
             with generate_button_c:
-                generate_samples = st.button(
-                    "Generate", on_click=generate_samples_button, type="primary"
-                )
+                if ref_mol:
+                    generate_samples = st.button(
+                                "Generate", on_click=generate_samples_button, args=(ref_mol, n_samples, diffusion_steps, variance, device), type="primary"
+                            )
 
     with output_column:
         header_c, button_c = st.columns([2.5, 1])

@@ -8,5 +8,5 @@ venv/
 *.onnx
 dist/
 *.egg-info/
-/adj_mat_seer_chembl_15_39.pt
-/edm_moi_chembl_15_39.pt
+/web_app/adj_mat_seer_chembl_15_39.pt
+/web_app/edm_moi_chembl_15_39.pt
