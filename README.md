@@ -175,9 +175,9 @@ This compiles and saves the ONNX files to: `./`
 
 ## API Server
 - Run `docker compose up -d --build`
-- The api server should be available at http:/0.0.0.0:8000
-- The Swagger documentation is available at http:/0.0.0.0:8000/docs
-- Generation endpoint http:/0.0.0.0:8000/generate
+- The api server should be available at `http:/0.0.0.0:8000`
+- The Swagger documentation is available at `http:/0.0.0.0:8000/docs`
+- Generation endpoint `http:/0.0.0.0:8000/generate`
 
 ### Request Schema
 ```
