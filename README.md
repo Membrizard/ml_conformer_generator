@@ -1,5 +1,7 @@
 # ML Conformer Generator
 
+<img src="./assets/logo/mlconfgen_logo.png" width="200" style="display: block; margin: 0 10%;">
+
 **ML Conformer Generator** 
 is a tool for shape-constrained molecule generation using an Equivariant Diffusion Model (EDM)
 and a Graph Convolutional Network (GCN). It is designed to generate 3D molecular conformations
@@ -238,13 +240,13 @@ streamlit run app_ui.py
    This will launch the dev server at `http://localhost:3001`
 
 3. In a separate terminal, run the Streamlit app from the root frontend directory: 
-  ```bash
-  cd ./web_app
-  streamlit run app_ui.py
-  ```
+   ```bash
+   cd ./web_app
+   streamlit run app_ui.py
+   ```
 
 4. To build the production version of the 3D viewer, run:
- ```bash
-  cd ./web_app/speck/frontend
-  npm run build
-  ```
+   ```bash
+   cd ./web_app/speck/frontend
+   npm run build
+   ```

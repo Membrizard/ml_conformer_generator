@@ -1,4 +1,5 @@
 import torch
+import streamlit.components.v1 as components
 import streamlit as st
 from rdkit import Chem
 from stspeck import speck
@@ -6,8 +7,10 @@ from utils import (
     apply_custom_styling,
     container_css,
     display_search_results,
+    draw_compound_image,
     generate_samples_button,
     header_image,
+    header_logo,
     prepare_speck_model,
     stylable_container,
 )
@@ -48,12 +51,12 @@ app_header = stylable_container(
     css_styles=container_css,
 )
 with app_header:
-    title_c, img_c = st.columns([1, 1])
+    logo_c, title_c, _ = st.columns([0.2, 1, 1])
+    with logo_c:
+        header_logo("./assets/mlconfgen_logo_cosmo.png")
     with title_c:
         st.title("ML Conformer Generator")
         st.write("Generate and inspect molecules based on a reference conformer")
-    with img_c:
-        header_image("./assets/header_background.png")
 
 
 app_container = stylable_container(
@@ -64,7 +67,7 @@ with app_container:
     input_column, viewer_column, output_column = st.columns([1, 1, 1])
 
     with input_column:
-        controls = st.container(height=630, border=False)
+        controls = st.container(height=680, border=False)
         with controls:
             st.header("Input")
             st.divider()
@@ -78,7 +81,20 @@ with app_container:
 
             if uploaded_mol is not None:
                 mol_data = uploaded_mol.getvalue().decode("utf-8")
-                ref_mol = Chem.MolFromMolBlock(mol_data)
+                filename = uploaded_mol.name
+                if filename.endswith(".mol"):
+                    ref_mol = Chem.MolFromMolBlock(mol_data)
+                elif filename.endswith(".pdb"):
+                    ref_mol = Chem.MolFromPDBBlock(mol_data)
+                else:
+                    # TODO Process the error
+                    st.write("Bad file type")
+
+            if ref_mol:
+                f_ref_mol = Chem.MolFromSmiles(Chem.MolToSmiles(ref_mol))
+                input_mol_image = draw_compound_image(f_ref_mol)
+                components.html(input_mol_image)
+
                 # ref_mol = rdDetermineBonds.DetermineBonds(ref_mol)
 
             n_samples_slider_c, _, variance_c = st.columns([3, 1, 3])
@@ -107,12 +123,12 @@ with app_container:
                     value=2,
                 )
 
-            _, generate_button_c = st.columns([1.4, 1])
-
-            with generate_button_c:
                 if ref_mol:
                     generate_samples = st.button(
-                                "Generate", on_click=generate_samples_button, args=(ref_mol, n_samples, diffusion_steps, variance, device), type="primary"
+                                "Generate",
+                                on_click=generate_samples_button,
+                                args=(ref_mol, n_samples, diffusion_steps, variance, device),
+                                type="primary",
                             )
 
     with output_column:

@@ -223,6 +223,18 @@ def header_image(image_path: str = "./assets/header_background.png"):
     return None
 
 
+def header_logo(image_path: str = "./assets/mlconfgen_cosmo_logo"):
+    file_ = open(image_path, "rb")
+    contents = file_.read()
+    data_url = base64.b64encode(contents).decode("utf-8")
+    file_.close()
+
+    st.html(
+        f'<img src="data:image/gif;base64,{data_url}" style="margin: -100px 0px -60px -60px; height: 300px; object-fit: cover; object-position: 0 0;">',
+    )
+    return None
+
+
 def stylable_container(key: str, css_styles: str | list[str]) -> "DeltaGenerator":
     """
     Can be used to create buttons with custom styles!

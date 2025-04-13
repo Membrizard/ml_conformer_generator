@@ -7,6 +7,7 @@ from .streamlit_utils import (
     generate_mock_results,
     generate_samples_button,
     header_image,
+    header_logo,
     stylable_container,
     view_mol_button,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "view_mol_button",
     "display_search_results",
     "header_image",
+    "header_logo",
     "stylable_container",
     "container_css",
 ]
