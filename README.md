@@ -127,7 +127,7 @@ And are licensed under CC BY-NC-ND 4.0
 The usage of the trained weights for any profit-generating activity is restricted.
 
 For commercial licensing and inference-as-a-service, contact:
-dasapegin@gmail.com
+[Denis Sapegin](https://github.com/Membrizard)
 
 ---
 
