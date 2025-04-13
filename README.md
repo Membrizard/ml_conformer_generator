@@ -5,7 +5,7 @@
 **ML Conformer Generator** 
 is a tool for shape-constrained molecule generation using an Equivariant Diffusion Model (EDM)
 and a Graph Convolutional Network (GCN). It is designed to generate 3D molecular conformations
-that are both chemically valid and spatially aligned with a reference shape.
+that are both chemically valid and spatially similar to a reference shape.
 
 ---
 ## Installation
