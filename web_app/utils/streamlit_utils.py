@@ -37,13 +37,23 @@ SVG_PALETTE = {
 
 # Functions for buttons
 def generate_samples_button(ref_mol, n_samples, n_steps, variance, device):
-    with st.spinner("Generation in Progress..."):
-        ref, mols = generate_results(ref_mol=ref_mol, n_samples=n_samples, n_steps=n_steps, variance=variance, device=device)
+    st.session_state.running = True
+    print("Generation Started")
+    ref, mols = generate_results(ref_mol=ref_mol, n_samples=n_samples, n_steps=n_steps, variance=variance, device=device)
 
     # Save generated molecules in session
     st.session_state.generated_mols = mols
 
     st.session_state.current_ref = ref
+
+    st.session_state.current_mol = 0
+
+    st.session_state.viewer_update = True
+
+    st.session_state.running = False
+
+    st.rerun()
+
     return None
 
 
@@ -77,6 +87,12 @@ def generate_results(ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: 
                         )
 
     aligned_ref, std_samples = evaluate_samples(ref_mol, samples)
+
+    # Sort Samples
+    def s_f(x):
+        return x["shape_tanimoto"]
+
+    std_samples.sort(key=s_f, reverse=True)
 
     return aligned_ref, std_samples
 

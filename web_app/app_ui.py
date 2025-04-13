@@ -9,7 +9,6 @@ from utils import (
     display_search_results,
     draw_compound_image,
     generate_samples_button,
-    header_image,
     header_logo,
     prepare_speck_model,
     stylable_container,
@@ -36,6 +35,9 @@ if "current_ref" not in st.session_state:
 
 if "viewer_update" not in st.session_state:
     st.session_state.viewer_update = False
+
+if "running" not in st.session_state:
+    st.session_state.running = False
 
 # Page setup
 st.set_page_config(
@@ -76,7 +78,8 @@ with app_container:
             uploaded_mol = st.file_uploader(
                 "Reference Structure: Mol or PDB file ",
                 accept_multiple_files=False,
-                type=["mol", "pdb"]
+                type=["mol", "pdb"],
+                disabled=st.session_state.running,
             )
 
             if uploaded_mol is not None:
@@ -106,6 +109,7 @@ with app_container:
                     max_value=40,
                     step=5,
                     value=25,
+                    disabled=st.session_state.running,
                 )
 
                 diffusion_steps = st.slider(
@@ -114,6 +118,7 @@ with app_container:
                     max_value=100,
                     step=5,
                     value=100,
+                    disabled=st.session_state.running,
                 )
             with variance_c:
                 variance = st.number_input(
@@ -121,61 +126,99 @@ with app_container:
                     min_value=0,
                     max_value=5,
                     value=2,
+                    disabled=st.session_state.running,
                 )
 
                 if ref_mol:
                     generate_samples = st.button(
                                 "Generate",
-                                on_click=generate_samples_button,
-                                args=(ref_mol, n_samples, diffusion_steps, variance, device),
+                                # on_click=generate_samples_button,
+                                disabled=st.session_state.running,
+                                # args=(ref_mol, n_samples, diffusion_steps, variance, device),
                                 type="primary",
+                                key="run_button",
                             )
-
-    with output_column:
-        header_c, button_c = st.columns([2.5, 1])
-        with header_c:
-            st.header("Output")
-        with button_c:
-            st.write("")
-            download_sdf = st.download_button("Download", data="")
-
-        st.divider()
-        st.caption("Shape Similarity to Reference:")
-        if st.session_state.generated_mols:
-            display_search_results(st.session_state.generated_mols, height=460)
-
-    with viewer_column:
-        viewer_container = st.container(height=420, border=False)
-        viewer_options = st.container(height=100, border=False)
-
-        with viewer_options:
-            st.write("Viewer Options")
-            ref_col, hyd_col = st.columns([1, 1])
-            with ref_col:
-                view_ref = st.toggle(label="Reference Structure", value=False)
-            with hyd_col:
-                hydrogens = st.toggle(label="Hydrogens", value=True)
-
-        with viewer_container:
-            if st.session_state.viewer_update:
-                c_mol_index = st.session_state.current_mol
-                mol_block = st.session_state.generated_mols[c_mol_index]
-                ref_block = st.session_state.current_ref
-
-                if hydrogens:
-                    n_mol = Chem.MolFromMolBlock(mol_block["mol_block"], removeHs=False)
-                    mol = Chem.AddHs(n_mol, addCoords=True)
-                    ref = Chem.MolFromMolBlock(ref_block, removeHs=False)
-
                 else:
-                    mol = Chem.MolFromMolBlock(mol_block["mol_block"], removeHs=True)
-                    ref = Chem.MolFromMolBlock(ref_block, removeHs=True)
+                    generate_samples = None
 
-                # Handle reference structure
-                if view_ref:
-                    json_mol = prepare_speck_model(mol, ref)
-                    res = speck(data=json_mol, height="400px", aoRes=512)
+    if st.session_state.running:
+        with output_column:
+            st.write("Hidden")
 
-                else:
-                    json_mol = prepare_speck_model(mol)
-                    res = speck(data=json_mol, height="400px", aoRes=512)
+        with viewer_column:
+            st.write("Hidden")
+
+        with st.spinner("Generating ..."):
+            generate_samples_button(ref_mol, n_samples, diffusion_steps, variance, device)
+            st.rerun()
+
+    else:
+        with output_column:
+
+            header_c, button_c = st.columns([2.5, 1])
+            with header_c:
+                st.header("Output")
+
+            st.divider()
+            if st.session_state.generated_mols:
+                with button_c:
+                    st.write("")
+                    download_sdf = st.download_button("Download", data="")
+
+                st.caption("Shape Similarity to Reference:")
+                # if st.session_state.generated_mols:
+                display_search_results(st.session_state.generated_mols, height=460)
+            else:
+                st.write("")
+
+        with viewer_column:
+            viewer_container = st.container(height=420, border=False)
+            viewer_options = st.container(height=100, border=False)
+
+            with viewer_options:
+                if st.session_state.generated_mols:
+                    st.write("Viewer Options")
+                    ref_col, hyd_col = st.columns([1, 1])
+                    with ref_col:
+                        view_ref = st.toggle(label="Reference Structure", value=True, disabled=st.session_state.running)
+                    with hyd_col:
+                        hydrogens = st.toggle(label="Hydrogens", value=True, disabled=st.session_state.running)
+
+            with viewer_container:
+
+                if st.session_state.viewer_update:
+                    c_mol_index = st.session_state.current_mol
+                    mol_block = st.session_state.generated_mols[c_mol_index]
+                    ref_block = st.session_state.current_ref
+
+                    if hydrogens:
+                        n_mol = Chem.MolFromMolBlock(mol_block["mol_block"], removeHs=False)
+                        mol = Chem.AddHs(n_mol, addCoords=True)
+                        ref = Chem.MolFromMolBlock(ref_block, removeHs=False)
+
+                    else:
+                        mol = Chem.MolFromMolBlock(mol_block["mol_block"], removeHs=True)
+                        ref = Chem.MolFromMolBlock(ref_block, removeHs=True)
+
+                        # Handle reference structure
+                    if view_ref:
+                        json_mol = prepare_speck_model(mol, ref)
+                        res = speck(data=json_mol, height="400px", aoRes=512)
+
+                    else:
+                        json_mol = prepare_speck_model(mol)
+                        res = speck(data=json_mol, height="400px", aoRes=512)
+
+if generate_samples:
+    st.session_state.running = True
+    st.session_state.viewer_update = False
+    st.session_state.generated_mols = False
+    st.session_state.current_mol = False
+    st.session_state.current_ref = False
+    print("Reach")
+    st.rerun()
+
+# if st.session_state.running:
+#     with st.spinner("Generating ..."):
+#         generate_samples_button(ref_mol, n_samples, diffusion_steps, variance, device)
+#         st.rerun()
