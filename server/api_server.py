@@ -87,12 +87,8 @@ async def generate_molecules(
 
         if ref_block_type == "mol":
             ref_mol = Chem.MolFromMolBlock(ref_block)
-        elif ref_block_type == "mol2":
-            ref_mol = Chem.MolFromMol2Block(ref_block)
         elif ref_block_type == "pdb":
             ref_mol = Chem.MolFromPDBBlock(ref_block)
-        elif ref_block_type == "xyz":
-            ref_mol = Chem.MolFromXYZBlock(ref_block)
         else:
             raise ValueError("Unsupported molecule file type.")
 
