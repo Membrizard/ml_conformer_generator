@@ -132,7 +132,8 @@ For commercial licensing and inference-as-a-service, contact:
 ---
 
 ## ONNX Inference:
-For torch Free inference an ONNX version of the model is present
+For torch Free inference an ONNX version of the model is present. 
+
 Weights of the model in ONNX format are available at:
 > https://huggingface.co/Membrizard/ml_conformer_generator
 
@@ -176,7 +177,18 @@ export_to_onnx(model)
 This compiles and saves the ONNX files to: `./`
 
 ## API Server
-- Run `docker compose up -d --build`
+- Run the service 
+  ```commandline
+  pip install ./server/server_requirements.txt
+  python ./server/api_server
+  ```
+  
+- Run the service using Docker
+  ```commandline
+  cd ./server
+  docker build . -t ml_conf_gen_api_server
+  docker run -d -p80:8000 ml_conf_gen_api_server
+  ```
 - The api server should be available at `http:/0.0.0.0:8000`
 - The Swagger documentation is available at `http:/0.0.0.0:8000/docs`
 - Generation endpoint `http:/0.0.0.0:8000/generate`
@@ -222,17 +234,17 @@ This compiles and saves the ONNX files to: `./`
 `./web_app/adj_mat_seer_chembl_15_39.pt`
 
 - Bring the app UI up:
-```
-cd ./web_app
-streamlit run app_ui.py
-```
+  ```commandline
+  cd ./web_app
+  streamlit run app_ui.py
+  ```
 
 ### Web App Development
 
 1. To enable development mode for the 3D viewer (`stspeck`), set `_RELEASE = False` in `./frontend/stspeck/__init__.py`.
 
 2. Navigate to the 3D viewer frontend and start the development server:
-   ```bash
+   ```commandline
    cd ./frontend/speck/frontend
    npm run start
    ```
@@ -240,13 +252,13 @@ streamlit run app_ui.py
    This will launch the dev server at `http://localhost:3001`
 
 3. In a separate terminal, run the Streamlit app from the root frontend directory: 
-   ```bash
+   ```commandline
    cd ./web_app
    streamlit run app_ui.py
    ```
 
 4. To build the production version of the 3D viewer, run:
-   ```bash
+   ```commandline
    cd ./web_app/speck/frontend
    npm run build
    ```
