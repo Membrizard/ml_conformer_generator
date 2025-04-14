@@ -44,7 +44,7 @@ onnx = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Membrizard/conformer_generator_app"
-Issues = "https://github.com/Membrizard/conformer_generator_app/issues"
+Homepage = "https://github.com/Membrizard/ml_conformer_generator"
+Issues = "https://github.com/Membrizard/ml_conformer_generator/issues"
 
 [tool.setuptools_scm]
