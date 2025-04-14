@@ -152,7 +152,7 @@ model = MLConformerGeneratorONNX(
                                  diffusion_steps=100,
                                 )
 
-reference = Chem.MolFromMolFile('MOL_FILE_NAME.mol')
+reference = Chem.MolFromMolFile('./demo_files/yibfeu.mol')
 samples = model.generate_conformers(reference_conformer=reference, n_samples=20, variance=2)
 
 ```
