@@ -65,6 +65,7 @@ app_container = stylable_container(
     key="app",
     css_styles=container_css,
 )
+
 with app_container:
     input_column, viewer_column, output_column = st.columns([1, 1, 1])
 
@@ -143,10 +144,21 @@ with app_container:
 
     if st.session_state.running:
         with output_column:
-            st.write("Hidden")
+            results = st.container(key="results")
+            with results:
+                st.write("Hidden")
 
         with viewer_column:
-            st.write("Hidden")
+            viewer_container = st.container(height=420, border=False, key='viewer_container')
+            viewer_options = st.container(height=100, border=False, key='viewer_options')
+
+
+            with viewer_container:
+                st.write("Hidden")
+            with viewer_options:
+                st.write("Hidden")
+
+
 
         with st.spinner("Generating ..."):
             generate_samples_button(ref_mol, n_samples, diffusion_steps, variance, device)
@@ -172,17 +184,17 @@ with app_container:
                 st.write("")
 
         with viewer_column:
-            viewer_container = st.container(height=420, border=False)
-            viewer_options = st.container(height=100, border=False)
+            viewer_container = st.container(height=420, border=False, key='viewer_container')
+            viewer_options = st.container(height=100, border=False, key='viewer_options')
 
             with viewer_options:
                 if st.session_state.generated_mols:
                     st.write("Viewer Options")
                     ref_col, hyd_col = st.columns([1, 1])
                     with ref_col:
-                        view_ref = st.toggle(label="Reference Structure", value=True, disabled=st.session_state.running)
+                        view_ref = st.toggle(label="Reference Structure", value=True, disabled=st.session_state.running, key="view_ref")
                     with hyd_col:
-                        hydrogens = st.toggle(label="Hydrogens", value=True, disabled=st.session_state.running)
+                        hydrogens = st.toggle(label="Hydrogens", value=True, disabled=st.session_state.running, key="hydrogens")
 
             with viewer_container:
 
@@ -212,9 +224,9 @@ with app_container:
 if generate_samples:
     st.session_state.running = True
     st.session_state.viewer_update = False
-    st.session_state.generated_mols = False
-    st.session_state.current_mol = False
-    st.session_state.current_ref = False
+    st.session_state.generated_mols = []
+    st.session_state.current_mol = 0
+    st.session_state.current_ref = None
     print("Reach")
     st.rerun()
 
