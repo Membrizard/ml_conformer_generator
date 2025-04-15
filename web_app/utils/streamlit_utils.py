@@ -39,7 +39,13 @@ SVG_PALETTE = {
 def generate_samples_button(ref_mol, n_samples, n_steps, variance, device):
     st.session_state.running = True
     print("Generation Started")
-    ref, mols = generate_results(ref_mol=ref_mol, n_samples=n_samples, n_steps=n_steps, variance=variance, device=device)
+    ref, mols = generate_results(
+        ref_mol=ref_mol,
+        n_samples=n_samples,
+        n_steps=n_steps,
+        variance=variance,
+        device=device,
+    )
 
     # Save generated molecules in session
     st.session_state.generated_mols = mols
@@ -65,7 +71,9 @@ def view_mol_button(mol_index):
 
 # Working with results, rendering mol images
 def generate_mock_results():
-    with open("./generation_examples/samples_of_CHEMBL234460_P10000024.json") as json_file:
+    with open(
+        "./generation_examples/samples_of_CHEMBL234460_P10000024.json"
+    ) as json_file:
         data = json.load(json_file)
 
         def s_f(x):
@@ -79,12 +87,15 @@ def generate_mock_results():
     return ref, samples
 
 
-def generate_results(ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device):
+def generate_results(
+    ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device
+):
     generator = MLConformerGenerator(diffusion_steps=n_steps, device=device)
-    samples = generator(reference_conformer=ref_mol,
-                        n_samples=n_samples,
-                        variance=variance,
-                        )
+    samples = generator(
+        reference_conformer=ref_mol,
+        n_samples=n_samples,
+        variance=variance,
+    )
 
     aligned_ref, std_samples = evaluate_samples(ref_mol, samples)
 
@@ -149,12 +160,6 @@ def display_search_results(
 
                 create_view_molecule_button(n_row, float(mol["shape_tanimoto"]), n_row)
 
-                # st.button(
-                #     label="mol",
-                #     key=f"mol_{n_row}",
-                #     on_click=view_mol_button,
-                #     args=[r_mol],
-                # )
                 components.html(svg_string)
                 st.divider()
 
