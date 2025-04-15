@@ -1,4 +1,5 @@
 import torch
+from pathlib import Path
 import streamlit.components.v1 as components
 import streamlit as st
 from rdkit import Chem
@@ -15,6 +16,9 @@ from utils import (
 )
 
 # Initiate Model
+
+EDM_WEIGHTS = "./edm_moi_chembl_15_39.pt"
+ADJMATSEER_WEIGHTS = "./adj_mat_seer_chembl_15_39.pt"
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -60,6 +64,10 @@ with app_header:
         st.title("ML Conformer Generator")
         st.write("Generate and inspect molecules based on a reference conformer")
 
+# Check for weights
+if not (Path(EDM_WEIGHTS).is_file() and Path(ADJMATSEER_WEIGHTS).is_file()):
+    st.error("No Weights located...")
+    st.session_state.running = True
 
 app_container = stylable_container(
     key="app",
@@ -132,100 +140,92 @@ with app_container:
 
                 if ref_mol:
                     generate_samples = st.button(
-                                "Generate",
-                                # on_click=generate_samples_button,
-                                disabled=st.session_state.running,
-                                # args=(ref_mol, n_samples, diffusion_steps, variance, device),
-                                type="primary",
-                                key="run_button",
-                            )
+                        "Generate",
+                        # on_click=generate_samples_button,
+                        disabled=st.session_state.running,
+                        # args=(ref_mol, n_samples, diffusion_steps, variance, device),
+                        type="primary",
+                        key="run_button",
+                    )
                 else:
                     generate_samples = None
 
-    if st.session_state.running:
-        with output_column:
-            results = st.container(key="results")
-            with results:
-                st.write("Hidden")
+    with output_column:
+        header_c, button_c = st.columns([2.5, 1])
 
-        with viewer_column:
-            viewer_container = st.container(height=420, border=False, key='viewer_container')
-            viewer_options = st.container(height=100, border=False, key='viewer_options')
+        with header_c:
+            st.header("Output")
 
+        st.divider()
+        st.caption("Shape Similarity to Reference:")
 
-            with viewer_container:
-                st.write("Hidden")
-            with viewer_options:
-                st.write("Hidden")
-
-
-
-        with st.spinner("Generating ..."):
-            generate_samples_button(ref_mol, n_samples, diffusion_steps, variance, device)
-            st.rerun()
-
-    else:
-        with output_column:
-
-            header_c, button_c = st.columns([2.5, 1])
-            with header_c:
-                st.header("Output")
-
-            st.divider()
-            if st.session_state.generated_mols:
-                with button_c:
-                    st.write("")
-                    download_sdf = st.download_button("Download", data="")
-
-                st.caption("Shape Similarity to Reference:")
-                # if st.session_state.generated_mols:
-                display_search_results(st.session_state.generated_mols, height=460)
-            else:
+        if st.session_state.generated_mols:
+            with button_c:
                 st.write("")
+                download_sdf = st.download_button(
+                    "Download", data="", disabled=st.session_state.running
+                )
 
-        with viewer_column:
-            viewer_container = st.container(height=420, border=False, key='viewer_container')
-            viewer_options = st.container(height=100, border=False, key='viewer_options')
+            display_search_results(st.session_state.generated_mols, height=460)
+        else:
+            st.write("No molecules to display")
 
-            with viewer_options:
-                if st.session_state.generated_mols:
+    with viewer_column:
+        viewer_container = st.container(
+            height=420, border=False, key="viewer_container"
+        )
+        viewer_options = st.container(height=100, border=False, key="viewer_options")
+
+        with viewer_options:
+            viewer_palaceholder = st.empty()
+            if st.session_state.generated_mols:
+                with viewer_palaceholder:
                     st.write("Viewer Options")
                     ref_col, hyd_col = st.columns([1, 1])
                     with ref_col:
-                        view_ref = st.toggle(label="Reference Structure", value=True, disabled=st.session_state.running, key="view_ref")
+                        view_ref = st.toggle(
+                            label="Reference Structure",
+                            value=True,
+                            disabled=st.session_state.running,
+                            key="view_ref",
+                        )
                     with hyd_col:
-                        hydrogens = st.toggle(label="Hydrogens", value=True, disabled=st.session_state.running, key="hydrogens")
+                        hydrogens = st.toggle(
+                            label="Hydrogens",
+                            value=True,
+                            disabled=st.session_state.running,
+                            key="hydrogens",
+                        )
 
-            with viewer_container:
+        with viewer_container:
+            if st.session_state.viewer_update:
+                c_mol_index = st.session_state.current_mol
+                mol_block = st.session_state.generated_mols[c_mol_index]
+                ref_block = st.session_state.current_ref
 
-                if st.session_state.viewer_update:
-                    c_mol_index = st.session_state.current_mol
-                    mol_block = st.session_state.generated_mols[c_mol_index]
-                    ref_block = st.session_state.current_ref
+                if hydrogens:
+                    n_mol = Chem.MolFromMolBlock(mol_block["mol_block"], removeHs=False)
+                    mol = Chem.AddHs(n_mol, addCoords=True)
+                    ref = Chem.MolFromMolBlock(ref_block, removeHs=False)
 
-                    if hydrogens:
-                        n_mol = Chem.MolFromMolBlock(mol_block["mol_block"], removeHs=False)
-                        mol = Chem.AddHs(n_mol, addCoords=True)
-                        ref = Chem.MolFromMolBlock(ref_block, removeHs=False)
+                else:
+                    mol = Chem.MolFromMolBlock(mol_block["mol_block"], removeHs=True)
+                    ref = Chem.MolFromMolBlock(ref_block, removeHs=True)
 
-                    else:
-                        mol = Chem.MolFromMolBlock(mol_block["mol_block"], removeHs=True)
-                        ref = Chem.MolFromMolBlock(ref_block, removeHs=True)
+                    # Handle reference structure
+                if view_ref:
+                    json_mol = prepare_speck_model(mol, ref)
+                    res = speck(data=json_mol, height="400px", aoRes=512)
 
-                        # Handle reference structure
-                    if view_ref:
-                        json_mol = prepare_speck_model(mol, ref)
-                        res = speck(data=json_mol, height="400px", aoRes=512)
-
-                    else:
-                        json_mol = prepare_speck_model(mol)
-                        res = speck(data=json_mol, height="400px", aoRes=512)
+                else:
+                    json_mol = prepare_speck_model(mol)
+                    res = speck(data=json_mol, height="400px", aoRes=512)
 
 if generate_samples:
     st.session_state.running = True
     st.session_state.viewer_update = False
     st.session_state.generated_mols = []
-    st.session_state.current_mol = 0
+    st.session_state.current_mol = None
     st.session_state.current_ref = None
     print("Reach")
     st.rerun()
@@ -234,3 +234,27 @@ if generate_samples:
 #     with st.spinner("Generating ..."):
 #         generate_samples_button(ref_mol, n_samples, diffusion_steps, variance, device)
 #         st.rerun()
+
+if st.session_state.running:
+    with output_column:
+        st.write("Hidden")
+        # st.write("")
+        # output_placeholder = st.empty()
+
+    with viewer_column:
+        st.write("Hidden")
+        # viewer_container = st.container(
+        #     height=420, border=False, key="viewer_container"
+        # )
+        # viewer_options = st.container(
+        #     height=100, border=False, key="viewer_options"
+        # )
+        #
+        # with viewer_container:
+        #     st.write("")
+        # with viewer_options:
+        #     st.write("")
+        # with st.spinner("Generation in Progress. Do Not refresh the page..."):
+
+    generate_samples_button(ref_mol, n_samples, diffusion_steps, variance, device)
+    st.rerun()
