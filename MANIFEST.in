@@ -5,6 +5,7 @@ include LICENSE*
 include pyproject.toml
 
 prune assets
+include assets/logo/mlconfgen_logo.png
 prune demo_files
 prune web_app
 prune research_scripts

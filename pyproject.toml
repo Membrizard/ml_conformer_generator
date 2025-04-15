@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "mlconfgen"
 description = "Shape-constrained molecule generator via Equivariant Diffusion and GCN"
 readme = "README.md"
-version = "0.0.1a1"
+version = "0.0.1a2"
 # dynamic = ["version"]
 authors = [
     {name = "Denis Sapegin", email = "dasapegin@gmail.com"},
@@ -32,7 +32,7 @@ classifiers = [
     "Operating System :: OS Independent",
     "Topic :: Scientific/Engineering :: Chemistry",
 ]
-license = "LicenseRef-RAIL AND Apache-2.0"
+license = "CC-BY-NC-ND-4.0 AND Apache-2.0"
 license-files = ["LICENSE*"]
 keywords = ["rdkit", "chemistry", "diffusion", "conformers"]
 
