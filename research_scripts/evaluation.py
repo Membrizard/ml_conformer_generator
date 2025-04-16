@@ -3,27 +3,13 @@ import time
 
 from rdkit import Chem
 
-from ml_conformer_generator.ml_conformer_generator import (
+from mlconfgen import (
     MLConformerGenerator,
     evaluate_samples,
 )
 
-# def exact_match(mol, source):
-#     whs_mol = Chem.RemoveHs(mol)
-#     s_mol = Chem.MolFromSmiles(Chem.MolToSmiles(whs_mol))
-#     sample_inchi = Chem.MolToInchi(s_mol)
-#
-#     with open(source, "r") as f:
-#         lines = f.readlines()
-#         for line in lines:
-#             cid, inchi = line.replace("\n", "").split("\t")
-#             if sample_inchi == inchi:
-#                 return True
-#
-#     return False
 
-
-def exact_match2(taget, source):
+def exact_match(taget, source):
     reader = Chem.SDMolSupplier(taget)
 
     source_inchi = []
@@ -57,7 +43,6 @@ def exact_match2(taget, source):
 
 
 device = "cuda"
-# generator = MLConformerGenerator(device=device, time_steps=100)
 source_path = "./full_15_39_atoms_conf_chembl.inchi"
 n_samples = 100
 max_variance = 2
@@ -137,11 +122,6 @@ for time_steps in n_dif_steps:
             # Add a sample to gen samples file
             writer.write(sample_mol)
 
-            # Check for sample uniqueness
-            # match = exact_match(sample_mol, source_path)
-            # if not match:
-            #     chem_unique_samples += 1
-
             sample_num_atoms = sample_mol.GetNumAtoms()
             variance = (
                 ref_n_atoms - sample_num_atoms
@@ -208,7 +188,7 @@ for time_steps in n_dif_steps:
 
     # Check Unique Samples
     print("Evaluating samples uniqueness...")
-    unique_dict = exact_match2(taget=out_file_name, source=source_path)
+    unique_dict = exact_match(taget=out_file_name, source=source_path)
 
     chem_unique_samples_rate = unique_dict["unique_train_set"] / valid_samples
     gen_unique_samples_rate = unique_dict["unique_within_batch"] / valid_samples
@@ -286,8 +266,3 @@ for time_steps in n_dif_steps:
         )
         for key in sorted(variance_chem_tanimoto_scores.keys()):
             f.write(f"{key}:  {variance_chem_tanimoto_scores[key]}\n")
-
-# - What is the error in context of generated samples vs number of atoms in the reference and variance
-# - What is the average shape tanimoto similarity of generated samples vs number of atoms in the reference and variance
-# - How many valid samples (after cheminformatics pipeline) was generated (as % from generated with edm) vs number of atoms in the reference
-# - How many chemically unique samples (which the model has never seen) was generated in total (as % of the number of all valid

@@ -40,10 +40,12 @@ SVG_PALETTE = {
 
 # Functions for buttons
 def generate_samples_button(
-    ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device
+    edm_weights: str, adj_mat_seer_weights: str, ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device
 ) -> None:
     """
     Generate Samples button callback
+    :param edm_weights: a path to the pre-trained EDM block weights
+    :param adj_mat_seer_weights: a path to the pre-trained AdjMatSeer block weights
     :param ref_mol: Reference molecule
     :param n_samples: Number of samples to generate
     :param n_steps: Number of diffusion steps for generation
@@ -53,6 +55,8 @@ def generate_samples_button(
     """
     st.session_state.running = True
     ref, mols = generate_results(
+        edm_weights=edm_weights,
+        adj_mat_seer_weights=adj_mat_seer_weights,
         ref_mol=ref_mol,
         n_samples=n_samples,
         n_steps=n_steps,
@@ -88,10 +92,12 @@ def view_mol_button(mol_index: int) -> None:
 
 
 def generate_results(
-    ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device
+    edm_weights: str, adj_mat_seer_weights: str, ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device
 ):
     """
     Generate Samples
+    :param edm_weights: a path to the pre-trained EDM block weights
+    :param adj_mat_seer_weights: a path to the pre-trained AdjMatSeer block weights
     :param ref_mol: Reference molecule
     :param n_samples: Number of samples to generate
     :param n_steps: Number of diffusion steps for generation
@@ -99,7 +105,11 @@ def generate_results(
     :param device: Torch device to use for generation
     :return: None
     """
-    generator = MLConformerGenerator(diffusion_steps=n_steps, device=device)
+    generator = MLConformerGenerator(
+                                     edm_weights=edm_weights,
+                                     adj_mat_seer_weights=adj_mat_seer_weights,
+                                     diffusion_steps=n_steps,
+                                     device=device)
     samples = generator(
         reference_conformer=ref_mol,
         n_samples=n_samples,
