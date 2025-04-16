@@ -5,6 +5,7 @@ __pycache__/
 .ipynb_checkpoints/
 venv/
 /web_app/stspeck/frontend/node_modules
+/web_app/tmp
 *.onnx
 dist/
 *.egg-info/
