@@ -275,7 +275,7 @@ if st.session_state.running:
             ):
                 logger.info("Generation started")
                 generate_samples_button(
-                    ref_mol, n_samples, diffusion_steps, variance, device
+                    EDM_WEIGHTS, ADJMATSEER_WEIGHTS, ref_mol, n_samples, diffusion_steps, variance, device
                 )
                 st.rerun()
     except Exception as e:
