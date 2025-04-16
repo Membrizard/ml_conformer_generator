@@ -129,15 +129,14 @@ class MLConformerGeneratorONNX:
         optimise_geometry: bool = True,
     ) -> List[Chem.Mol]:
         """
-
-        :param reference_conformer:
-        :param n_samples:
-        :param variance:
-        :param reference_context:
-        :param n_atoms:
-        # :param fix_noise:
-        :param optimise_geometry:
-        :return: A list of valid standardised generated molecules as RDkit Mol objects.
+        Main method to generate samples from either reference molecule or an arbitrary context.
+        :param reference_conformer: A 3D conformer of a reference molecule as an RDKit Mol object
+        :param n_samples: number of molecules to generate
+        :param variance: int - variation in number of heavy atoms for generated molecules from reference
+        :param reference_context: Arbitrary Reference context if applicable, instead of reference_conformer
+        :param n_atoms: Reference number of atoms when generating using arbitrary context
+        :param optimise_geometry: If true will apply constrained MMFF94 geometry optimisation to generated molecules
+        :return: A list of valid standardised generated molecules as RDKit Mol objects.
         """
         if reference_conformer:
             # Ensure the initial mol is stripped off Hs

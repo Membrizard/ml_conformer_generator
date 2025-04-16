@@ -1,16 +1,19 @@
 import base64
-import json
+import os
 import re
 
 import matplotlib
 import streamlit as st
 import streamlit.components.v1 as components
 import torch
+from mlconfgen import MLConformerGenerator, evaluate_samples
 from rdkit import Chem
 from rdkit.Chem import Draw
-from mlconfgen import MLConformerGenerator, evaluate_samples
 
 CMAP = matplotlib.cm.get_cmap("viridis")
+
+RESULT_STORAGE = "./tmp"
+RESULTS_FILEPATH = f"{RESULT_STORAGE}/generation_results.sdf"
 
 container_css = """
             {
@@ -36,9 +39,19 @@ SVG_PALETTE = {
 
 
 # Functions for buttons
-def generate_samples_button(ref_mol, n_samples, n_steps, variance, device):
+def generate_samples_button(
+    ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device
+) -> None:
+    """
+    Generate Samples button callback
+    :param ref_mol: Reference molecule
+    :param n_samples: Number of samples to generate
+    :param n_steps: Number of diffusion steps for generation
+    :param variance: variance in number of heavy atoms for generated molecules
+    :param device: Torch device to use for generation
+    :return: None
+    """
     st.session_state.running = True
-    print("Generation Started")
     ref, mols = generate_results(
         ref_mol=ref_mol,
         n_samples=n_samples,
@@ -63,33 +76,29 @@ def generate_samples_button(ref_mol, n_samples, n_steps, variance, device):
     return None
 
 
-def view_mol_button(mol_index):
+def view_mol_button(mol_index: int) -> None:
+    """
+    View mol button callback
+    :param mol_index: index of the molecule from the displayed results
+    :return: None
+    """
     st.session_state.current_mol = mol_index
     st.session_state.viewer_update = True
     return None
 
 
-# Working with results, rendering mol images
-def generate_mock_results():
-    with open(
-        "./generation_examples/samples_of_CHEMBL234460_P10000024.json"
-    ) as json_file:
-        data = json.load(json_file)
-
-        def s_f(x):
-            return x["shape_tanimoto"]
-
-        samples = data["generated_molecules"]
-
-        samples.sort(key=s_f, reverse=True)
-        ref = data["aligned_reference"]
-
-    return ref, samples
-
-
 def generate_results(
     ref_mol: Chem.Mol, n_samples: int, n_steps: int, variance: int, device: torch.device
 ):
+    """
+    Generate Samples
+    :param ref_mol: Reference molecule
+    :param n_samples: Number of samples to generate
+    :param n_steps: Number of diffusion steps for generation
+    :param variance: variance in number of heavy atoms for generated molecules
+    :param device: Torch device to use for generation
+    :return: None
+    """
     generator = MLConformerGenerator(diffusion_steps=n_steps, device=device)
     samples = generator(
         reference_conformer=ref_mol,
@@ -105,10 +114,25 @@ def generate_results(
 
     std_samples.sort(key=s_f, reverse=True)
 
+    # Save samples to file
+    os.makedirs(RESULT_STORAGE, exist_ok=True)
+    writer = Chem.SDWriter(RESULTS_FILEPATH)
+
+    m_ref = Chem.MolFromMolBlock(aligned_ref)
+    m_ref.SetProp("_Name", "Reference")
+
+    writer.write(m_ref)
+    for i, sample in enumerate(std_samples):
+        m_sample = Chem.MolFromMolBlock(sample["mol_block"])
+        m_sample.SetProp("_Name", f"MLConfGen_{i + 1}")
+        m_sample.SetProp("shape_tanimoto", str(sample["shape_tanimoto"]))
+        m_sample.SetProp("chemical_tanimoto", str(sample["chemical_tanimoto"]))
+        writer.write(m_sample)
+
     return aligned_ref, std_samples
 
 
-def draw_compound_image(compound: Chem.Mol):
+def draw_compound_image(compound: Chem.Mol) -> str:
     """
     Renders an image for a compound with labelled atoms
     :param compound: RDkit mol object
@@ -139,12 +163,14 @@ def display_search_results(
     c_key: str = "results",
     height: int = 400,
     cards_per_row: int = 2,
-):
+) -> None:
     """
-    :param mols:
-    :param с_key:
-    :param cards_per_row:
-    :return:
+    Display search results in grid
+    :param mols: molecules to display
+    :param c_key: container key
+    :param height: container height
+    :param cards_per_row: number of molecules per row
+    :return: None
     """
 
     with st.container(height=height, key=c_key, border=False):
@@ -166,7 +192,15 @@ def display_search_results(
     return None
 
 
-def create_view_molecule_button(r_mol, score, key):
+def create_view_molecule_button(r_mol: int, score: float, key: int) -> None:
+    """
+    Create a button for a generated molecule
+    :param r_mol: Id of the molecule
+    :param score: shape tanimoto score
+    :param key: Id of the button
+    :return: None
+
+    """
     score = round(score, 2)
     color = tuple(round(x * 255, 2) for x in CMAP(score))
 
@@ -193,16 +227,6 @@ def create_view_molecule_button(r_mol, score, key):
             on_click=view_mol_button,
             args=[r_mol],
         )
-
-
-# Utility functions
-
-
-def render_error():
-    st.markdown(
-        "<h2 style='text-align: center;'>Oops. Something went wrong.</h1>",
-        unsafe_allow_html=True,
-    )
     return None
 
 
@@ -232,18 +256,6 @@ def apply_custom_styling():
     return None
 
 
-def header_image(image_path: str = "./assets/header_background.png"):
-    file_ = open(image_path, "rb")
-    contents = file_.read()
-    data_url = base64.b64encode(contents).decode("utf-8")
-    file_.close()
-
-    st.html(
-        f'<img src="data:image/gif;base64,{data_url}" style="margin: -15px 0 -15px 0; width: 100%; height: 144px; object-fit: cover; object-position: 0 34%;">',
-    )
-    return None
-
-
 def header_logo(image_path: str = "./assets/mlconfgen_cosmo_logo"):
     file_ = open(image_path, "rb")
     contents = file_.read()
@@ -256,10 +268,9 @@ def header_logo(image_path: str = "./assets/mlconfgen_cosmo_logo"):
     return None
 
 
-def stylable_container(key: str, css_styles: str | list[str]) -> "DeltaGenerator":
+def stylable_container(key: str, css_styles: str | list[str]):
     """
     Can be used to create buttons with custom styles!
-
 
     From streamlit-extras v0.5.5 credit to Lukas Masuch
     Insert a container into your app which you can style using CSS.

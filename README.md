@@ -236,7 +236,7 @@ This compiles and saves the ONNX files to: `./`
 - Bring the app UI up:
   ```commandline
   cd ./web_app
-  streamlit run app_ui.py
+  streamlit run web_app.py
   ```
 
 ### Web App Development

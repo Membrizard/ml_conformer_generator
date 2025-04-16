@@ -186,7 +186,7 @@ class MLConformerGenerator(torch.nn.Module):
         Main method to generate samples from either reference molecule or an arbitrary context.
         :param reference_conformer: A 3D conformer of a reference molecule as an RDKit Mol object
         :param n_samples: number of molecules to generate
-        :param variance:
+        :param variance: int - variation in number of heavy atoms for generated molecules from reference
         :param reference_context: Arbitrary Reference context if applicable, instead of reference_conformer
         :param n_atoms: Reference number of atoms when generating using arbitrary context
         :param optimise_geometry: If true will apply constrained MMFF94 geometry optimisation to generated molecules
