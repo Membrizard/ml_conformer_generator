@@ -1,7 +1,13 @@
 from rdkit import Chem
 
 
-def prepare_speck_model(mol: Chem.Mol, reference: Chem.Mol = None):
+def prepare_speck_model(mol: Chem.Mol, reference: Chem.Mol = None) -> dict:
+    """
+    Converts molecules to Speck-viewer format
+    :param mol: Molecule
+    :param reference: Reference Molecule
+    :returns: Speck model dictionary
+    """
     conformer = mol.GetConformer(-1)
     mol_json = {"atoms": [], "bonds": []}
 
