@@ -9,7 +9,9 @@ from rdkit import Chem
 from mlconfgen import MLConformerGenerator, evaluate_samples
 
 VERSION = "2.0.0"
-DIFFUSION_STEPS = 100
+
+EDM_WEIGHTS = "./edm_moi_chembl_15_39.pt"
+ADJMATSEER_WEIGHTS = "./adj_mat_seer_chembl_15_39.pt"
 
 app = FastAPI(
     title=f"ML Conformer Generator Service ver {VERSION}",
@@ -29,6 +31,7 @@ class GenerationRequest(BaseModel):
     reference_mol: InputFile
     n_samples: int
     variance: int
+    diffusion_steps: int
 
 
 class GeneratedMolecule(BaseModel):
@@ -102,9 +105,11 @@ async def generate_molecules(
 
         logger.info("Starting Generation")
         start = time()
+        diffusion_steps = generation_request.diffusion_steps
 
         # Spawn model per request to allow async handling
-        generator = MLConformerGenerator(device=device, diffusion_steps=DIFFUSION_STEPS)
+        generator = MLConformerGenerator(edm_weights=EDM_WEIGHTS, adj_mat_seer_weights=ADJMATSEER_WEIGHTS,
+            device=device, diffusion_steps=diffusion_steps)
 
         samples = generator.generate_conformers(
             reference_conformer=ref_mol,

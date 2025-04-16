@@ -177,15 +177,23 @@ export_to_onnx(model)
 This compiles and saves the ONNX files to: `./`
 
 ## API Server
+- Move the trained PyTorch model weights to `./server`
+
+`./server/edm_moi_chembl_15_39.pt`
+
+`./server/adj_mat_seer_chembl_15_39.pt`
+
+- Install dependencies `pip install -r ./server/server_requirements.txt`
+
 - Run the service 
   ```commandline
   pip install ./server/server_requirements.txt
-  python ./server/api_server
+  cd ./server
+  python ./api_server.py
   ```
   
 - Run the service using Docker
   ```commandline
-  cd ./server
   docker build . -t ml_conf_gen_api_server
   docker run -d -p80:8000 ml_conf_gen_api_server
   ```
@@ -201,7 +209,8 @@ This compiles and saves the ONNX files to: `./`
     "content": "string"
   },
   "n_samples": 0,
-  "variance": 0
+  "variance": 0,
+  "diffusion_steps": 0
 }
 ```
 ### Response Schema
@@ -213,7 +222,7 @@ This compiles and saves the ONNX files to: `./`
         {
             "mol_block": "string",
             "shape_tanimoto": 0.1,
-            "chemical_tanimoto": 0.1,
+            "chemical_tanimoto": 0.1
         }
     ]
   },
@@ -232,6 +241,8 @@ This compiles and saves the ONNX files to: `./`
 `./web_app/edm_moi_chembl_15_39.pt`
 
 `./web_app/adj_mat_seer_chembl_15_39.pt`
+
+- Install the dependencies `pip install -r ./web_app/web_app_requirements.txt`
 
 - Bring the app UI up:
   ```commandline
