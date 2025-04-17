@@ -1,4 +1,0 @@
-fastapi==0.111.0
-mlconfgen
-
-
