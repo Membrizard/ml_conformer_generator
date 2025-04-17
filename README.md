@@ -1,6 +1,6 @@
 # ML Conformer Generator
 
-<img src="https://github.com/Membrizard/ml_conformer_generator/assets/logo/mlconfgen_logo.png?raw=true" width="200" style="display: block; margin: 0 10%;">
+<img src="https://github.com/Membrizard/ml_conformer_generator/assets/logo/mlconfgen_logo.png" width="200" style="display: block; margin: 0 10%;">
 
 **ML Conformer Generator** 
 is a tool for shape-constrained molecule generation using an Equivariant Diffusion Model (EDM)
