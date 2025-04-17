@@ -4,8 +4,8 @@ data/*
 __pycache__/
 .ipynb_checkpoints/
 venv/
-/web_app/stspeck/frontend/node_modules
-/web_app/tmp
+/streamlit_app/stspeck/frontend/node_modules
+/streamlit_app/tmp
 *.onnx
 dist/
 *.egg-info/
