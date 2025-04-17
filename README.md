@@ -1,6 +1,6 @@
 # ML Conformer Generator
 
-<img src="https://github.com/Membrizard/ml_conformer_generator/assets/logo/mlconfgen_logo.png" width="200" style="display: block; margin: 0 10%;">
+<img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/logo/mlconfgen_logo.png" width="200" style="display: block; margin: 0 10%;">
 
 **ML Conformer Generator** 
 is a tool for shape-constrained molecule generation using an Equivariant Diffusion Model (EDM)
@@ -106,10 +106,10 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 
 ## Generation Examples
 
-![ex1](https://github.com/Membrizard/ml_conformer_generator/assets/ref_mol/molecule_1.png?raw=true)
-![ex2](https://github.com/Membrizard/ml_conformer_generator/assets/ref_mol/molecule_2.png?raw=true)
-![ex3](https://github.com/Membrizard/ml_conformer_generator/assets/ref_mol/molecule_3.png?raw=true)
-![ex4](https://github.com/Membrizard/ml_conformer_generator/assets/ref_mol/molecule_4.png?raw=true)
+![ex1](https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/ref_mol/molecule_1.png)
+![ex2](https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/ref_mol/molecule_2.png)
+![ex3](https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/ref_mol/molecule_3.png)
+![ex4](https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/ref_mol/molecule_4.png)
 
 ---
 
@@ -178,7 +178,7 @@ This compiles and saves the ONNX files to: `./`
 
 ## Streamlit App
 
-![streamlit_app](https://github.com/Membrizard/ml_conformer_generator/assets/app_ui/streamlit_app.png?raw=true)
+![streamlit_app](https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/app_ui/streamlit_app.png)
 
 ### Running
 - Move the trained PyTorch weights into `./streamlit_app`
