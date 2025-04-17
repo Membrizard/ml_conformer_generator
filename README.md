@@ -1,6 +1,6 @@
 # ML Conformer Generator
 
-<img src="./assets/logo/mlconfgen_logo.png" width="200" style="display: block; margin: 0 10%;">
+<img src="https://github.com/Membrizard/ml_conformer_generator/assets/logo/mlconfgen_logo.png" width="200" style="display: block; margin: 0 10%;">
 
 **ML Conformer Generator** 
 is a tool for shape-constrained molecule generation using an Equivariant Diffusion Model (EDM)
@@ -37,7 +37,7 @@ model = MLConformerGenerator(
                              diffusion_steps=100,
                             )
 
-reference = Chem.MolFromMolFile('./demo_files/ceyyag.mol')
+reference = Chem.MolFromMolFile('./assets/demo_files/ceyyag.mol')
 
 samples = model.generate_conformers(reference_conformer=reference, n_samples=20, variance=2)
 
@@ -106,10 +106,10 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 
 ## Generation Examples
 
-![ex1](./assets/ref_mol/molecule_1.png)
-![ex2](./assets/ref_mol/molecule_2.png)
-![ex3](./assets/ref_mol/molecule_3.png)
-![ex4](./assets/ref_mol/molecule_4.png)
+![ex1](https://github.com/Membrizard/ml_conformer_generator/assets/ref_mol/molecule_1.png)
+![ex2](https://github.com/Membrizard/ml_conformer_generator/assets/ref_mol/molecule_2.png)
+![ex3](https://github.com/Membrizard/ml_conformer_generator/assets/ref_mol/molecule_3.png)
+![ex4](https://github.com/Membrizard/ml_conformer_generator/assets/ref_mol/molecule_4.png)
 
 ---
 
@@ -152,7 +152,7 @@ model = MLConformerGeneratorONNX(
                                  diffusion_steps=100,
                                 )
 
-reference = Chem.MolFromMolFile('./demo_files/yibfeu.mol')
+reference = Chem.MolFromMolFile('./assets/demo_files/yibfeu.mol')
 samples = model.generate_conformers(reference_conformer=reference, n_samples=20, variance=2)
 
 ```
@@ -176,83 +176,28 @@ export_to_onnx(model)
 ```
 This compiles and saves the ONNX files to: `./`
 
-## API Server
-- Move the trained PyTorch model weights to `./server`
+## Streamlit App
 
-`./server/edm_moi_chembl_15_39.pt`
-
-`./server/adj_mat_seer_chembl_15_39.pt`
-
-- Install dependencies `pip install -r ./server/server_requirements.txt`
-
-- Run the service 
-  ```commandline
-  pip install ./server/server_requirements.txt
-  cd ./server
-  python ./api_server.py
-  ```
-  
-- Run the service using Docker
-  ```commandline
-  docker build . -t ml_conf_gen_api_server
-  docker run -d -p80:8000 ml_conf_gen_api_server
-  ```
-- The api server should be available at `http:/0.0.0.0:8000`
-- The Swagger documentation is available at `http:/0.0.0.0:8000/docs`
-- Generation endpoint `http:/0.0.0.0:8000/generate`
-
-### Request Schema
-```json
-{
-  "reference_mol": {
-    "type": "string",
-    "content": "string"
-  },
-  "n_samples": 0,
-  "variance": 0,
-  "diffusion_steps": 0
-}
-```
-### Response Schema
-```json
-{
-  "results": {
-    "aligned_reference": "string",
-    "generated_molecules": [
-        {
-            "mol_block": "string",
-            "shape_tanimoto": 0.1,
-            "chemical_tanimoto": 0.1
-        }
-    ]
-  },
-  "errors": "string"
-}
-
-```
-
-## Web App
-
-![web_app](./assets/app_ui/web_app_ui.png)
+![streamlit_app](https://github.com/Membrizard/ml_conformer_generator/assets/app_ui/streamlit_app.png)
 
 ### Running
-- Move the trained PyTorch weights into `./web_app`
+- Move the trained PyTorch weights into `./streamlit_app`
 
-`./web_app/edm_moi_chembl_15_39.pt`
+`./streamlit_app/edm_moi_chembl_15_39.pt`
 
-`./web_app/adj_mat_seer_chembl_15_39.pt`
+`./streamlit_app/adj_mat_seer_chembl_15_39.pt`
 
-- Install the dependencies `pip install -r ./web_app/web_app_requirements.txt`
+- Install the dependencies `pip install -r ./streamlit_app/requirements.txt`
 
 - Bring the app UI up:
   ```commandline
-  cd ./web_app
-  streamlit run web_app.py
+  cd ./streamlit_app
+  streamlit run app.py
   ```
 
-### Web App Development
+### Streamlit App Development
 
-1. To enable development mode for the 3D viewer (`stspeck`), set `_RELEASE = False` in `./frontend/stspeck/__init__.py`.
+1. To enable development mode for the 3D viewer (`stspeck`), set `_RELEASE = False` in `./streamlit/stspeck/__init__.py`.
 
 2. Navigate to the 3D viewer frontend and start the development server:
    ```commandline
@@ -264,12 +209,12 @@ This compiles and saves the ONNX files to: `./`
 
 3. In a separate terminal, run the Streamlit app from the root frontend directory: 
    ```commandline
-   cd ./web_app
-   streamlit run app_ui.py
+   cd ./streamlit_app
+   streamlit run app.py
    ```
 
 4. To build the production version of the 3D viewer, run:
    ```commandline
-   cd ./web_app/speck/frontend
+   cd ./streamlit_app/stspeck/frontend
    npm run build
    ```
