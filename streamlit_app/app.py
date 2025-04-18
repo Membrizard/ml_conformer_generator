@@ -59,7 +59,7 @@ if "running" not in st.session_state:
 # Page setup
 st.set_page_config(
     page_title="ML Conformer Generator",
-    # page_icon="./frontend/assets/",
+    page_icon="./assets/favicon.ico",
     layout="wide",
 )
 
