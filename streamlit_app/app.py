@@ -175,14 +175,15 @@ with app_container:
 
         with button_c:
             st.write("")
-            download_sdf = st.download_button(
-                "Download as SDF",
-                data=open(RESULTS_FILEPATH, "r"),
-                file_name="generated_molecules.sdf",
-                disabled=(
-                    st.session_state.running or not st.session_state.generated_mols
-                ),
-            )
+            if st.session_state.generated_mols:
+                download_sdf = st.download_button(
+                    "Download as SDF",
+                    data=open(RESULTS_FILEPATH, "r"),
+                    file_name="generated_molecules.sdf",
+                    disabled=(
+                        st.session_state.running or not st.session_state.generated_mols
+                    ),
+                )
 
         st.divider()
 
