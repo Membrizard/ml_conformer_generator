@@ -212,19 +212,20 @@ def create_view_molecule_button(r_mol: int, score: float, key: int) -> None:
 
     """
     score = round(score, 2)
-    color = tuple(round(x * 255, 2) for x in CMAP(score))
+
+    color = CMAP(score)
+    hex_color = matplotlib.colors.to_hex(color)
 
     if score > 0.3:
         l_color = "#262730"
     else:
         l_color = "#d3d3d3"
 
-    rgb_string = f"rgb{str(color[:-1])}"
     with stylable_container(
         key=f"molecule_button_{key}",
         css_styles="""
                 button {"""
-        + f"\nbackground-color: {rgb_string};\n"
+        + f"\nbackground-color: {hex_color};\n"
         + f"\ncolor: {l_color};\n"
         + """border-radius: 2px;
                     width: 100%;
