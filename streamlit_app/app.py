@@ -70,7 +70,7 @@ app_header = stylable_container(
     css_styles=container_css,
 )
 with app_header:
-    logo_c, title_c, _ = st.columns([0.2, 1, 1])
+    logo_c, title_c, _ = st.columns([0.3, 1, 1])
     with logo_c:
         header_logo("./assets/mlconfgen_logo_cosmo.png")
     with title_c:
