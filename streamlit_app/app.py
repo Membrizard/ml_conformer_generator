@@ -168,7 +168,7 @@ with app_container:
                     generate_samples = None
 
     with output_column:
-        header_c, button_c = st.columns([2.5, 1])
+        header_c, button_c = st.columns([1.5, 1])
 
         with header_c:
             st.header("Output")
