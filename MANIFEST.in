@@ -1,13 +1,10 @@
-graft src
+global-exclude *
 
+recursive-include src *
 include README.md
 include LICENSE*
 include pyproject.toml
+include MANIFEST.in
 
-prune assets
-prune streamlit_app
-prune research_scripts
-prune onnx_export
 exclude *.ipynb
-
-global-exclude *~ *.py[cod]
+global-exclude *~ *.py[cod] __pycache__
