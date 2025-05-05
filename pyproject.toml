@@ -6,8 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "mlconfgen"
 description = "Shape-constrained molecule generation via Equivariant Diffusion and GCN"
 readme = "README.md"
-version = "0.0.1a3"
-# dynamic = ["version"]
+dynamic = ["version"]
 authors = [
     {name = "Denis Sapegin", email = "dasapegin@gmail.com"},
     {name = "Fedor Bakharev", email = "fbakharev@gmail.com"},
