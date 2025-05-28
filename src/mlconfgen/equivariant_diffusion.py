@@ -24,7 +24,7 @@ def clip_noise_schedule(
     return alphas2
 
 
-def polynomial_schedule(timesteps: int, s: float = 1e-4, power: int = 2):
+def polynomial_schedule(timesteps: int, s: float = 1e-4, power: int = 2) -> torch.Tensor:
     """
     A noise schedule based on a simple polynomial equation: 1 - x^power.
 
@@ -43,7 +43,7 @@ def polynomial_schedule(timesteps: int, s: float = 1e-4, power: int = 2):
     return alphas2
 
 
-def remove_mean_with_mask(x, node_mask):
+def remove_mean_with_mask(x, node_mask) -> torch.Tensor:
     n = torch.sum(node_mask, 1, keepdim=True)
 
     mean = torch.sum(x, dim=1, keepdim=True) / n
@@ -53,7 +53,7 @@ def remove_mean_with_mask(x, node_mask):
 
 def sample_center_gravity_zero_gaussian_with_mask(
     size: Tuple[int, int, int], device: torch.device, node_mask
-):
+) -> torch.Tensor:
     assert len(size) == 3
     x = torch.randn(size, device=device)
 
@@ -67,11 +67,40 @@ def sample_center_gravity_zero_gaussian_with_mask(
 
 def sample_gaussian_with_mask(
     size: Tuple[int, int, int], device: torch.device, node_mask
-):
+) -> torch.Tensor:
     x = torch.randn(size, device=device)
 
     x_masked = x * node_mask
     return x_masked
+
+
+def align_fragment_com_to_generated(
+    z_known_noised: torch.Tensor, z_generated: torch.Tensor, fixed_mask: torch.Tensor
+) -> torch.Tensor:
+    """
+    Aligns COM of the fixed fragment with the corresponding generated fragment during inpainting for equivariance.
+    :param z_known_noised:
+    :param z_generated:
+    :param fixed_mask:
+    :return: aligned latent representation of a fixed fragment
+    """
+
+    coords_known = z_known_noised[:, :, :3]
+    coords_gen = z_generated[:, :, :3]
+
+    frag_com_gen = torch.sum(coords_gen * fixed_mask, dim=1, keepdim=True) / (
+        fixed_mask.sum(dim=1, keepdim=True)
+    )
+    frag_com_known = torch.sum(coords_known * fixed_mask, dim=1, keepdim=True) / (
+        fixed_mask.sum(dim=1, keepdim=True)
+    )
+
+    shift = frag_com_gen - frag_com_known
+    coords_shifted = coords_known + shift * fixed_mask  # only move fixed region
+
+    z_known_shifted = z_known_noised.clone()
+    z_known_shifted[:, :, :3] = coords_shifted
+    return z_known_shifted
 
 
 class PredefinedNoiseSchedule(torch.nn.Module):
@@ -332,6 +361,49 @@ class EquivariantDiffusion(torch.nn.Module):
         return z
 
     def forward(
+        self,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+        context: torch.Tensor,
+        resampling_steps: int = 0,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Draw samples from the generative model.
+        Inference
+        """
+        n_samples, n_nodes, _ = node_mask.size()
+
+        z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
+
+        # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
+        for s in self.time_steps:
+            s_array = torch.full([n_samples, 1], fill_value=s, device=z.device)
+            t_array = s_array + 1.0
+            s_array = s_array / self.T
+            t_array = t_array / self.T
+
+            # Optional Resampling loop for improvement of generation quality
+
+            z = self.sample_p_zs_given_zt(
+                s_array,
+                t_array,
+                z,
+                node_mask,
+                edge_mask,
+                context,
+            )
+
+        # Finally sample p(x, h | z_0).
+        x, h = self.sample_p_xh_given_z0(
+            z,
+            node_mask,
+            edge_mask,
+            context,
+        )
+
+        return x, h
+
+    def inpaint(
         self,
         node_mask: torch.Tensor,
         edge_mask: torch.Tensor,

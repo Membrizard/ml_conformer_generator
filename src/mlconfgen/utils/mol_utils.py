@@ -265,11 +265,11 @@ def prepare_edm_input(
 
 
 def prepare_fragment(
-        n_samples: int,
-        fragment: Chem.Mol,
-        device: torch.device,
-        max_n_nodes: int = DIMENSION,
-        ) -> Tuple[torch.Tensor, torch.Tensor]:
+    n_samples: int,
+    fragment: Chem.Mol,
+    device: torch.device,
+    max_n_nodes: int = DIMENSION,
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Prepares Fixed Fragment for Inpainting. Converts Mol to latent Z tensor, ready for injection
     :param n_samples: required batch size of the prepared latent fragment - number of molecules to generate
@@ -290,9 +290,7 @@ def prepare_fragment(
     n_atoms = torch.count_nonzero(elements, dim=0).item()
     h = structure.one_hot_elements_encoding(max_n_nodes)
 
-    x = torch.nn.functional.pad(
-       coord, (0, 0, 0, max_n_nodes - n_atoms), "constant", 0
-    )
+    x = torch.nn.functional.pad(coord, (0, 0, 0, max_n_nodes - n_atoms), "constant", 0)
 
     # Batch x and h
     x = x.repeat(n_samples, 1, 1)
@@ -300,9 +298,8 @@ def prepare_fragment(
     z_known = torch.cat([x, h], dim=2).to(device)
 
     n_new = max_n_nodes - n_atoms
-    fixed_mask = torch.cat([
-            torch.ones(n_samples, n_atoms, 1),
-            torch.zeros(n_samples, n_new, 1)
-        ], dim=1).to(device)
+    fixed_mask = torch.cat(
+        [torch.ones(n_samples, n_atoms, 1), torch.zeros(n_samples, n_new, 1)], dim=1
+    ).to(device)
 
     return z_known, fixed_mask

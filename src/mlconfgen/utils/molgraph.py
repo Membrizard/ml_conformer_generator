@@ -241,7 +241,9 @@ class MolGraph:
         the number of types is the length of PERMITTED ELEMENTS set
         :return: [, ...0...] size(DIMENSION, len(PERMITTED_ELEMENTS), 1)
         """
-        one_hot = torch.zeros(max_n_nodes, len(elements_decoder.keys()), dtype=torch.long)
+        one_hot = torch.zeros(
+            max_n_nodes, len(elements_decoder.keys()), dtype=torch.long
+        )
 
         for i in range(len(self.x)):
             atom_type = elements_decoder[self.x[i].item()]
