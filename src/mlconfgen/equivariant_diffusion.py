@@ -436,8 +436,8 @@ class EquivariantDiffusion(torch.nn.Module):
 
             for _ in range(resample_steps):
                 z = self.sample_p_zs_given_zt(
-                    s_array_norm,
-                    t_array_norm,
+                    s_array,
+                    t_array,
                     z,
                     node_mask,
                     edge_mask,
