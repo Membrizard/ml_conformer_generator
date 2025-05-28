@@ -365,7 +365,7 @@ class EquivariantDiffusion(torch.nn.Module):
         node_mask: torch.Tensor,
         edge_mask: torch.Tensor,
         context: torch.Tensor,
-        resampling_steps: int = 0,
+        resample_steps: int = 0,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Draw samples from the generative model.
@@ -383,6 +383,15 @@ class EquivariantDiffusion(torch.nn.Module):
             t_array = t_array / self.T
 
             # Optional Resampling loop for improvement of generation quality
+            for _ in range(resample_steps):
+                z = self.sample_p_zs_given_zt(
+                    s_array,
+                    t_array,
+                    z,
+                    node_mask,
+                    edge_mask,
+                    context,
+                )
 
             z = self.sample_p_zs_given_zt(
                 s_array,
@@ -408,7 +417,7 @@ class EquivariantDiffusion(torch.nn.Module):
         node_mask: torch.Tensor,
         edge_mask: torch.Tensor,
         context: torch.Tensor,
-        resampling_steps: int = 0,
+        resample_steps: int = 0,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Draw samples from the generative model.
@@ -424,6 +433,16 @@ class EquivariantDiffusion(torch.nn.Module):
             t_array = s_array + 1.0
             s_array = s_array / self.T
             t_array = t_array / self.T
+
+            for _ in range(resample_steps):
+                z = self.sample_p_zs_given_zt(
+                    s_array_norm,
+                    t_array_norm,
+                    z,
+                    node_mask,
+                    edge_mask,
+                    context,
+                )
 
             z = self.sample_p_zs_given_zt(
                 s_array,
