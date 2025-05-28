@@ -5,7 +5,9 @@ import torch
 from rdkit import Chem
 from rdkit.Chem import rdmolops
 
-from .config import DIMENSION, NUM_BOND_TYPES
+from .config import DIMENSION, NUM_BOND_TYPES, PERMITTED_ELEMENTS
+
+elements_decoder = {x: i for i, x in enumerate(sorted(PERMITTED_ELEMENTS))}
 
 # allowable node and edge features
 allowable_features = {
