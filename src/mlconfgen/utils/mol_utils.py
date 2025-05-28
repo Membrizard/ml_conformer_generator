@@ -217,6 +217,16 @@ def prepare_edm_input(
     max_n_nodes: int,
     device: torch.device,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Prepares Input for EDM model
+    :param n_samples: number of molecules to generate
+    :param reference_context: context to use for generation
+    :param context_norms: Values for normalisation of context
+    :param min_n_nodes: minimal allowable molecule size
+    :param max_n_nodes: maximal allowable molecule size
+    :param device: device to prepare input for - torch.device
+    :return: a tuple of tensors ready to be used by the EDM
+    """
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
     nodesxsample = []
 
@@ -255,14 +265,16 @@ def prepare_edm_input(
 
 
 def prepare_fragment(
-        batch_size: int,
+        n_samples: int,
         fragment: Chem.Mol,
+        device: torch.device,
         max_n_nodes: int = DIMENSION,
         ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Prepares Fixed Fragment for Inpainting. Converts Mol to latent Z tensor, ready for injection
-    :param batch_size: required batch size of the prepared latent fragment int
+    :param n_samples: required batch size of the prepared latent fragment - number of molecules to generate
     :param fragment: fragment to prepare rdkit Mol
+    :param device: device to prepare input for - torch.device
     :param max_n_nodes:possible maximum number of nodes - for padding - int
     :return: Latent representation of the fragment and a mask,
              indicating which atoms in the latent representation are fixed
@@ -283,9 +295,14 @@ def prepare_fragment(
     )
 
     # Batch x and h
-    x = x.repeat(batch_size, 1, 1)
-    h = h.repeat(batch_size, 1, 1)
-    z_known = torch.cat([x, h], dim=2)
-    z_known = z_known.to(torch.float32)
+    x = x.repeat(n_samples, 1, 1)
+    h = h.repeat(n_samples, 1, 1)
+    z_known = torch.cat([x, h], dim=2).to(device)
 
-    return z_known, n_atoms
+    n_new = max_n_nodes - n_atoms
+    fixed_mask = torch.cat([
+            torch.ones(n_samples, n_atoms, 1),
+            torch.zeros(n_samples, n_new, 1)
+        ], dim=1).to(device)
+
+    return z_known, fixed_mask
