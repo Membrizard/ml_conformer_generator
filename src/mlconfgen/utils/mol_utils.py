@@ -6,6 +6,7 @@ from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 
 from .molgraph import MolGraph
+from .config import DIMENSION
 
 bond_type_dict = {
     1: Chem.rdchem.BondType.SINGLE,
@@ -251,3 +252,40 @@ def prepare_edm_input(
         edge_mask,
         batch_context,
     )
+
+
+def prepare_fragment(
+        batch_size: int,
+        fragment: Chem.Mol,
+        max_n_nodes: int = DIMENSION,
+        ) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Prepares Fixed Fragment for Inpainting. Converts Mol to latent Z tensor, ready for injection
+    :param batch_size: required batch size of the prepared latent fragment int
+    :param fragment: fragment to prepare rdkit Mol
+    :param max_n_nodes:possible maximum number of nodes - for padding - int
+    :return: Latent representation of the fragment and a mask,
+             indicating which atoms in the latent representation are fixed
+    """
+
+    # Remove Hs
+    mol = Chem.RemoveAllHs(fragment)
+    conformer = mol.GetConformer()
+    coord = torch.tensor(conformer.GetPositions(), dtype=torch.float32)
+
+    structure = MolGraph.from_mol(mol=mol, remove_hs=True)
+    elements = structure.elements_vector()
+    n_atoms = torch.count_nonzero(elements, dim=0)
+    h = structure.one_hot_elements_encoding(max_n_nodes)
+
+    x = torch.nn.functional.pad(
+       coord, (0, 0, 0, max_n_nodes - n_atoms), "constant", 0
+    )
+
+    # Batch x and h
+    x = x.repeat(batch_size, 1, 1)
+    h = h.repeat(batch_size, 1, 1)
+    z_known = torch.cat([x, h], dim=2)
+    z_known = z_known.to(torch.float32)
+
+    return z_known, n_atoms
