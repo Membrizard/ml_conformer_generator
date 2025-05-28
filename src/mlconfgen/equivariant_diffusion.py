@@ -336,6 +336,7 @@ class EquivariantDiffusion(torch.nn.Module):
         node_mask: torch.Tensor,
         edge_mask: torch.Tensor,
         context: torch.Tensor,
+        resampling_steps: int = 0,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Draw samples from the generative model.

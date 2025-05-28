@@ -287,7 +287,7 @@ def prepare_fragment(
 
     structure = MolGraph.from_mol(mol=mol, remove_hs=True)
     elements = structure.elements_vector()
-    n_atoms = torch.count_nonzero(elements, dim=0)
+    n_atoms = torch.count_nonzero(elements, dim=0).item()
     h = structure.one_hot_elements_encoding(max_n_nodes)
 
     x = torch.nn.functional.pad(

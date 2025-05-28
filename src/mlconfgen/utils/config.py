@@ -17,6 +17,17 @@ ATOM_DECODER = {
     7: "Br",
 }
 
+PERMITTED_ELEMENTS = (
+    6,
+    7,
+    8,
+    9,
+    15,
+    16,
+    17,
+    35,
+)
+
 MIN_N_NODES = 15
 MAX_N_NODES = 39
 
