@@ -269,13 +269,15 @@ def prepare_fragment(
     fragment: Chem.Mol,
     device: torch.device,
     max_n_nodes: int = DIMENSION,
+    min_n_nodes: int = 15,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Prepares Fixed Fragment for Inpainting. Converts Mol to latent Z tensor, ready for injection
     :param n_samples: required batch size of the prepared latent fragment - number of molecules to generate
     :param fragment: fragment to prepare rdkit Mol
     :param device: device to prepare input for - torch.device
-    :param max_n_nodes:possible maximum number of nodes - for padding - int
+    :param max_n_nodes: possible maximum number of nodes - for padding - int
+    :param min_n_nodes: possible minimum number of nodes - int
     :return: Latent representation of the fragment and a mask,
              indicating which atoms in the latent representation are fixed
     """
@@ -288,6 +290,13 @@ def prepare_fragment(
     structure = MolGraph.from_mol(mol=mol, remove_hs=True)
     elements = structure.elements_vector()
     n_atoms = torch.count_nonzero(elements, dim=0).item()
+
+    # Check that fragment size is adequate
+    if n_atoms <= min_n_nodes:
+        raise ValueError("Fragment should contain more atoms the the minimal molecule size requested for generation ")
+    if n_atoms >= max_n_nodes:
+        raise ValueError("Fragment should contain less atoms the the maximal molecule size requested for generation ")
+
     h = structure.one_hot_elements_encoding(max_n_nodes)
 
     x = torch.nn.functional.pad(coord, (0, 0, 0, max_n_nodes - n_atoms), "constant", 0)

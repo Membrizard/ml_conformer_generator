@@ -24,7 +24,9 @@ def clip_noise_schedule(
     return alphas2
 
 
-def polynomial_schedule(timesteps: int, s: float = 1e-4, power: int = 2) -> torch.Tensor:
+def polynomial_schedule(
+    timesteps: int, s: float = 1e-4, power: int = 2
+) -> torch.Tensor:
     """
     A noise schedule based on a simple polynomial equation: 1 - x^power.
 
@@ -370,6 +372,12 @@ class EquivariantDiffusion(torch.nn.Module):
         """
         Draw samples from the generative model.
         Inference
+
+        :param node_mask: node mask tensor
+        :param edge_mask: edge mask tensor
+        :param context: batched context for generation
+        :param resample_steps: number of resampling steps for harmonisation
+        :return: generated samples in tensor representation
         """
         n_samples, n_nodes, _ = node_mask.size()
 
@@ -417,11 +425,23 @@ class EquivariantDiffusion(torch.nn.Module):
         node_mask: torch.Tensor,
         edge_mask: torch.Tensor,
         context: torch.Tensor,
-        resample_steps: int = 0,
+        z_known: torch.Tensor,
+        fixed_mask: torch.Tensor,
+        resample_steps: int = 10,
+        blend_power: int = 3,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Draw samples from the generative model.
+        Draw samples from the generative model while fixing a given fragment
         Inference
+
+        :param node_mask: node mask tensor
+        :param edge_mask: edge mask tensor
+        :param context: batched context for generation
+        :param z_known: latent representation of a fixed fragment
+        :param fixed_mask: mask to indicate the position of fixed atoms
+        :param resample_steps: number of resampling steps for harmonisation
+        :param blend_power: power of the polynomial blending schedule
+        :return: generated samples in tensor representation
         """
         n_samples, n_nodes, _ = node_mask.size()
 
@@ -434,6 +454,9 @@ class EquivariantDiffusion(torch.nn.Module):
             s_array = s_array / self.T
             t_array = t_array / self.T
 
+            # Polynomial blending schedule
+            blend = torch.pow((1 - s_array), blend_power).view(n_samples, 1, 1)
+
             for _ in range(resample_steps):
                 z = self.sample_p_zs_given_zt(
                     s_array,
@@ -442,6 +465,28 @@ class EquivariantDiffusion(torch.nn.Module):
                     node_mask,
                     edge_mask,
                     context,
+                )
+
+                # Forward-diffuse the known fragment at timestep s
+                gamma_s = self.gamma(s_array)
+                alpha_s = self.alpha(gamma_s, z_known)
+                sigma_s = self.sigma(gamma_s, z_known)
+
+                eps_frag = self.sample_combined_position_feature_noise(
+                    n_samples, n_nodes, node_mask
+                )
+                z_known_noised = alpha_s * z_known + sigma_s * eps_frag
+
+                # COM alignment
+                z_known_noised = align_fragment_com_to_generated(
+                    z_known_noised, z, fixed_mask
+                )
+
+                # Softly blend fragment into z
+                z = (
+                    blend * z_known_noised * fixed_mask
+                    + (1 - blend) * z * fixed_mask
+                    + z * (1 - fixed_mask)
                 )
 
             z = self.sample_p_zs_given_zt(
