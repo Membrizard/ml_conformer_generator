@@ -14,6 +14,7 @@ from .utils import (
     get_context_shape_onnx,
     prepare_adj_mat_seer_input_onnx,
     prepare_edm_input_onnx,
+    prepare_fragment_onnx,
     redefine_bonds_onnx,
     samples_to_rdkit_mol_onnx,
     standardize_mol,
@@ -83,6 +84,9 @@ class MLConformerGeneratorONNX:
         n_samples: int = 100,
         max_n_nodes: int = 32,
         min_n_nodes: int = 25,
+        resample_steps: int = 0,
+        fixed_fragment: Chem.Mol = None,
+        blend_power: int = 3,
     ) -> List[Chem.Mol]:
         """
         Generates initial samples using generative diffusion model
@@ -90,6 +94,9 @@ class MLConformerGeneratorONNX:
         :param n_samples: number of samples to be generated
         :param max_n_nodes: the maximal number of heavy atoms in the among requested molecules
         :param min_n_nodes: the minimal number of heavy atoms in the among requested molecules
+        :param resample_steps: number of resampling steps applied for harmonisation of generation
+        :param fixed_fragment: fragment to retain during generation, optional
+        :param blend_power: power of polynomial blending of a fixed fragment during generation
         :return: a list of generated samples, without atom adjacency as RDkit Mol objects
         """
 
@@ -107,11 +114,29 @@ class MLConformerGeneratorONNX:
             min_n_nodes=min_n_nodes,
             max_n_nodes=max_n_nodes,
         )
-        x, h = self.generative_model(
-            node_mask,
-            edge_mask,
-            batch_context,
-        )
+        if fixed_fragment is None:
+            x, h = self.generative_model(
+                node_mask,
+                edge_mask,
+                batch_context,
+                resample_steps,
+            )
+        else:
+            z_known, fixed_mask = prepare_fragment_onnx(
+                n_samples=n_samples,
+                fragment=fixed_fragment,
+                max_n_nodes=max_n_nodes,
+                min_n_nodes=min_n_nodes,
+            )
+            x, h = self.generative_model.inpaint(
+                node_mask,
+                edge_mask,
+                batch_context,
+                z_known,
+                fixed_mask,
+                resample_steps,
+                blend_power,
+            )
 
         mols = samples_to_rdkit_mol_onnx(
             positions=x, one_hot=h, node_mask=node_mask, atom_decoder=self.atom_decoder
@@ -127,6 +152,9 @@ class MLConformerGeneratorONNX:
         reference_context: np.ndarray = None,
         n_atoms: int = None,
         optimise_geometry: bool = True,
+        resample_steps: int = 0,
+        fixed_fragment: Chem.Mol = None,
+        blend_power: int = 3,
     ) -> List[Chem.Mol]:
         """
         Main method to generate samples from either reference molecule or an arbitrary context.
@@ -136,6 +164,10 @@ class MLConformerGeneratorONNX:
         :param reference_context: Arbitrary Reference context if applicable, instead of reference_conformer
         :param n_atoms: Reference number of atoms when generating using arbitrary context
         :param optimise_geometry: If true will apply constrained MMFF94 geometry optimisation to generated molecules
+        :param resample_steps: number of resampling steps applied for harmonisation of generation
+                               improves generation quality, while sacrificing speed
+        :param fixed_fragment: Fragment to fix during generation as an RDKit Mol object
+        :param blend_power: power of the polynomial blending schedule for generation with a fixed fragment
         :return: A list of valid standardised generated molecules as RDKit Mol objects.
         """
         if reference_conformer:
@@ -171,6 +203,9 @@ class MLConformerGeneratorONNX:
             n_samples=n_samples,
             min_n_nodes=ref_n_atoms - variance,
             max_n_nodes=ref_n_atoms + variance,
+            resample_steps=resample_steps,
+            fixed_fragment=fixed_fragment,
+            blend_power=blend_power,
         )
 
         (
@@ -208,6 +243,9 @@ class MLConformerGeneratorONNX:
         reference_context: np.ndarray = None,
         n_atoms: int = None,
         optimise_geometry: bool = True,
+        resample_steps: int = 0,
+        fixed_fragment: Chem.Mol = None,
+        blend_power: int = 3,
     ) -> List[Chem.Mol]:
         out = self.generate_conformers(
             reference_conformer,
@@ -216,6 +254,9 @@ class MLConformerGeneratorONNX:
             reference_context,
             n_atoms,
             optimise_geometry,
+            resample_steps,
+            fixed_fragment,
+            blend_power,
         )
 
         return out

@@ -6,6 +6,7 @@ from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 
 from .molgraph import MolGraph
+from .config import DIMENSION
 
 bond_type_dict = {
     1: Chem.rdchem.BondType.SINGLE,
@@ -216,6 +217,16 @@ def prepare_edm_input(
     max_n_nodes: int,
     device: torch.device,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """
+    Prepares Input for EDM model
+    :param n_samples: number of molecules to generate
+    :param reference_context: context to use for generation
+    :param context_norms: Values for normalisation of context
+    :param min_n_nodes: minimal allowable molecule size
+    :param max_n_nodes: maximal allowable molecule size
+    :param device: device to prepare input for - torch.device
+    :return: a tuple of tensors ready to be used by the EDM
+    """
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
     nodesxsample = []
 
@@ -251,3 +262,52 @@ def prepare_edm_input(
         edge_mask,
         batch_context,
     )
+
+
+def prepare_fragment(
+    n_samples: int,
+    fragment: Chem.Mol,
+    device: torch.device,
+    max_n_nodes: int = DIMENSION,
+    min_n_nodes: int = 15,
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Prepares Fixed Fragment for Inpainting. Converts Mol to latent Z tensor, ready for injection
+    :param n_samples: required batch size of the prepared latent fragment - number of molecules to generate
+    :param fragment: fragment to prepare rdkit Mol
+    :param device: device to prepare input for - torch.device
+    :param max_n_nodes: possible maximum number of nodes - for padding - int
+    :param min_n_nodes: possible minimum number of nodes - int
+    :return: Latent representation of the fragment and a mask,
+             indicating which atoms in the latent representation are fixed
+    """
+
+    # Remove Hs
+    mol = Chem.RemoveAllHs(fragment)
+    conformer = mol.GetConformer()
+    coord = torch.tensor(conformer.GetPositions(), dtype=torch.float32)
+
+    structure = MolGraph.from_mol(mol=mol, remove_hs=True)
+    elements = structure.elements_vector()
+    n_atoms = torch.count_nonzero(elements, dim=0).item()
+
+    # Check that fragment size is adequate
+    if n_atoms >= min_n_nodes:
+        raise ValueError("Fragment must contain fewer atoms than minimum generation size.")
+    if n_atoms >= max_n_nodes:
+        raise ValueError("Fragment exceeds max_n_nodes.")
+
+    h = structure.one_hot_elements_encoding(max_n_nodes)
+
+    x = torch.nn.functional.pad(coord, (0, 0, 0, max_n_nodes - n_atoms), "constant", 0)
+
+    # Batch x and h
+    x = x.repeat(n_samples, 1, 1)
+    h = h.repeat(n_samples, 1, 1)
+    z_known = torch.cat([x, h], dim=2).to(device)
+
+    # n_new = max_n_nodes - n_atoms
+    fixed_mask = torch.zeros((n_samples, max_n_nodes, 1), dtype=torch.float32, device=device)
+    fixed_mask[:, :n_atoms, 0] = 1.0
+
+    return z_known, fixed_mask
