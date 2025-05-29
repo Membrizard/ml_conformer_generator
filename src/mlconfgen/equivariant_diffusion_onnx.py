@@ -66,6 +66,35 @@ def sample_gaussian_with_mask(size: Tuple[int, int, int], node_mask: np.ndarray)
     return x_masked
 
 
+def align_fragment_com_to_generated(
+    z_known_noised: np.ndarray, z_generated: np.ndarray, fixed_mask: np.ndarray
+) -> np.ndarray:
+    """
+    Aligns COM of the fixed fragment with the corresponding generated fragment during inpainting for equivariance.
+    :param z_known_noised:
+    :param z_generated:
+    :param fixed_mask:
+    :return: aligned latent representation of a fixed fragment
+    """
+
+    coords_known = z_known_noised[:, :, :3]
+    coords_gen = z_generated[:, :, :3]
+
+    frag_com_gen = np.sum(coords_gen * fixed_mask, axis=1, keepdims=True) / (
+        np.sum(fixed_mask, axis=1, keepdims=True)
+    )
+    frag_com_known = np.sum(coords_known * fixed_mask, axis=1, keepdims=True) / (
+        np.sum(fixed_mask, axis=1, keepdims=True)
+    )
+
+    shift = frag_com_gen - frag_com_known
+    coords_shifted = coords_known + shift * fixed_mask  # only move fixed region
+
+    z_known_shifted = z_known_noised.copy()
+    z_known_shifted[:, :, :3] = coords_shifted
+    return z_known_shifted
+
+
 class PredefinedNoiseSchedule:
     """
     Predefined noise schedule. Essentially creates a lookup array for predefined (non-learned) noise schedules.
@@ -342,10 +371,17 @@ class EquivariantDiffusionONNX:
         node_mask: np.ndarray,
         edge_mask: np.ndarray,
         context: np.ndarray,
+        resample_steps: int = 0,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Draw samples from the generative model.
         Inference
+
+        :param node_mask: node mask tensor
+        :param edge_mask: edge mask tensor
+        :param context: batched context for generation
+        :param resample_steps: number of resampling steps for harmonisation
+        :return: generated samples in tensor representation
         """
         n_samples, n_nodes, _ = node_mask.shape
 
@@ -357,6 +393,105 @@ class EquivariantDiffusionONNX:
             t_array = s_array + 1.0
             s_array = s_array / self.T
             t_array = t_array / self.T
+
+            # Optional Resampling loop for improvement of generation quality
+            for _ in range(resample_steps):
+                z = self.sample_p_zs_given_zt(
+                    s_array,
+                    t_array,
+                    z,
+                    node_mask,
+                    edge_mask,
+                    context,
+                )
+
+            z = self.sample_p_zs_given_zt(
+                s_array,
+                t_array,
+                z,
+                node_mask,
+                edge_mask,
+                context,
+            )
+
+        # Finally sample p(x, h | z_0).
+        x, h = self.sample_p_xh_given_z0(
+            z,
+            node_mask,
+            edge_mask,
+            context,
+        )
+
+        return x, h
+
+    def inpaint(
+        self,
+        node_mask: np.ndarray,
+        edge_mask: np.ndarray,
+        context: np.ndarray,
+        z_known: np.ndarray,
+        fixed_mask: np.ndarray,
+        resample_steps: int = 10,
+        blend_power: int = 3,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Draw samples from the generative model while fixing a given fragment
+        Inference
+
+        :param node_mask: node mask tensor
+        :param edge_mask: edge mask tensor
+        :param context: batched context for generation
+        :param z_known: latent representation of a fixed fragment
+        :param fixed_mask: mask to indicate the position of fixed atoms
+        :param resample_steps: number of resampling steps for harmonisation
+        :param blend_power: power of the polynomial blending schedule
+        :return: generated samples in tensor representation
+        """
+        n_samples, n_nodes, _ = node_mask.shape
+
+        z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
+
+        # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
+        for s in self.time_steps:
+            s_array = np.full([n_samples, 1], fill_value=s)
+            t_array = s_array + 1.0
+            s_array = s_array / self.T
+            t_array = t_array / self.T
+
+            # Polynomial blending schedule
+            blend = np.power((1 - s_array), blend_power).reshape(n_samples, 1, 1)
+
+            for _ in range(resample_steps):
+                z = self.sample_p_zs_given_zt(
+                    s_array,
+                    t_array,
+                    z,
+                    node_mask,
+                    edge_mask,
+                    context,
+                )
+
+                # Forward-diffuse the known fragment at timestep s
+                gamma_s = self.gamma(s_array)
+                alpha_s = self.alpha(gamma_s, z_known)
+                sigma_s = self.sigma(gamma_s, z_known)
+
+                eps_frag = self.sample_combined_position_feature_noise(
+                    n_samples, n_nodes, node_mask
+                )
+                z_known_noised = alpha_s * z_known + sigma_s * eps_frag
+
+                # COM alignment
+                z_known_noised = align_fragment_com_to_generated(
+                    z_known_noised, z, fixed_mask
+                )
+
+                # Softly blend fragment into z
+                z = (
+                    blend * z_known_noised * fixed_mask
+                    + (1 - blend) * z * fixed_mask
+                    + z * (1 - fixed_mask)
+                )
 
             z = self.sample_p_zs_given_zt(
                 s_array,

@@ -147,8 +147,8 @@ class MLConformerGenerator(torch.nn.Module):
         :param max_n_nodes: the maximal number of heavy atoms in the among requested molecules
         :param min_n_nodes: the minimal number of heavy atoms in the among requested molecules
         :param resample_steps: number of resampling steps applied for harmonisation of generation
-        :param fixed_fragment:
-        :param blend_power:
+        :param fixed_fragment: fragment to retain during generation, optional
+        :param blend_power: power of polynomial blending of a fixed fragment during generation
         :return: a list of generated samples, without atom adjacency as RDkit Mol objects
         """
 

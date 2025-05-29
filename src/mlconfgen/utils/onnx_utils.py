@@ -192,7 +192,7 @@ class MolGraphONNX:
         the number of types is the length of PERMITTED ELEMENTS set
         :return: [, ...0...] size(DIMENSION, len(PERMITTED_ELEMENTS), 1)
         """
-        one_hot = np.zeros(max_n_nodes, len(elements_decoder.keys()), dtype=np.int64)
+        one_hot = np.zeros((max_n_nodes, len(elements_decoder.keys())), dtype=np.int64)
 
         for i in range(len(self.x)):
             atom_type = elements_decoder[self.x[i].item()]
@@ -326,6 +326,56 @@ def prepare_adj_mat_seer_input_onnx(
         canonicalised_samples.append(mol)
 
     return elements_batch, dist_mat_batch, adj_mat_batch, canonicalised_samples
+
+
+def prepare_fragment_onnx(
+    n_samples: int,
+    fragment: Chem.Mol,
+    max_n_nodes: int = DIMENSION,
+    min_n_nodes: int = 15,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Torch-free preparation of a Fixed Fragment for Inpainting. Converts Mol to latent Z tensor, ready for injection
+    :param n_samples: required batch size of the prepared latent fragment - number of molecules to generate
+    :param fragment: fragment to prepare rdkit Mol
+    :param max_n_nodes: possible maximum number of nodes - for padding - int
+    :param min_n_nodes: possible minimum number of nodes - int
+    :return: Latent representation of the fragment and a mask,
+             indicating which atoms in the latent representation are fixed
+    """
+
+    # Remove Hs
+    mol = Chem.RemoveAllHs(fragment)
+    conformer = mol.GetConformer()
+    coord = np.array(conformer.GetPositions(), dtype=np.float32)
+
+    structure = MolGraphONNX.from_mol(mol=mol, remove_hs=True)
+    elements = structure.elements_vector()
+    n_atoms = np.count_nonzero(elements, axis=0).item()
+
+    # Check that fragment size is adequate
+    if n_atoms >= min_n_nodes:
+        raise ValueError("Fragment must contain fewer atoms than minimum generation size.")
+    if n_atoms >= max_n_nodes:
+        raise ValueError("Fragment exceeds max_n_nodes.")
+
+    h = structure.one_hot_elements_encoding(max_n_nodes)
+
+    # x = torch.nn.functional.pad(coord, (0, 0, 0, max_n_nodes - n_atoms), "constant", 0)
+    x = np.pad(coord, ((0, max_n_nodes - n_atoms), (0, 0)), mode='constant')
+
+    # Batch x and h
+    # x = x.repeat(n_samples, 1, 1)
+    # h = h.repeat(n_samples, 1, 1)
+
+    x = np.tile(x[None, :, :], (n_samples, 1, 1))  # (n_samples, max_n_nodes, 3)
+    h = np.tile(h[None, :, :], (n_samples, 1, 1))
+    z_known = np.concatenate([x, h], axis=2)
+
+    fixed_mask = np.zeros((n_samples, max_n_nodes, 1), dtype=np.float32)
+    fixed_mask[:, :n_atoms, 0] = 1.0
+
+    return z_known, fixed_mask
 
 
 def redefine_bonds_onnx(mol: Chem.Mol, adj_mat: np.ndarray) -> Chem.Mol:

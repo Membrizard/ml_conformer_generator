@@ -23,7 +23,7 @@ def export_to_onnx(
     :param adj_mat_seer_save_path: save path for AdjMatSeer model in ONNX format
     :param mock_molecules: a list of paths to mock molecules to use as dummy pass for AdjMatSeer conversion
     :return: Exports Denoising EGNN and AdjMatSeer to ONNX to make them compatible with ONNX runtime.
-    To Load ONNX model use MLConformerGeneratorONNX a PyTorch - free ONNX based implementation.
+    To Load ONNX model use MLConformerGeneratorONNX a PyTorch - free ONNX-based implementation.
 
     """
 

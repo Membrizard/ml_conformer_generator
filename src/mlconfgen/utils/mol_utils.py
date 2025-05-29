@@ -292,10 +292,10 @@ def prepare_fragment(
     n_atoms = torch.count_nonzero(elements, dim=0).item()
 
     # Check that fragment size is adequate
-    if n_atoms <= min_n_nodes:
-        raise ValueError("Fragment should contain more atoms the the minimal molecule size requested for generation ")
+    if n_atoms >= min_n_nodes:
+        raise ValueError("Fragment must contain fewer atoms than minimum generation size.")
     if n_atoms >= max_n_nodes:
-        raise ValueError("Fragment should contain less atoms the the maximal molecule size requested for generation ")
+        raise ValueError("Fragment exceeds max_n_nodes.")
 
     h = structure.one_hot_elements_encoding(max_n_nodes)
 
@@ -306,9 +306,8 @@ def prepare_fragment(
     h = h.repeat(n_samples, 1, 1)
     z_known = torch.cat([x, h], dim=2).to(device)
 
-    n_new = max_n_nodes - n_atoms
-    fixed_mask = torch.cat(
-        [torch.ones(n_samples, n_atoms, 1), torch.zeros(n_samples, n_new, 1)], dim=1
-    ).to(device)
+    # n_new = max_n_nodes - n_atoms
+    fixed_mask = torch.zeros((n_samples, max_n_nodes, 1), dtype=torch.float32, device=device)
+    fixed_mask[:, :n_atoms, 0] = 1.0
 
     return z_known, fixed_mask

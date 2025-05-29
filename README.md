@@ -7,6 +7,23 @@ is a tool for shape-constrained molecule generation using an Equivariant Diffusi
 and a Graph Convolutional Network (GCN). It is designed to generate 3D molecular conformations
 that are both chemically valid and spatially similar to a reference shape.
 
+## Supported features
+
+* **Shape-guided molecular generation**
+
+    Generate novel molecules that conform to arbitrary 3D shapes—such as protein binding pockets or custom-defined spatial regions.
+
+
+* **Reference-based conformer similarity**
+
+    Create molecules conformations of which closely resemble a reference structure, supporting scaffold-hopping and ligand-based design workflows.
+
+
+* **Fragment-based inpainting**
+
+    Fix specific substructures or fragments within a molecule and complete or grow the rest in a geometrically consistent manner.
+
+
 ---
 ## Installation
 
