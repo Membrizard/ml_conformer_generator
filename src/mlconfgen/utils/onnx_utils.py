@@ -355,14 +355,16 @@ def prepare_fragment_onnx(
 
     # Check that fragment size is adequate
     if n_atoms >= min_n_nodes:
-        raise ValueError("Fragment must contain fewer atoms than minimum generation size.")
+        raise ValueError(
+            "Fragment must contain fewer atoms than minimum generation size."
+        )
     if n_atoms >= max_n_nodes:
         raise ValueError("Fragment exceeds max_n_nodes.")
 
     h = structure.one_hot_elements_encoding(max_n_nodes)
 
     # x = torch.nn.functional.pad(coord, (0, 0, 0, max_n_nodes - n_atoms), "constant", 0)
-    x = np.pad(coord, ((0, max_n_nodes - n_atoms), (0, 0)), mode='constant')
+    x = np.pad(coord, ((0, max_n_nodes - n_atoms), (0, 0)), mode="constant")
 
     # Batch x and h
     # x = x.repeat(n_samples, 1, 1)

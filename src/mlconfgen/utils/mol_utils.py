@@ -293,7 +293,9 @@ def prepare_fragment(
 
     # Check that fragment size is adequate
     if n_atoms >= min_n_nodes:
-        raise ValueError("Fragment must contain fewer atoms than minimum generation size.")
+        raise ValueError(
+            "Fragment must contain fewer atoms than minimum generation size."
+        )
     if n_atoms >= max_n_nodes:
         raise ValueError("Fragment exceeds max_n_nodes.")
 
@@ -307,7 +309,11 @@ def prepare_fragment(
     z_known = torch.cat([x, h], dim=2).to(device)
 
     # n_new = max_n_nodes - n_atoms
-    fixed_mask = torch.zeros((n_samples, max_n_nodes, 1), dtype=torch.float32, device=device)
+    fixed_mask = torch.zeros(
+        (n_samples, max_n_nodes, 1), dtype=torch.float32, device=device
+    )
     fixed_mask[:, :n_atoms, 0] = 1.0
 
     return z_known, fixed_mask
+
+def
