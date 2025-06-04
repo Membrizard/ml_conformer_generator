@@ -13,6 +13,9 @@ from .mol_utils import (
     redefine_bonds,
     samples_to_rdkit_mol,
     prepare_fragment,
+    moi_prepare_gen_fragment_context,
+    moi_prepare_fragments_for_merge,
+    inverse_coord_transform,
 )
 from .onnx_utils import (
     get_context_shape_onnx,
@@ -36,6 +39,9 @@ __all__ = [
     "prepare_edm_input_onnx",
     "prepare_fragment",
     "prepare_fragment_onnx",
+    "moi_prepare_gen_fragment_context",
+    "moi_prepare_fragments_for_merge",
+    "inverse_coord_transform",
     "redefine_bonds",
     "redefine_bonds_onnx",
     "standardize_mol",

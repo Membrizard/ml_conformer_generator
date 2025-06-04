@@ -520,10 +520,11 @@ class EquivariantDiffusion(torch.nn.Module):
         blend_power: int = 3,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Merges 2 fragments, while fixing the target one and allowing the other to be adjusted by the model
+        Merges 2 fragments, while fixing the target one and allowing the other to be adjusted by the model.
+        The fixed fragment is indicated with the fixed mask
 
         """
-        n_samples, n_nodes, _ = z_known.size()
+        n_samples, n_nodes, _ = node_mask.size()
 
         # Forward diffuse the full structure
         s_array_0 = torch.full(
@@ -533,6 +534,10 @@ class EquivariantDiffusion(torch.nn.Module):
         gamma_s = self.gamma(s_array_0)
         alpha_s = self.alpha(gamma_s, z_known)
         sigma_s = self.sigma(gamma_s, z_known)
+
+        print(f"n_samples {n_samples}")
+        print(f"n_nodes {n_nodes}")
+        print(f"node_mask size {node_mask.size()}")
 
         eps = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
         z_noised = alpha_s * z_known + sigma_s * eps
