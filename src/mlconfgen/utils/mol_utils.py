@@ -321,7 +321,7 @@ def moi_prepare_gen_fragment_context(
     fixed_fragment: Chem.Mol,
     reference_context: torch.Tensor,  # size (3,)
     context_norms: dict,
-    n_nodes: torch.Tensor,  # size (batch_size, 1) -> how many nodes each sample in a batch should have
+    n_nodes: torch.Tensor,  # size (batch_size, 1) -> how many nodes each sample in a batch should have (final molecules)
     max_n_nodes: int,
     device: torch.device,
 ):
@@ -372,7 +372,8 @@ def moi_prepare_gen_fragment_context(
 
     # prepare fragment masks for generation
     batch_size = n_nodes.size(0)
-    max_n_nodes_frag = int(torch.max(gen_n_atoms).item())
+    # max_n_nodes_frag = int(torch.max(gen_n_atoms).item())
+    max_n_nodes_frag = max_n_nodes - ff_n_atoms
     print(f"max_n_nodes_frag {max_n_nodes_frag}")
 
     frag_node_mask = torch.zeros(batch_size, max_n_nodes_frag)
