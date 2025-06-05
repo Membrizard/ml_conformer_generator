@@ -15,6 +15,7 @@ from .mol_utils import (
     prepare_fragment,
     moi_prepare_gen_fragment_context,
     moi_prepare_fragments_for_merge,
+    moi_get_xh_from_fragment,
     inverse_coord_transform,
 )
 from .onnx_utils import (
@@ -41,6 +42,7 @@ __all__ = [
     "prepare_fragment_onnx",
     "moi_prepare_gen_fragment_context",
     "moi_prepare_fragments_for_merge",
+    "moi_get_xh_from_fragment",
     "inverse_coord_transform",
     "redefine_bonds",
     "redefine_bonds_onnx",

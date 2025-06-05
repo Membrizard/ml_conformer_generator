@@ -427,7 +427,7 @@ class EquivariantDiffusion(torch.nn.Module):
         context: torch.Tensor,
         z_known: torch.Tensor,
         fixed_mask: torch.Tensor,
-        resample_steps: int = 10,
+        resample_steps: int = 1,
         blend_power: int = 3,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -443,6 +443,9 @@ class EquivariantDiffusion(torch.nn.Module):
         :param blend_power: power of the polynomial blending schedule
         :return: generated samples in tensor representation
         """
+        if resample_steps < 1:
+            resample_steps = 1
+
         n_samples, n_nodes, _ = node_mask.size()
 
         z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
@@ -477,12 +480,12 @@ class EquivariantDiffusion(torch.nn.Module):
                 )
                 z_known_noised = alpha_s * z_known + sigma_s * eps_frag
 
-                # COM alignment
+                # Align fixed fragment to avoid CoM drift
                 z_known_noised = align_fragment_com_to_generated(
                     z_known_noised, z, fixed_mask
                 )
 
-                # Softly blend fragment into z
+                # Blend fixed fragment back in softly
                 z = (
                     blend * z_known_noised * fixed_mask
                     + (1 - blend) * z * fixed_mask
@@ -521,9 +524,24 @@ class EquivariantDiffusion(torch.nn.Module):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Merges 2 fragments, while fixing the target one and allowing the other to be adjusted by the model.
-        The fixed fragment is indicated with the fixed mask
+        The fixed fragment is indicated with the fixed mask.
+        Inference
+
+        :param node_mask: node mask tensor
+        :param edge_mask: edge mask tensor
+        :param context: batched context for generation
+        :param z_known: latent representation of a fixed fragment
+        :param fixed_mask: mask to indicate the position of fixed atoms
+        :param diffusion_level: a depth of diffusion to be applied during merging
+        :param resample_steps: number of resampling steps for harmonisation
+        :param blend_power: power of the polynomial blending schedule
+        :return: generated samples in tensor representation
+
 
         """
+        if resample_steps < 1:
+            resample_steps = 1
+
         n_samples, n_nodes, _ = node_mask.size()
 
         # Forward diffuse the full structure
@@ -534,10 +552,6 @@ class EquivariantDiffusion(torch.nn.Module):
         gamma_s = self.gamma(s_array_0)
         alpha_s = self.alpha(gamma_s, z_known)
         sigma_s = self.sigma(gamma_s, z_known)
-
-        print(f"n_samples {n_samples}")
-        print(f"n_nodes {n_nodes}")
-        print(f"node_mask size {node_mask.size()}")
 
         eps = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
         z_noised = alpha_s * z_known + sigma_s * eps
@@ -552,7 +566,7 @@ class EquivariantDiffusion(torch.nn.Module):
             s_array = s_array / self.T
             t_array = t_array / self.T
 
-            # Polynomial blending factor (stronger early, fades over time)
+            # Polynomial blending schedule
             blend = torch.pow((1 - s_array), blend_power).view(n_samples, 1, 1)
 
             for _ in range(resample_steps):
@@ -565,7 +579,7 @@ class EquivariantDiffusion(torch.nn.Module):
                     context,
                 )
 
-                # Re-noise the fixed region only
+                # Forward-diffuse the known fragment at timestep s
                 gamma_s = self.gamma(s_array)
                 alpha_s = self.alpha(gamma_s, z_known)
                 sigma_s = self.sigma(gamma_s, z_known)
@@ -586,6 +600,15 @@ class EquivariantDiffusion(torch.nn.Module):
                     + (1 - blend) * z * fixed_mask
                     + z * (1 - fixed_mask)
                 )
+
+            z = self.sample_p_zs_given_zt(
+                s_array,
+                t_array,
+                z,
+                node_mask,
+                edge_mask,
+                context,
+            )
 
         # Decode
         x, h = self.sample_p_xh_given_z0(z, node_mask, edge_mask, context)

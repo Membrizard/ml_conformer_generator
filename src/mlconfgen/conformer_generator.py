@@ -20,6 +20,7 @@ from .utils import (
     redefine_bonds,
     samples_to_rdkit_mol,
     standardize_mol,
+    moi_get_xh_from_fragment,
     moi_prepare_gen_fragment_context,
     moi_prepare_fragments_for_merge,
     inverse_coord_transform,
@@ -141,23 +142,24 @@ class MLConformerGenerator(torch.nn.Module):
         min_n_nodes: int = 25,
         resample_steps: int = 0,
         fixed_fragment: Chem.Mol = None,
-        lazy_inpainting: bool = False,
+        inertial_fragment_matching: bool = True,
         blend_power: int = 3,
     ) -> List[Chem.Mol]:
         """
-        Generates initial samples using generative diffusion model
+        Generates initial samples using the diffusion model
         :param reference_context: reference context - tensor of shape (3)
         :param n_samples: number of samples to be generated
         :param max_n_nodes: the maximal number of heavy atoms in the among requested molecules
         :param min_n_nodes: the minimal number of heavy atoms in the among requested molecules
         :param resample_steps: number of resampling steps applied for harmonisation of generation
         :param fixed_fragment: fragment to retain during generation, optional
-        :param lazy_inpainting: lazy inpainting flag
+        :param inertial_fragment_matching: If Inertial fragment matching is to be used
+                                           for generation with a fixed fragment
         :param blend_power: power of polynomial blending of a fixed fragment during generation
         :return: a list of generated samples, without atom adjacency as RDkit Mol objects
         """
 
-        # Make sure that number of atoms of generated samples is within requested range
+        # Make sure that number of atoms of generated samples is within allowed range
         if min_n_nodes < self.min_n_nodes:
             min_n_nodes = self.min_n_nodes
 
@@ -181,11 +183,73 @@ class MLConformerGenerator(torch.nn.Module):
                 resample_steps,
             )
         else:
-            if lazy_inpainting:
-                # Simple inpainting strategy with fixed fragment blending
+            if inertial_fragment_matching:
+                # Inertial Fragment Matching strategy:
+                # generate fragments separately -> merge fixed and generated fragments
+
+                # Prepare context for generation of individual fragments
+                n_nodes = torch.sum(node_mask, dim=1).to(torch.long)
+
+                fixed_fragment_x, fixed_fragment_h = moi_get_xh_from_fragment(
+                    fixed_fragment=fixed_fragment, device=self.device
+                )
+
+                (
+                    frag_node_mask,
+                    frag_edge_mask,
+                    frag_context,
+                    shift,
+                    rotation,
+                ) = moi_prepare_gen_fragment_context(
+                    fixed_fragment_x=fixed_fragment_x,
+                    reference_context=reference_context,
+                    n_nodes=n_nodes,
+                    context_norms=self.context_norms,
+                    max_n_nodes=max_n_nodes,
+                    device=self.device,
+                )
+
+                # Generate Fragments
+                x_gen_frag, h_gen_frag = self.generative_model(
+                    frag_node_mask,
+                    frag_edge_mask,
+                    frag_context,
+                    resample_steps,
+                )
+
+                # Inverse transformations applied to the coordinates of generated fragments
+
+                x_gen_frag = inverse_coord_transform(
+                    coord=x_gen_frag, shift=shift, rotation=rotation
+                )
+
+                # Merged Fixed fragment with the generated ones
+
+                z_known, fixed_mask, n_samples = moi_prepare_fragments_for_merge(
+                    fixed_fragment_x=fixed_fragment_x,
+                    fixed_fragment_h=fixed_fragment_h,
+                    gen_fragments_x=x_gen_frag,
+                    gen_fragments_h=h_gen_frag,
+                    device=self.device,
+                    max_n_nodes=max_n_nodes,
+                )
+
+                x, h = self.generative_model.merge_fragments(
+                    node_mask=node_mask,
+                    edge_mask=edge_mask,
+                    fixed_mask=fixed_mask,
+                    context=batch_context,
+                    z_known=z_known,
+                    diffusion_level=50,  # light noise only
+                    resample_steps=resample_steps,
+                    blend_power=blend_power,
+                )
+
+            else:
+                # Simple strategy with fixed fragment blending
                 z_known, fixed_mask = prepare_fragment(
                     n_samples=n_samples,
-                    fragment=fixed_fragment,
+                    fixed_fragment=fixed_fragment,
                     max_n_nodes=max_n_nodes,
                     min_n_nodes=min_n_nodes,
                     device=self.device,
@@ -199,65 +263,6 @@ class MLConformerGenerator(torch.nn.Module):
                     fixed_mask,
                     resample_steps,
                     blend_power,
-                )
-
-            else:
-                # MOI-based inpainting strategy: generate fragments separately -> merge fixed and generated fragments
-                # Prepare context for generation of individual fragments
-                n_nodes = torch.sum(node_mask, dim=1).to(torch.long)
-                print(n_nodes.size())
-
-
-                (
-                    frag_node_mask,
-                    frag_edge_mask,
-                    frag_context,
-                    shift,
-                    rotation,
-                ) = moi_prepare_gen_fragment_context(
-                    fixed_fragment=fixed_fragment,
-                    reference_context=reference_context,
-                    n_nodes=n_nodes,
-                    context_norms=self.context_norms,
-                    max_n_nodes=max_n_nodes,
-                    device=self.device,
-                )
-
-                print(f"frag context size {frag_context.size()}")
-
-                # Generate Fragments
-                x_gen_frag, h_gen_frag = self.generative_model(
-                    frag_node_mask,
-                    frag_edge_mask,
-                    frag_context,
-                    resample_steps,
-                )
-
-                # Inverse transformations applied to generated fragments' coordinates
-
-                x_gen_frag = inverse_coord_transform(coord=x_gen_frag, shift=shift, rotation=rotation)
-
-                # Merged Fixed fragment with the generated ones
-
-                z_known, fixed_mask, n_samples = moi_prepare_fragments_for_merge(
-                    fixed_fragment=fixed_fragment,
-                    gen_fragments_x=x_gen_frag,
-                    gen_fragments_h=h_gen_frag,
-                    device=self.device,
-                    max_n_nodes=max_n_nodes,
-                )
-
-                print(f"node mask size {node_mask.size()}")
-
-                x, h = self.generative_model.merge_fragments(
-                    node_mask,
-                    edge_mask,
-                    fixed_mask,
-                    batch_context,
-                    z_known,
-                    diffusion_level=50,  # light noise only
-                    resample_steps=resample_steps,
-                    blend_power=blend_power,
                 )
 
         mols = samples_to_rdkit_mol(
@@ -277,7 +282,7 @@ class MLConformerGenerator(torch.nn.Module):
         optimise_geometry: bool = True,
         resample_steps: int = 0,
         fixed_fragment: Chem.Mol = None,
-        lazy_inpainting: bool = False,
+        inertial_fragment_matching: bool = True,
         blend_power: int = 3,
     ) -> List[Chem.Mol]:
         """
@@ -291,9 +296,8 @@ class MLConformerGenerator(torch.nn.Module):
         :param resample_steps: number of resampling steps applied for harmonisation of generation
                                improves generation quality, while sacrificing speed
         :param fixed_fragment: Fragment to fix during generation as an RDKit Mol object
-        :param lazy_inpainting: if set to True the generation of molecules from a fixed fragment will be carried out
-                                by a simple injection of a fragment into reverse diffusion,
-                                if False a moi-based generation strategy will be applied.
+        :param inertial_fragment_matching: If Inertial fragment matching is to be used
+                                           for generation with a fixed fragment instead of a simple blending.
         :param blend_power: power of the polynomial blending schedule for generation with a fixed fragment
         :return: A list of valid standardised generated molecules as RDKit Mol objects
         """
@@ -332,8 +336,8 @@ class MLConformerGenerator(torch.nn.Module):
             max_n_nodes=ref_n_atoms + variance,
             resample_steps=resample_steps,
             fixed_fragment=fixed_fragment,
+            inertial_fragment_matching=inertial_fragment_matching,
             blend_power=blend_power,
-            lazy_inpainting=lazy_inpainting,
         )
 
         (
@@ -376,7 +380,7 @@ class MLConformerGenerator(torch.nn.Module):
         optimise_geometry: bool = True,
         resample_steps: int = 0,
         fixed_fragment: Chem.Mol = None,
-        lazy_inpainting: bool = False,
+        inertial_fragment_matching: bool = True,
         blend_power: int = 3,
     ) -> List[Chem.Mol]:
         out = self.generate_conformers(
@@ -388,7 +392,7 @@ class MLConformerGenerator(torch.nn.Module):
             optimise_geometry,
             resample_steps,
             fixed_fragment,
-            lazy_inpainting,
+            inertial_fragment_matching,
             blend_power,
         )
 

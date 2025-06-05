@@ -6,7 +6,7 @@ from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 
 from .molgraph import MolGraph
-from .config import DIMENSION
+from .config import DIMENSION, MAX_N_NODES
 
 bond_type_dict = {
     1: Chem.rdchem.BondType.SINGLE,
@@ -209,6 +209,34 @@ def redefine_bonds(mol: Chem.Mol, adj_mat: torch.Tensor) -> Chem.Mol:
     return new_mol
 
 
+def prepare_masks(n_nodes: torch.Tensor,
+                  max_n_nodes: int,
+                  device: torch.device,
+                  ) -> Tuple[torch.Tensor, torch.Tensor]:
+    """
+    Prepare node and edge masks
+    :param n_nodes: a list of sizes of requested molecules (n_samples, 1)
+    :param max_n_nodes: maximal number of nodes
+    :param device: device to prepare masks on torch. device
+    :return: node_mask, edge_mask
+    """
+
+    batch_size = n_nodes.size(0)
+
+    node_mask = torch.zeros(batch_size, max_n_nodes)
+    for i in range(batch_size):
+        node_mask[i, 0: n_nodes[i]] = 1
+
+    # Compute edge_mask
+    edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
+    diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
+    edge_mask *= diag_mask
+    edge_mask = edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1).to(device)
+    node_mask = node_mask.unsqueeze(2).to(device)
+
+    return node_mask, edge_mask
+
+
 def prepare_edm_input(
     n_samples: int,
     reference_context: torch.Tensor,
@@ -228,32 +256,41 @@ def prepare_edm_input(
     :return: a tuple of tensors ready to be used by the EDM
     """
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
-    nodesxsample = []
 
-    for n in range(n_samples):
-        nodesxsample.append(random.randint(min_n_nodes, max_n_nodes))
 
-    nodesxsample = torch.tensor(nodesxsample)
+    # nodesxsample = []
+    #
+    # for n in range(n_samples):
+    #         nodesxsample.append(random.randint(min_n_nodes, max_n_nodes))
+    #
+    # nodesxsample = torch.tensor(nodesxsample)
 
-    batch_size = nodesxsample.size(0)
+    nodesxsample = torch.randint(min_n_nodes, max_n_nodes + 1, (n_samples,))
 
-    node_mask = torch.zeros(batch_size, max_n_nodes)
-    for i in range(batch_size):
-        node_mask[i, 0 : nodesxsample[i]] = 1
+    node_mask, edge_mask = prepare_masks(n_nodes=nodesxsample,
+                                         max_n_nodes=max_n_nodes,
+                                         device=device,
+                                         )
 
-    # Compute edge_mask
-
-    edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
-    diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
-    edge_mask *= diag_mask
-    edge_mask = edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1).to(device)
-    node_mask = node_mask.unsqueeze(2).to(device)
-
+    # batch_size = nodesxsample.size(0)
+    #
+    # node_mask = torch.zeros(batch_size, max_n_nodes)
+    # for i in range(batch_size):
+    #     node_mask[i, 0 : nodesxsample[i]] = 1
+    #
+    # # Compute edge_mask
+    #
+    # edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
+    # diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
+    # edge_mask *= diag_mask
+    # edge_mask = edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1).to(device)
+    # node_mask = node_mask.unsqueeze(2).to(device)
+    #
     normed_context = (
         (reference_context - context_norms["mean"]) / context_norms["mad"]
     ).to(device)
 
-    batch_context = normed_context.unsqueeze(0).repeat(batch_size, 1)
+    batch_context = normed_context.unsqueeze(0).repeat(n_samples, 1)
 
     batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
 
@@ -266,7 +303,7 @@ def prepare_edm_input(
 
 def prepare_fragment(
     n_samples: int,
-    fragment: Chem.Mol,
+    fixed_fragment: Chem.Mol,
     device: torch.device,
     max_n_nodes: int = DIMENSION,
     min_n_nodes: int = 15,
@@ -274,7 +311,7 @@ def prepare_fragment(
     """
     Prepares Fixed Fragment for Inpainting. Converts Mol to latent Z tensor, ready for injection
     :param n_samples: required batch size of the prepared latent fragment - number of molecules to generate
-    :param fragment: fragment to prepare rdkit Mol
+    :param fixed_fragment: fragment to prepare - rdkit Mol
     :param device: device to prepare input for - torch.device
     :param max_n_nodes: possible maximum number of nodes - for padding - int
     :param min_n_nodes: possible minimum number of nodes - int
@@ -283,7 +320,7 @@ def prepare_fragment(
     """
 
     # Remove Hs
-    mol = Chem.RemoveAllHs(fragment)
+    mol = Chem.RemoveAllHs(fixed_fragment)
     conformer = mol.GetConformer()
     coord = torch.tensor(conformer.GetPositions(), dtype=torch.float32)
 
@@ -297,7 +334,9 @@ def prepare_fragment(
             "Fragment must contain fewer atoms than minimum generation size."
         )
     if n_atoms >= max_n_nodes:
-        raise ValueError("Fragment exceeds max_n_nodes.")
+        raise ValueError(
+            "Fragment has more atoms than the maximum number of atoms requested."
+        )
 
     h = structure.one_hot_elements_encoding(max_n_nodes)
 
@@ -317,44 +356,73 @@ def prepare_fragment(
     return z_known, fixed_mask
 
 
+def moi_get_xh_from_fragment(
+    fixed_fragment: Chem.Mol, device: torch.device
+) -> Tuple[torch.Tensor, torch.Tensor]:
+    """ """
+    # Get coordinates of the fixed fragment
+    ff_mol = Chem.RemoveAllHs(fixed_fragment)
+    ff_conformer = ff_mol.GetConformer()
+    ff_x = torch.tensor(ff_conformer.GetPositions(), dtype=torch.float32)
+
+    # Get atom types of a fixed fragment
+    ff_structure = MolGraph.from_mol(mol=ff_mol, remove_hs=True)
+    ff_n_atoms = ff_x.size(0)
+
+    ff_h = ff_structure.one_hot_elements_encoding(
+        ff_n_atoms
+    )  # Atom types of a fixed fragment
+
+    ff_x = ff_x.to(device)
+    ff_h = ff_h.to(device)
+
+    return ff_x, ff_h
+
+
 def moi_prepare_gen_fragment_context(
-    fixed_fragment: Chem.Mol,
-    reference_context: torch.Tensor,  # size (3,)
+    fixed_fragment_x: torch.Tensor,
+    reference_context: torch.Tensor,
     context_norms: dict,
-    n_nodes: torch.Tensor,  # size (batch_size, 1) -> how many nodes each sample in a batch should have (final molecules)
+    n_nodes: torch.Tensor,
     max_n_nodes: int,
     device: torch.device,
-):
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     """
-    Fixed fragment in the same coordinate system as reference, with an origin at Reference COM!
-    """
-    batch_size = n_nodes.shape[0]
+    Prepare Contexts for Generation of Individual Fragments based on Reference and Fixed Fragment MOI tensors.
+    Fixed Fragment should be expressed in the same coordinate system as the reference, The origin of such coordinate
+    system should be place in the COM of the Reference.
 
-    # Get fixed fragment info
-    ff_conf = fixed_fragment.GetConformer()
-    ff_coords = torch.tensor(ff_conf.GetPositions(), dtype=torch.float32, device=device)  # (Nf, 3)
-    ff_n_atoms = ff_coords.shape[0]
+    :param fixed_fragment_x:  coordinates of the fixed fragment atoms
+    :param reference_context: Principal components of MOI Tensor of the reference shape (3)
+    :param context_norms: Values to norm the context for individual fragment generation
+    :param n_nodes: a list of sizes of requested molecules (n_samples, 1)
+    :param max_n_nodes: a maximal number of nodes allowed for the whole generated molecule
+    :param device: device to prepare input for - torch.device
+    :return: frag_node_mask, frag_edge_mask, batched_normed_frag_context, shift, rotation
+    """
+    batch_size = n_nodes.size(0)
+
+    ff_n_atoms = fixed_fragment_x.size(0)
     masses_ff = torch.ones(ff_n_atoms, device=device)
 
     # Fixed fragment MOI around origin
-    moi_ff = get_moment_of_inertia_tensor(ff_coords, masses_ff)  # (3, 3)
+    moi_ff = get_moment_of_inertia_tensor(fixed_fragment_x, masses_ff)  # (3, 3)
 
-    # Shared reference MOI as diagonal matrix (expand to B)
+    # Reference MOI as diagonal matrix (expand to B)
     moi_ref = torch.diag(reference_context)  # (3, 3)
 
     moi_ref_batch = moi_ref.unsqueeze(0).repeat(batch_size, 1, 1)  # (B, 3, 3)
     moi_ff_batch = moi_ff.unsqueeze(0).repeat(batch_size, 1, 1)  # (B, 3, 3)
 
-    print(f"moi ref batch size {moi_ref_batch.size()}")
-    print(f"moi ff batch size {moi_ref_batch.size()}")
-
     # Gen frag MOI around origin
     moi_gen_origin = moi_ref_batch - moi_ff_batch  # (B, 3, 3)
 
     # COM of fixed fragment
-    com_ff = ff_coords.mean(dim=0)  # (3,)
+    com_ff = fixed_fragment_x.mean(dim=0)  # (3,)
+
     gen_n_atoms = n_nodes.view(batch_size, 1).float() - ff_n_atoms  # (B, 1)
 
+    # COM of generated fragments in respect to number of atoms in each
     shift = (ff_n_atoms * com_ff.view(1, 3)) / gen_n_atoms  # (B, 3)
 
     # Shift MOI to COM of generated fragment
@@ -363,34 +431,43 @@ def moi_prepare_gen_fragment_context(
     )  # (B, 3, 3)
 
     # Diagonalize MOI of generated fragment
-    print(f"moi_gen_com size {moi_gen_com.size()}")
     frag_context, rotation = torch.linalg.eigh(moi_gen_com)  # (B, 3), (B, 3, 3)
-    print(f"frag_context size {frag_context.size()}")
     normed_frag_context = (
-            (frag_context - context_norms["mean"]) / context_norms["mad"]
+        (frag_context - context_norms["mean"]) / context_norms["mad"]
     ).to(device)
 
     # prepare fragment masks for generation
-    batch_size = n_nodes.size(0)
+    # batch_size = n_nodes.size(0)
     # max_n_nodes_frag = int(torch.max(gen_n_atoms).item())
     max_n_nodes_frag = max_n_nodes - ff_n_atoms
-    print(f"max_n_nodes_frag {max_n_nodes_frag}")
 
-    frag_node_mask = torch.zeros(batch_size, max_n_nodes_frag)
-    for i in range(batch_size):
-        frag_node_mask[i, 0 : n_nodes[i]] = 1
+    frag_node_mask, frag_edge_mask = prepare_masks(
+                 n_nodes=gen_n_atoms,
+                 max_n_nodes=max_n_nodes_frag,
+                 device=device,
+    )
+
+    batched_normed_frag_context = (
+            normed_frag_context.unsqueeze(1).repeat(1, max_n_nodes_frag, 1) * frag_node_mask
+    )
+
+    # frag_node_mask = torch.zeros(batch_size, max_n_nodes_frag)
+    # for i in range(batch_size):
+    #     frag_node_mask[i, 0 : n_nodes[i]] = 1
 
     # Compute edge_mask
 
-    frag_edge_mask = frag_node_mask.unsqueeze(1) * frag_node_mask.unsqueeze(2)
-    diag_mask = ~torch.eye(frag_edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
-    frag_edge_mask *= diag_mask
-    frag_edge_mask = frag_edge_mask.view(batch_size * max_n_nodes_frag * max_n_nodes_frag, 1).to(
-        device
-    )
-    frag_node_mask = frag_node_mask.unsqueeze(2).to(device)
-
-    batched_normed_frag_context = normed_frag_context.unsqueeze(1).repeat(1, max_n_nodes_frag, 1) * frag_node_mask
+    # frag_edge_mask = frag_node_mask.unsqueeze(1) * frag_node_mask.unsqueeze(2)
+    # diag_mask = ~torch.eye(frag_edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
+    # frag_edge_mask *= diag_mask
+    # frag_edge_mask = frag_edge_mask.view(
+    #     batch_size * max_n_nodes_frag * max_n_nodes_frag, 1
+    # ).to(device)
+    # frag_node_mask = frag_node_mask.unsqueeze(2).to(device)
+    #
+    # batched_normed_frag_context = (
+    #     normed_frag_context.unsqueeze(1).repeat(1, max_n_nodes_frag, 1) * frag_node_mask
+    # )
 
     rotation = rotation.to(device)
     shift = shift.to(device)
@@ -399,50 +476,40 @@ def moi_prepare_gen_fragment_context(
 
 
 def moi_prepare_fragments_for_merge(
-    fixed_fragment: Chem.Mol,
+    fixed_fragment_x: torch.Tensor,
+    fixed_fragment_h: torch.Tensor,
     gen_fragments_x: torch.Tensor,
     gen_fragments_h: torch.Tensor,
     device: torch.device,
-    max_n_nodes: int = 42,
-    min_n_nodes: int = 15,
+    max_n_nodes: int,
 ):
     """
-    Prepares Multiple Fragments for Merge. Converts to latent Z tensor, ready for injection
+    Prepares Multiple Fragments for Merge. Prepares latent Z tensor, ready for injection
+
+    :param fixed_fragment_x:
+    :param fixed_fragment_h:
+    :param gen_fragments_x:
+    :param gen_fragments_h:
+    :param device:
+    :param max_n_nodes:
     """
 
-    n_samples, _, _ = gen_fragments_x.size()
-    # Get coordinates of the fixed fragment
-    ff_mol = Chem.RemoveAllHs(fixed_fragment)
-    ff_conformer = ff_mol.GetConformer()
-    ff_coord = torch.tensor(ff_conformer.GetPositions(), dtype=torch.float32)
+    n_samples = gen_fragments_x.size(0)
 
-    # Get atom types of a fixed fragment
-    ff_structure = MolGraph.from_mol(mol=ff_mol, remove_hs=True)
-    ff_elements = ff_structure.elements_vector()
-    ff_n_atoms = torch.count_nonzero(ff_elements, dim=0).item()
-
-    ff_h = ff_structure.one_hot_elements_encoding(max_n_nodes)[
-        :ff_n_atoms
-    ]  # Atom types of a fixed fragment
-
-    ff_x = ff_coord[:ff_n_atoms]
+    ff_n_atoms = fixed_fragment_x.size(0)
 
     # Add a batch dimension
-    ff_x = ff_x.unsqueeze(0)  # Shape: (1, N, 3)
-    ff_h = ff_h.unsqueeze(0)  # Shape: (1, N, F)
+    ff_x = fixed_fragment_x.unsqueeze(0)  # Shape: (1, N, 3)
+    ff_h = fixed_fragment_h.unsqueeze(0)  # Shape: (1, N, F)
 
     # Repeat across batch dimension
     ff_x_batched = ff_x.repeat(n_samples, 1, 1).to(device)  # Shape: (n_samples, N, 3)
     ff_h_batched = ff_h.repeat(n_samples, 1, 1).to(device)
 
-    print(f"gen_fragments_x size {gen_fragments_x.size()}")
-    print(f"ff_x_batched size {ff_x_batched.size()}")
-
     x_prep = torch.cat([ff_x_batched, gen_fragments_x], dim=1)
     h_prep = torch.cat([ff_h_batched, gen_fragments_h], dim=1)
 
     z_known = torch.cat([x_prep, h_prep], dim=2)
-    print(f"z_known size {z_known.size()}" )
 
     # The fixed fragment is always in the first place - so we set fixed mask to have 1s only
     # on the first ff_n_atoms elements of z_known
@@ -457,67 +524,44 @@ def moi_prepare_fragments_for_merge(
 
 def inverse_coord_transform(
     coord: torch.Tensor, shift: torch.Tensor, rotation: torch.Tensor
-):
+) -> torch.Tensor:
     """
     Inverse shift and Rotation transformation to a batch of xyz coordinates sets
+    :param coord: Batch of Coordinates to be modified (batch_size, N, 3)
+    :param shift: Batch of shifts to be applied (batch_size, 3)
+    :param rotation: Batch of Rotations to be applied (batch_size, 3, 3)
+    :return: Modified Coordinates
     """
     # Rotate first
     batch_size = coord.size(0)
     x_rotated = torch.bmm(coord, torch.transpose(rotation, 1, 2))
-    print(f"x_rotated size {x_rotated.size()}")
-    print(f"shift size {shift.size()}")
     # Translate second
     x_translated = x_rotated - shift.view(batch_size, 1, 3)
-
 
     return x_translated
 
 
-def shift_moi_to_com(
-    moi_origin: torch.Tensor, r_com: torch.Tensor, mass: float
-) -> torch.Tensor:
-    """
-    Translates moment of inertia from the origin to a guessed center of mass using the inverse parallel axis theorem.
-
-    Args:
-        moi_origin: (3, 3) Inertia tensor around origin
-        r_com: (3,) Vector from origin to guessed COM
-        mass: Total mass
-
-    Returns:
-        I_com: (3, 3) Inertia tensor about the guessed COM
-    """
-    i_3 = torch.eye(3, device=moi_origin.device)
-    r_com = r_com.view(3, 1)
-    r_outer = r_com @ r_com.T
-    shift = mass * (torch.dot(r_com.squeeze(), r_com.squeeze()) * i_3 - r_outer)
-    return moi_origin - shift
-
-
-# draft
 def shift_moi_to_com_batch(
     moi_origin: torch.Tensor, r_coms: torch.Tensor, masses: torch.Tensor
 ) -> torch.Tensor:
     """
-    Translates moment of inertia from the origin to multiple guessed centers of mass using the inverse parallel axis theorem.
+    Translates moment of inertia from the origin to multiple guessed centers of mass
+    using the inverse parallel axis theorem.
 
-    Args:
-        moi_origin: (3, 3) Inertia tensor around origin (shared across batch)
-        r_coms: (B, 3) Vectors from origin to guessed COMs
-        masses: (B,) Total masses per example
-
-    Returns:
-        I_coms: (B, 3, 3) Inertia tensors about the guessed COMs
+    :param moi_origin: (3, 3) Inertia tensor around origin (shared across batch)
+    :param r_coms: (B, 3) Vectors from origin to guessed COMs
+    :param masses: (B,) Total masses per example
+    :return: I_coms: (B, 3, 3) Inertia tensors about the guessed COMs
     """
-    B = r_coms.shape[0]
-    I3 = torch.eye(3, device=r_coms.device).expand(B, 3, 3)  # (B, 3, 3)
+    batch_size = r_coms.size(0)
+    i_3 = torch.eye(3, device=r_coms.device).expand(batch_size, 3, 3)  # (B, 3, 3)
 
-    r = r_coms.view(B, 3, 1)  # (B, 3, 1)
+    r = r_coms.view(batch_size, 3, 1)  # (B, 3, 1)
     r_outer = r @ r.transpose(1, 2)  # (B, 3, 3)
-    r_norm_sq = (r_coms**2).sum(dim=1).view(B, 1, 1)  # (B, 1, 1)
+    r_norm_sq = (r_coms**2).sum(dim=1).view(batch_size, 1, 1)  # (B, 1, 1)
 
-    masses = masses.view(B, 1, 1)  # (B, 1, 1)
-    shift = masses * (r_norm_sq * I3 - r_outer)  # (B, 3, 3)
+    masses = masses.view(batch_size, 1, 1)  # (B, 1, 1)
+    shift = masses * (r_norm_sq * i_3 - r_outer)  # (B, 3, 3)
     shift = shift.to(moi_origin.device)
 
     return moi_origin - shift  # (B, 3, 3)
