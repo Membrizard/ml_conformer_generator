@@ -328,6 +328,7 @@ def prepare_fragment(
         )
 
     x = torch.nn.functional.pad(coord, (0, 0, 0, max_n_nodes - n_atoms), "constant", 0)
+    h = torch.nn.functional.pad(h, (0, 0, 0, max_n_nodes - n_atoms), "constant", 0)
 
     # Batch x and h
     x = x.repeat(n_samples, 1, 1)
