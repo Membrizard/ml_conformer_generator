@@ -359,7 +359,12 @@ def prepare_fragment(
 def moi_get_xh_from_fragment(
     fixed_fragment: Chem.Mol, device: torch.device
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """ """
+    """
+    Get coordinates and atom types as tensors for a fragment
+    :param fixed_fragment: fragment as rdkit Mol object
+    :param device: device to prepare tensors on torch.device
+    :return: fixed_fragment_x, fixed_fragment_h
+    """
     # Get coordinates of the fixed fragment
     ff_mol = Chem.RemoveAllHs(fixed_fragment)
     ff_conformer = ff_mol.GetConformer()
@@ -436,13 +441,10 @@ def moi_prepare_gen_fragment_context(
         (frag_context - context_norms["mean"]) / context_norms["mad"]
     ).to(device)
 
-    # prepare fragment masks for generation
-    # batch_size = n_nodes.size(0)
-    # max_n_nodes_frag = int(torch.max(gen_n_atoms).item())
     max_n_nodes_frag = max_n_nodes - ff_n_atoms
 
     frag_node_mask, frag_edge_mask = prepare_masks(
-                 n_nodes=gen_n_atoms,
+                 n_nodes=gen_n_atoms.long(),
                  max_n_nodes=max_n_nodes_frag,
                  device=device,
     )
@@ -450,24 +452,6 @@ def moi_prepare_gen_fragment_context(
     batched_normed_frag_context = (
             normed_frag_context.unsqueeze(1).repeat(1, max_n_nodes_frag, 1) * frag_node_mask
     )
-
-    # frag_node_mask = torch.zeros(batch_size, max_n_nodes_frag)
-    # for i in range(batch_size):
-    #     frag_node_mask[i, 0 : n_nodes[i]] = 1
-
-    # Compute edge_mask
-
-    # frag_edge_mask = frag_node_mask.unsqueeze(1) * frag_node_mask.unsqueeze(2)
-    # diag_mask = ~torch.eye(frag_edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
-    # frag_edge_mask *= diag_mask
-    # frag_edge_mask = frag_edge_mask.view(
-    #     batch_size * max_n_nodes_frag * max_n_nodes_frag, 1
-    # ).to(device)
-    # frag_node_mask = frag_node_mask.unsqueeze(2).to(device)
-    #
-    # batched_normed_frag_context = (
-    #     normed_frag_context.unsqueeze(1).repeat(1, max_n_nodes_frag, 1) * frag_node_mask
-    # )
 
     rotation = rotation.to(device)
     shift = shift.to(device)
@@ -484,14 +468,15 @@ def moi_prepare_fragments_for_merge(
     max_n_nodes: int,
 ):
     """
-    Prepares Multiple Fragments for Merge. Prepares latent Z tensor, ready for injection
+    Prepares Multiple Fragments for Merge. Prepares latent Z tensor, ready for injection and mask for a fixed fragment.
 
-    :param fixed_fragment_x:
-    :param fixed_fragment_h:
-    :param gen_fragments_x:
-    :param gen_fragments_h:
-    :param device:
-    :param max_n_nodes:
+    :param fixed_fragment_x: Coordinates of a fixed fragment as torch.Tensor
+    :param fixed_fragment_h: One-hot encoded atom types of a fixed fragment as torch.Tensor
+    :param gen_fragments_x: Batch of coordinates of generated fragments - torch.Tensor
+    :param gen_fragments_h: Batch of One-hot encoded atom types of generated fragments - torch.Tensor
+    :param device: device to prepare output on torch.device
+    :param max_n_nodes: maximal allowable number of atoms
+    :return: z_known, fixed_mask, n_samples
     """
 
     n_samples = gen_fragments_x.size(0)
@@ -519,7 +504,7 @@ def moi_prepare_fragments_for_merge(
     )
     fixed_mask[:, :ff_n_atoms, 0] = 1.0
 
-    return z_known, fixed_mask, n_samples
+    return z_known, fixed_mask
 
 
 def inverse_coord_transform(

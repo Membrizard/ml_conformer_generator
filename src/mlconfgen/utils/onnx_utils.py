@@ -363,12 +363,9 @@ def prepare_fragment_onnx(
 
     h = structure.one_hot_elements_encoding(max_n_nodes)
 
-    # x = torch.nn.functional.pad(coord, (0, 0, 0, max_n_nodes - n_atoms), "constant", 0)
     x = np.pad(coord, ((0, max_n_nodes - n_atoms), (0, 0)), mode="constant")
 
     # Batch x and h
-    # x = x.repeat(n_samples, 1, 1)
-    # h = h.repeat(n_samples, 1, 1)
 
     x = np.tile(x[None, :, :], (n_samples, 1, 1))  # (n_samples, max_n_nodes, 3)
     h = np.tile(h[None, :, :], (n_samples, 1, 1))

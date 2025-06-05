@@ -225,7 +225,7 @@ class MLConformerGenerator(torch.nn.Module):
 
                 # Merged Fixed fragment with the generated ones
 
-                z_known, fixed_mask, n_samples = moi_prepare_fragments_for_merge(
+                z_known, fixed_mask = moi_prepare_fragments_for_merge(
                     fixed_fragment_x=fixed_fragment_x,
                     fixed_fragment_h=fixed_fragment_h,
                     gen_fragments_x=x_gen_frag,
@@ -383,6 +383,7 @@ class MLConformerGenerator(torch.nn.Module):
         inertial_fragment_matching: bool = True,
         blend_power: int = 3,
     ) -> List[Chem.Mol]:
+
         out = self.generate_conformers(
             reference_conformer,
             n_samples,
