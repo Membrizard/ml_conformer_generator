@@ -13,9 +13,9 @@ from .mol_utils import (
     redefine_bonds,
     samples_to_rdkit_mol,
     prepare_fragment,
-    moi_prepare_gen_fragment_context,
-    moi_prepare_fragments_for_merge,
-    moi_get_xh_from_fragment,
+    ifm_prepare_gen_fragment_context,
+    ifm_prepare_fragments_for_merge,
+    ifm_get_xh_from_fragment,
     inverse_coord_transform,
 )
 from .onnx_utils import (
@@ -25,6 +25,10 @@ from .onnx_utils import (
     prepare_fragment_onnx,
     redefine_bonds_onnx,
     samples_to_rdkit_mol_onnx,
+    ifm_get_xh_from_fragment_onnx,
+    ifm_prepare_gen_fragment_context_onnx,
+    ifm_prepare_fragments_for_merge_onnx,
+    inverse_coord_transform_onnx,
 )
 from .standardizer import standardize_mol
 
@@ -40,10 +44,14 @@ __all__ = [
     "prepare_edm_input_onnx",
     "prepare_fragment",
     "prepare_fragment_onnx",
-    "moi_prepare_gen_fragment_context",
-    "moi_prepare_fragments_for_merge",
-    "moi_get_xh_from_fragment",
+    "ifm_prepare_gen_fragment_context",
+    "ifm_prepare_gen_fragment_context_onnx",
+    "ifm_prepare_fragments_for_merge",
+    "ifm_prepare_fragments_for_merge_onnx",
+    "ifm_get_xh_from_fragment",
+    "ifm_get_xh_from_fragment_onnx",
     "inverse_coord_transform",
+    "inverse_coord_transform_onnx",
     "redefine_bonds",
     "redefine_bonds_onnx",
     "standardize_mol",

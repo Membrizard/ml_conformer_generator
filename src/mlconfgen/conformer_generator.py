@@ -20,9 +20,9 @@ from .utils import (
     redefine_bonds,
     samples_to_rdkit_mol,
     standardize_mol,
-    moi_get_xh_from_fragment,
-    moi_prepare_gen_fragment_context,
-    moi_prepare_fragments_for_merge,
+    ifm_get_xh_from_fragment,
+    ifm_prepare_gen_fragment_context,
+    ifm_prepare_fragments_for_merge,
     inverse_coord_transform,
 )
 
@@ -144,6 +144,7 @@ class MLConformerGenerator(torch.nn.Module):
         fixed_fragment: Chem.Mol = None,
         inertial_fragment_matching: bool = True,
         blend_power: int = 3,
+        ifm_diffusion_level: int = 50,
     ) -> List[Chem.Mol]:
         """
         Generates initial samples using the diffusion model
@@ -156,6 +157,9 @@ class MLConformerGenerator(torch.nn.Module):
         :param inertial_fragment_matching: If Inertial fragment matching is to be used
                                            for generation with a fixed fragment
         :param blend_power: power of polynomial blending of a fixed fragment during generation
+        :param ifm_diffusion_level: The timestep from which denoising applied during fragment merging.
+                                           Only applicable for inertial_fragment_matching = True.
+                                           Recommended between 20-50% of total diffusion steps.
         :return: a list of generated samples, without atom adjacency as RDkit Mol objects
         """
 
@@ -190,7 +194,7 @@ class MLConformerGenerator(torch.nn.Module):
                 # Prepare context for generation of individual fragments
                 n_nodes = torch.sum(node_mask, dim=1).to(torch.long)
 
-                fixed_fragment_x, fixed_fragment_h = moi_get_xh_from_fragment(
+                fixed_fragment_x, fixed_fragment_h = ifm_get_xh_from_fragment(
                     fixed_fragment=fixed_fragment, device=self.device
                 )
 
@@ -200,12 +204,13 @@ class MLConformerGenerator(torch.nn.Module):
                     frag_context,
                     shift,
                     rotation,
-                ) = moi_prepare_gen_fragment_context(
+                ) = ifm_prepare_gen_fragment_context(
                     fixed_fragment_x=fixed_fragment_x,
                     reference_context=reference_context,
                     n_nodes=n_nodes,
                     context_norms=self.context_norms,
                     max_n_nodes=max_n_nodes,
+                    min_n_nodes=min_n_nodes,
                     device=self.device,
                 )
 
@@ -225,7 +230,7 @@ class MLConformerGenerator(torch.nn.Module):
 
                 # Merged Fixed fragment with the generated ones
 
-                z_known, fixed_mask = moi_prepare_fragments_for_merge(
+                z_known, fixed_mask = ifm_prepare_fragments_for_merge(
                     fixed_fragment_x=fixed_fragment_x,
                     fixed_fragment_h=fixed_fragment_h,
                     gen_fragments_x=x_gen_frag,
@@ -240,7 +245,7 @@ class MLConformerGenerator(torch.nn.Module):
                     fixed_mask=fixed_mask,
                     context=batch_context,
                     z_known=z_known,
-                    diffusion_level=50,  # light noise only
+                    diffusion_level=ifm_diffusion_level,  # light noise only
                     resample_steps=resample_steps,
                     blend_power=blend_power,
                 )
@@ -284,9 +289,11 @@ class MLConformerGenerator(torch.nn.Module):
         fixed_fragment: Chem.Mol = None,
         inertial_fragment_matching: bool = True,
         blend_power: int = 3,
+        ifm_diffusion_level: int = 50,
     ) -> List[Chem.Mol]:
         """
         Main method to generate samples from either reference molecule or an arbitrary context.
+
         :param reference_conformer: A 3D conformer of a reference molecule as an RDKit Mol object
         :param n_samples: number of molecules to generate
         :param variance: int - variation in number of heavy atoms for generated molecules from reference
@@ -299,6 +306,8 @@ class MLConformerGenerator(torch.nn.Module):
         :param inertial_fragment_matching: If Inertial fragment matching is to be used
                                            for generation with a fixed fragment instead of a simple blending.
         :param blend_power: power of the polynomial blending schedule for generation with a fixed fragment
+        :param ifm_diffusion_level: The timestep from which denoising applied during fragment merging.
+                                           Only applicable for inertial_fragment_matching = True.
         :return: A list of valid standardised generated molecules as RDKit Mol objects
         """
         if reference_conformer:
@@ -338,6 +347,7 @@ class MLConformerGenerator(torch.nn.Module):
             fixed_fragment=fixed_fragment,
             inertial_fragment_matching=inertial_fragment_matching,
             blend_power=blend_power,
+            ifm_diffusion_level=ifm_diffusion_level,
         )
 
         (
@@ -347,7 +357,6 @@ class MLConformerGenerator(torch.nn.Module):
             canonicalised_samples,
         ) = prepare_adj_mat_seer_input(
             mols=edm_samples,
-            n_samples=n_samples,
             dimension=self.dimension,
             device=self.device,
         )
@@ -382,8 +391,8 @@ class MLConformerGenerator(torch.nn.Module):
         fixed_fragment: Chem.Mol = None,
         inertial_fragment_matching: bool = True,
         blend_power: int = 3,
+        ifm_diffusion_level: int = 50,
     ) -> List[Chem.Mol]:
-
         out = self.generate_conformers(
             reference_conformer,
             n_samples,
@@ -395,6 +404,7 @@ class MLConformerGenerator(torch.nn.Module):
             fixed_fragment,
             inertial_fragment_matching,
             blend_power,
+            ifm_diffusion_level,
         )
 
         return out

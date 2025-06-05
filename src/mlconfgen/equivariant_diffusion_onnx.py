@@ -511,3 +511,95 @@ class EquivariantDiffusionONNX:
         )
 
         return x, h
+
+    def merge_fragments(
+        self,
+        node_mask: np.ndarray,
+        edge_mask: np.ndarray,
+        fixed_mask: np.ndarray,  # (B, N, 1)
+        context: np.ndarray,
+        z_known: np.ndarray,
+        diffusion_level: int = 50,
+        resample_steps: int = 1,
+        blend_power: int = 3,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Merges 2 fragments, while fixing the target one and allowing the other to be adjusted by the model.
+        The fixed fragment is indicated with the fixed mask.
+        Inference
+
+        :param node_mask: node mask tensor
+        :param edge_mask: edge mask tensor
+        :param context: batched context for generation
+        :param z_known: latent representation of a fixed fragment
+        :param fixed_mask: mask to indicate the position of fixed atoms
+        :param diffusion_level: a depth of diffusion to be applied during merging
+        :param resample_steps: number of resampling steps for harmonisation
+        :param blend_power: power of the polynomial blending schedule
+        :return: generated samples in tensor representation
+
+
+        """
+        if resample_steps < 1:
+            resample_steps = 1
+
+        n_samples, n_nodes, _ = node_mask.size()
+
+        # Forward diffuse the full structure
+        s_array_0 = np.full([n_samples, 1], fill_value=diffusion_level)
+        s_array_0 = s_array_0 / self.T
+        gamma_s = self.gamma(s_array_0)
+        alpha_s = self.alpha(gamma_s, z_known)
+        sigma_s = self.sigma(gamma_s, z_known)
+
+        eps = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
+        z_noised = alpha_s * z_known + sigma_s * eps
+        z = z_noised.clone()
+
+        for s in self.time_steps:
+            if s > diffusion_level:
+                continue
+
+            s_array = np.full([n_samples, 1], fill_value=s)
+            t_array = s_array + 1.0
+            s_array = s_array / self.T
+            t_array = t_array / self.T
+
+            # Polynomial blending schedule
+            blend = np.pow((1 - s_array), blend_power).view(n_samples, 1, 1)
+
+            for _ in range(resample_steps):
+                z = self.sample_p_zs_given_zt(
+                    s_array,
+                    t_array,
+                    z,
+                    node_mask,
+                    edge_mask,
+                    context,
+                )
+
+                # Forward-diffuse the known fragment at timestep s
+                gamma_s = self.gamma(s_array)
+                alpha_s = self.alpha(gamma_s, z_known)
+                sigma_s = self.sigma(gamma_s, z_known)
+
+                eps_frag = self.sample_combined_position_feature_noise(
+                    n_samples, n_nodes, node_mask
+                )
+                z_fixed_noised = alpha_s * z_known + sigma_s * eps_frag
+
+                # Align fixed fragment to avoid CoM drift
+                z_fixed_noised = align_fragment_com_to_generated(
+                    z_fixed_noised, z, fixed_mask
+                )
+
+                # Blend fixed fragment back in softly
+                z = (
+                    blend * z_fixed_noised * fixed_mask
+                    + (1 - blend) * z * fixed_mask
+                    + z * (1 - fixed_mask)
+                )
+
+        # Decode
+        x, h = self.sample_p_xh_given_z0(z, node_mask, edge_mask, context)
+        return x, h

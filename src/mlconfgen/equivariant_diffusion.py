@@ -492,6 +492,7 @@ class EquivariantDiffusion(torch.nn.Module):
                     + z * (1 - fixed_mask)
                 )
 
+            # Additional denoising pass for harmonisation
             z = self.sample_p_zs_given_zt(
                 s_array,
                 t_array,
@@ -600,15 +601,6 @@ class EquivariantDiffusion(torch.nn.Module):
                     + (1 - blend) * z * fixed_mask
                     + z * (1 - fixed_mask)
                 )
-
-            z = self.sample_p_zs_given_zt(
-                s_array,
-                t_array,
-                z,
-                node_mask,
-                edge_mask,
-                context,
-            )
 
         # Decode
         x, h = self.sample_p_xh_given_z0(z, node_mask, edge_mask, context)
