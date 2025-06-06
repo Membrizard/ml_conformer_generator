@@ -212,9 +212,9 @@ def prepare_masks_onnx(
     :return: node_mask, edge_mask
     """
 
-    batch_size = n_nodes.size(0)
+    batch_size = n_nodes.shape[0]
 
-    node_mask = np.zeros(batch_size, max_n_nodes)
+    node_mask = np.zeros((batch_size, max_n_nodes))
     for i in range(batch_size):
         node_mask[i, 0 : n_nodes[i]] = 1
 
@@ -374,6 +374,7 @@ def prepare_fragment_onnx(
         )
 
     x = np.pad(coord, ((0, max_n_nodes - n_atoms), (0, 0)), mode="constant")
+    h = np.pad(h, ((0, max_n_nodes - n_atoms), (0, 0)), mode="constant")
 
     # Batch x and h
 
@@ -506,11 +507,11 @@ def ifm_get_xh_from_fragment_onnx(
     # Get coordinates of the fixed fragment
     ff_mol = Chem.RemoveAllHs(fixed_fragment)
     ff_conformer = ff_mol.GetConformer()
-    ff_x = np.ndarray(ff_conformer.GetPositions(), dtype=np.float32)
+    ff_x = np.array(ff_conformer.GetPositions(), dtype=np.float32)
 
     # Get atom types of a fixed fragment
     ff_structure = MolGraphONNX.from_mol(mol=ff_mol, remove_hs=True)
-    ff_n_atoms = ff_x.size(0)
+    ff_n_atoms = ff_x.shape[0]
 
     ff_h = ff_structure.one_hot_elements_encoding(
         ff_n_atoms
@@ -573,7 +574,7 @@ def ifm_prepare_gen_fragment_context_onnx(
     gen_n_atoms = n_nodes.reshape(batch_size, 1).astype(float) - ff_n_atoms  # (B, 1)
 
     # COM of generated fragments in respect to number of atoms in each
-    shift = (ff_n_atoms * com_ff.view(1, 3)) / gen_n_atoms  # (B, 3)
+    shift = (ff_n_atoms * com_ff.reshape(1, 3)) / gen_n_atoms  # (B, 3)
 
     # Shift MOI to COM of generated fragment
     moi_gen_com = shift_moi_to_com_batch_onnx(
@@ -588,13 +589,16 @@ def ifm_prepare_gen_fragment_context_onnx(
 
     max_n_nodes_frag = max_n_nodes - ff_n_atoms
 
+    # Flatten gen_n_atoms and convert to int
+    gen_n_atoms = gen_n_atoms.reshape(-1).astype(np.int64)
+
     frag_node_mask, frag_edge_mask = prepare_masks_onnx(
-        n_nodes=gen_n_atoms.long(),
+        n_nodes=gen_n_atoms,
         max_n_nodes=max_n_nodes_frag,
     )
 
     batched_normed_frag_context = (
-            np.repeat(normed_frag_context[:, None, :], max_n_nodes, axis=1) * frag_node_mask
+            np.repeat(normed_frag_context[:, None, :], max_n_nodes_frag, axis=1) * frag_node_mask
     )
 
     return frag_node_mask, frag_edge_mask, batched_normed_frag_context, shift, rotation

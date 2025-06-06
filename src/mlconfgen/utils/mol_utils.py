@@ -442,6 +442,7 @@ def ifm_prepare_gen_fragment_context(
 
     max_n_nodes_frag = max_n_nodes - ff_n_atoms
 
+    print(gen_n_atoms)
     frag_node_mask, frag_edge_mask = prepare_masks(
         n_nodes=gen_n_atoms.long(),
         max_n_nodes=max_n_nodes_frag,

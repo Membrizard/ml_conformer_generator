@@ -458,7 +458,7 @@ class EquivariantDiffusionONNX:
             s_array = s_array / self.T
             t_array = t_array / self.T
 
-            # Polynomial blending schedule
+            # Polynomial blending
             blend = np.power((1 - s_array), blend_power).reshape(n_samples, 1, 1)
 
             for _ in range(resample_steps):
@@ -543,7 +543,7 @@ class EquivariantDiffusionONNX:
         if resample_steps < 1:
             resample_steps = 1
 
-        n_samples, n_nodes, _ = node_mask.size()
+        n_samples, n_nodes, _ = node_mask.shape
 
         # Forward diffuse the full structure
         s_array_0 = np.full([n_samples, 1], fill_value=diffusion_level)
@@ -554,7 +554,7 @@ class EquivariantDiffusionONNX:
 
         eps = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
         z_noised = alpha_s * z_known + sigma_s * eps
-        z = z_noised.clone()
+        z = z_noised
 
         for s in self.time_steps:
             if s > diffusion_level:
@@ -565,8 +565,8 @@ class EquivariantDiffusionONNX:
             s_array = s_array / self.T
             t_array = t_array / self.T
 
-            # Polynomial blending schedule
-            blend = np.pow((1 - s_array), blend_power).view(n_samples, 1, 1)
+            # Polynomial blending
+            blend = np.power((1 - s_array), blend_power).reshape(n_samples, 1, 1)
 
             for _ in range(resample_steps):
                 z = self.sample_p_zs_given_zt(
