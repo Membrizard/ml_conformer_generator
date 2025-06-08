@@ -228,7 +228,7 @@ class MLConformerGenerator(torch.nn.Module):
                     coord=x_gen_frag, shift=shift, rotation=rotation
                 )
 
-                # Merged Fixed fragment with the generated ones
+                # Merge Fixed fragment with the generated ones
 
                 z_known, fixed_mask = ifm_prepare_fragments_for_merge(
                     fixed_fragment_x=fixed_fragment_x,

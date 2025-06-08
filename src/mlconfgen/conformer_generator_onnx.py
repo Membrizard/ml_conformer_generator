@@ -1,5 +1,4 @@
 from typing import List
-from pathlib import Path
 
 import numpy as np
 from rdkit import Chem
@@ -102,7 +101,12 @@ class MLConformerGeneratorONNX:
         :param min_n_nodes: the minimal number of heavy atoms in the among requested molecules
         :param resample_steps: number of resampling steps applied for harmonisation of generation
         :param fixed_fragment: fragment to retain during generation, optional
+        :param inertial_fragment_matching: If Inertial fragment matching is to be used
+                                           for generation with a fixed fragment
         :param blend_power: power of polynomial blending of a fixed fragment during generation
+        :param ifm_diffusion_level: The timestep from which denoising applied during fragment merging.
+                                           Only applicable for inertial_fragment_matching = True.
+                                           Recommended between 20-50% of total diffusion steps.
         :return: a list of generated samples, without atom adjacency as RDkit Mol objects
         """
 
@@ -166,7 +170,7 @@ class MLConformerGeneratorONNX:
                     coord=x_gen_frag, shift=shift, rotation=rotation
                 )
 
-                # Merged Fixed fragment with the generated ones
+                # Merge Fixed fragment with the generated ones
 
                 z_known, fixed_mask = ifm_prepare_fragments_for_merge_onnx(
                     fixed_fragment_x=fixed_fragment_x,
