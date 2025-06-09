@@ -71,9 +71,9 @@ def align_fragment_com_to_generated(
 ) -> np.ndarray:
     """
     Aligns COM of the fixed fragment with the corresponding generated fragment during inpainting for equivariance.
-    :param z_known_noised:
-    :param z_generated:
-    :param fixed_mask:
+    :param z_known_noised: z_known with noise applied
+    :param z_generated: z_generated with comparable nois
+    :param fixed_mask: a mask to indentify the fixed fragment
     :return: aligned latent representation of a fixed fragment
     """
 

@@ -4,8 +4,8 @@ import torch
 from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 
-from .molgraph import MolGraph
 from .config import DIMENSION
+from .molgraph import MolGraph
 
 bond_type_dict = {
     1: Chem.rdchem.BondType.SINGLE,
