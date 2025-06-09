@@ -123,7 +123,6 @@ def adj_mat_seer_onnx_export(
 
     inputs = prepare_adj_mat_seer_input(
         mols=mols,
-        n_samples=len(mols),
         dimension=dimension,
         device=device,
     )

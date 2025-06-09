@@ -1,4 +1,3 @@
-import random
 from typing import List, Tuple
 
 import numpy as np
@@ -201,6 +200,33 @@ class MolGraphONNX:
         return one_hot
 
 
+def prepare_masks_onnx(
+    n_nodes: np.ndarray,
+    max_n_nodes: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Prepare node and edge masks torch-free
+    :param n_nodes: a list of sizes of requested molecules (n_samples, 1)
+    :param max_n_nodes: maximal number of nodes
+    :return: node_mask, edge_mask
+    """
+
+    batch_size = n_nodes.shape[0]
+
+    node_mask = np.zeros((batch_size, max_n_nodes))
+    for i in range(batch_size):
+        node_mask[i, 0 : n_nodes[i]] = 1
+
+    # Compute edge_mask
+    edge_mask = np.expand_dims(node_mask, 1) * np.expand_dims(node_mask, 2)
+    diag_mask = ~np.eye(edge_mask.shape[1], dtype=bool)[None, :, :]
+    edge_mask *= diag_mask
+    edge_mask = edge_mask.reshape(-1, 1)
+    node_mask = np.expand_dims(node_mask, 2)
+
+    return node_mask, edge_mask
+
+
 def prepare_edm_input_onnx(
     n_samples: int,
     reference_context: np.ndarray,
@@ -209,26 +235,13 @@ def prepare_edm_input_onnx(
     max_n_nodes: int,
 ):
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
-    nodesxsample = []
-
-    for n in range(n_samples):
-        nodesxsample.append(random.randint(min_n_nodes, max_n_nodes))
-
-    nodesxsample = np.array(nodesxsample, dtype=np.int64)
+    nodesxsample = np.random.randint(min_n_nodes, max_n_nodes + 1, size=n_samples)
 
     batch_size = nodesxsample.shape[0]
 
-    node_mask = np.zeros((batch_size, max_n_nodes))
-    for i in range(batch_size):
-        node_mask[i, 0 : nodesxsample[i]] = 1
-
-    # Compute edge_mask
-
-    edge_mask = np.expand_dims(node_mask, 1) * np.expand_dims(node_mask, 2)
-    diag_mask = ~np.eye(edge_mask.shape[1], dtype=bool)[None, :, :]
-    edge_mask *= diag_mask
-    edge_mask = edge_mask.reshape(-1, 1)
-    node_mask = np.expand_dims(node_mask, 2)
+    node_mask, edge_mask = prepare_masks_onnx(
+        n_nodes=nodesxsample, max_n_nodes=max_n_nodes
+    )
 
     normed_context = (reference_context - context_norms["mean"]) / context_norms["mad"]
 
@@ -253,10 +266,10 @@ def samples_to_rdkit_mol_onnx(
 ) -> List[Chem.Mol]:
     """
     Convert EDM Samples to RDKit mol objects torch-free
-    :param positions:
-    :param one_hot:
-    :param node_mask:
-    :param atom_decoder:
+    :param positions: coordinates tensor
+    :param one_hot: one-hot encoded atom types
+    :param node_mask: node mask
+    :param atom_decoder: atom decoder dictionary
     :return: a list of samples as RDKit Mol objects without bond information
     """
     rdkit_mols = []
@@ -281,17 +294,18 @@ def samples_to_rdkit_mol_onnx(
             )
 
         mol = Chem.MolFromXYZBlock(xyz_block)
-        rdkit_mols.append(mol)
+        if mol is not None:
+            rdkit_mols.append(mol)
 
     return rdkit_mols
 
 
 def prepare_adj_mat_seer_input_onnx(
     mols: List[Chem.Mol],
-    n_samples: int,
     dimension: int,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[Chem.Mol]]:
     canonicalised_samples = []
+    n_samples = len(mols)
 
     elements_batch = np.zeros((n_samples, dimension), dtype=np.int64)
     dist_mat_batch = np.zeros((n_samples, dimension, dimension), dtype=np.float32)
@@ -345,28 +359,23 @@ def prepare_fragment_onnx(
     """
 
     # Remove Hs
-    mol = Chem.RemoveAllHs(fragment)
-    conformer = mol.GetConformer()
-    coord = np.array(conformer.GetPositions(), dtype=np.float32)
-
-    structure = MolGraphONNX.from_mol(mol=mol, remove_hs=True)
-    elements = structure.elements_vector()
-    n_atoms = np.count_nonzero(elements, axis=0).item()
+    coord, h = ifm_get_xh_from_fragment_onnx(fragment)
+    n_atoms = coord.shape[0]
 
     # Check that fragment size is adequate
     if n_atoms >= min_n_nodes:
-        raise ValueError("Fragment must contain fewer atoms than minimum generation size.")
+        raise ValueError(
+            "Fragment must contain fewer atoms than minimum generation size."
+        )
     if n_atoms >= max_n_nodes:
-        raise ValueError("Fragment exceeds max_n_nodes.")
+        raise ValueError(
+            "Fragment has more atoms than the maximum number of atoms requested."
+        )
 
-    h = structure.one_hot_elements_encoding(max_n_nodes)
-
-    # x = torch.nn.functional.pad(coord, (0, 0, 0, max_n_nodes - n_atoms), "constant", 0)
-    x = np.pad(coord, ((0, max_n_nodes - n_atoms), (0, 0)), mode='constant')
+    x = np.pad(coord, ((0, max_n_nodes - n_atoms), (0, 0)), mode="constant")
+    h = np.pad(h, ((0, max_n_nodes - n_atoms), (0, 0)), mode="constant")
 
     # Batch x and h
-    # x = x.repeat(n_samples, 1, 1)
-    # h = h.repeat(n_samples, 1, 1)
 
     x = np.tile(x[None, :, :], (n_samples, 1, 1))  # (n_samples, max_n_nodes, 3)
     h = np.tile(h[None, :, :], (n_samples, 1, 1))
@@ -484,3 +493,199 @@ def get_moment_of_inertia_tensor_onnx(
     )
 
     return moi_tensor
+
+
+def ifm_get_xh_from_fragment_onnx(
+    fixed_fragment: Chem.Mol
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Get coordinates and atom types as tensors for a fragment torch-free
+    :param fixed_fragment: fragment as rdkit Mol object
+    :return: fixed_fragment_x, fixed_fragment_h
+    """
+    # Get coordinates of the fixed fragment
+    ff_mol = Chem.RemoveAllHs(fixed_fragment)
+    ff_conformer = ff_mol.GetConformer()
+    ff_x = np.array(ff_conformer.GetPositions(), dtype=np.float32)
+
+    # Get atom types of a fixed fragment
+    ff_structure = MolGraphONNX.from_mol(mol=ff_mol, remove_hs=True)
+    ff_n_atoms = ff_x.shape[0]
+
+    ff_h = ff_structure.one_hot_elements_encoding(
+        ff_n_atoms
+    )  # Atom types of a fixed fragment
+
+    return ff_x, ff_h
+
+
+def ifm_prepare_gen_fragment_context_onnx(
+    fixed_fragment_x: np.ndarray,
+    reference_context: np.ndarray,
+    context_norms: dict,
+    n_nodes: np.ndarray,
+    max_n_nodes: int,
+    min_n_nodes: int,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Prepare Contexts for Generation of Individual Fragments based on Reference and Fixed Fragment MOI tensors.
+    Torch-free.
+    Fixed Fragment should be expressed in the same coordinate system as the reference, The origin of such coordinate
+    system should be place in the COM of the Reference.
+
+    :param fixed_fragment_x:  coordinates of the fixed fragment atoms
+    :param reference_context: Principal components of MOI Tensor of the reference shape (3)
+    :param context_norms: Values to norm the context for individual fragment generation
+    :param n_nodes: a list of sizes of requested molecules (n_samples, 1)
+    :param max_n_nodes: a maximal number of nodes allowed for the whole generated molecule
+    :param min_n_nodes: a minimal number of nodes allowed for the whole generated molecule
+    :return: frag_node_mask, frag_edge_mask, batched_normed_frag_context, shift, rotation
+    """
+    batch_size = n_nodes.shape[0]
+
+    ff_n_atoms = fixed_fragment_x.shape[0]
+    masses_ff = np.ones(ff_n_atoms)
+
+    if ff_n_atoms >= min_n_nodes:
+        raise ValueError(
+            "Fragment must contain fewer atoms than minimum generation size."
+        )
+    if ff_n_atoms >= max_n_nodes:
+        raise ValueError(
+            "Fragment has more atoms than the maximum number of atoms requested."
+        )
+
+    # Fixed fragment MOI around origin
+    moi_ff = get_moment_of_inertia_tensor_onnx(fixed_fragment_x, masses_ff)  # (3, 3)
+
+    # Reference MOI as diagonal matrix (expand to B)
+    moi_ref = np.diag(reference_context)  # (3, 3)
+
+    moi_ref_batch = np.tile(moi_ref[None, :, :], (batch_size, 1, 1))  # (B, 3, 3)
+    moi_ff_batch = np.tile(moi_ff[None, :, :], (batch_size, 1, 1))  # (B, 3, 3)
+
+    # Gen frag MOI around origin
+    moi_gen_origin = moi_ref_batch - moi_ff_batch  # (B, 3, 3)
+
+    # COM of fixed fragment
+    com_ff = fixed_fragment_x.mean(axis=0)  # (3,)
+
+    gen_n_atoms = n_nodes.reshape(batch_size, 1).astype(float) - ff_n_atoms  # (B, 1)
+
+    # COM of generated fragments in respect to number of atoms in each
+    shift = (ff_n_atoms * com_ff.reshape(1, 3)) / gen_n_atoms  # (B, 3)
+
+    # Shift MOI to COM of generated fragment
+    moi_gen_com = shift_moi_to_com_batch_onnx(
+        moi_gen_origin, shift, gen_n_atoms
+    )  # (B, 3, 3)
+
+    # Diagonalize MOI of generated fragment
+    frag_context, rotation = np.linalg.eigh(moi_gen_com)  # (B, 3), (B, 3, 3)
+    normed_frag_context = (
+        (frag_context - context_norms["mean"]) / context_norms["mad"]
+    )
+
+    max_n_nodes_frag = max_n_nodes - ff_n_atoms
+
+    # Flatten gen_n_atoms and convert to int
+    gen_n_atoms = gen_n_atoms.reshape(-1).astype(np.int64)
+
+    frag_node_mask, frag_edge_mask = prepare_masks_onnx(
+        n_nodes=gen_n_atoms,
+        max_n_nodes=max_n_nodes_frag,
+    )
+
+    batched_normed_frag_context = (
+            np.repeat(normed_frag_context[:, None, :], max_n_nodes_frag, axis=1) * frag_node_mask
+    )
+
+    return frag_node_mask, frag_edge_mask, batched_normed_frag_context, shift, rotation
+
+
+def ifm_prepare_fragments_for_merge_onnx(
+    fixed_fragment_x: np.ndarray,
+    fixed_fragment_h: np.ndarray,
+    gen_fragments_x: np.ndarray,
+    gen_fragments_h: np.ndarray,
+    max_n_nodes: int,
+):
+    """
+    Prepares Multiple Fragments for Merge. Prepares latent Z tensor, ready for injection and mask for a fixed fragment.
+    Torch-free
+    :param fixed_fragment_x: Coordinates of a fixed fragment as np.ndarray
+    :param fixed_fragment_h: One-hot encoded atom types of a fixed fragment as np.ndarray
+    :param gen_fragments_x: Batch of coordinates of generated fragments - np.ndarray
+    :param gen_fragments_h: Batch of One-hot encoded atom types of generated fragments - np.ndarray
+    :param max_n_nodes: maximal allowable number of atoms
+    :return: z_known, fixed_mask, n_samples
+    """
+
+    n_samples = gen_fragments_x.shape[0]
+
+    ff_n_atoms = fixed_fragment_x.shape[0]
+
+    # Add a batch dimension
+    ff_x = fixed_fragment_x[None, :, :]  # Shape: (1, N, 3)
+    ff_h = fixed_fragment_h[None, :, :]  # Shape: (1, N, F)
+
+    # Repeat across batch dimension
+    ff_x_batched = np.repeat(ff_x, n_samples, axis=0)  # Shape: (n_samples, N, 3)
+    ff_h_batched = np.repeat(ff_h, n_samples, axis=0)
+
+    x_prep = np.concatenate([ff_x_batched, gen_fragments_x], axis=1)
+    h_prep = np.concatenate([ff_h_batched, gen_fragments_h], axis=1)
+
+    z_known = np.concatenate([x_prep, h_prep], axis=2)
+
+    # The fixed fragment is always in the first place - so we set fixed mask to have 1s only
+    # on the first ff_n_atoms elements of z_known
+
+    fixed_mask = np.zeros((n_samples, max_n_nodes, 1), dtype=np.float32)
+    fixed_mask[:, :ff_n_atoms, 0] = 1.0
+
+    return z_known, fixed_mask
+
+
+def shift_moi_to_com_batch_onnx(
+    moi_origin: np.ndarray, r_coms: np.ndarray, masses: np.ndarray
+) -> np.ndarray:
+    """
+    Translates moment of inertia from the origin to multiple guessed centers of mass
+    using the inverse parallel axis theorem. Torch-Free
+
+    :param moi_origin: (3, 3) Inertia tensor around origin (shared across batch)
+    :param r_coms: (B, 3) Vectors from origin to guessed COMs
+    :param masses: (B,) Total masses per example
+    :return: I_coms: (B, 3, 3) Inertia tensors about the guessed COMs
+    """
+    batch_size = r_coms.shape[0]
+    i_3 = np.tile(np.eye(3)[None, :, :], (batch_size, 1, 1))  # (B, 3, 3)
+
+    r = r_coms.reshape(batch_size, 3, 1)  # (B, 3, 1)
+    r_outer = np.matmul(r, np.transpose(r, (0, 2, 1)))  # (B, 3, 3)
+    r_norm_sq = np.sum(r_coms ** 2, axis=1).reshape(batch_size, 1, 1)  # (B, 1, 1)
+
+    masses = masses.reshape(batch_size, 1, 1)  # (B, 1, 1)
+    shift = masses * (r_norm_sq * i_3 - r_outer)  # (B, 3, 3)
+
+    return moi_origin - shift   # (B, 3, 3)
+
+
+def inverse_coord_transform_onnx(
+    coord: np.ndarray, shift: np.ndarray, rotation: np.ndarray
+) -> np.ndarray:
+    """
+    Inverse shift and Rotation transformation to a batch of xyz coordinates sets. Torch-free
+    :param coord: Batch of Coordinates to be modified (batch_size, N, 3)
+    :param shift: Batch of shifts to be applied (batch_size, 3)
+    :param rotation: Batch of Rotations to be applied (batch_size, 3, 3)
+    :return: Modified Coordinates
+    """
+    # Rotate first
+    batch_size = coord.shape[0]
+    x_rotated = np.matmul(coord, np.transpose(rotation, (0, 2, 1)))
+    # Translate second
+    x_translated = x_rotated - shift.reshape(batch_size, 1, 3)
+
+    return x_translated

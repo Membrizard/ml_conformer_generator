@@ -424,10 +424,10 @@ class Grid:
         dx = (max_coords[0] - min_coords[0]) / (n - 1)
         dy = (max_coords[1] - min_coords[1]) / (n - 1)
         dz = (max_coords[2] - min_coords[2]) / (n - 1)
-        dV = dx * dy * dz
+        d_v = dx * dy * dz
 
         self.points = torch.stack([x_g.flatten(), y_g.flatten(), z_g.flatten()], dim=-1)
-        self.d_v = dV
+        self.d_v = d_v
         self.size = n
 
 
@@ -472,7 +472,6 @@ def tanimoto_score(
     amplitude: float = AMPLITUDE,
     n: int = 40,
 ):
-    # alpha = get_alpha(atom_radius=atom_radius, gaussian_amplitude=amplitude)
 
     cat_coord = torch.cat((ref_coord, cand_coord), dim=0)
 

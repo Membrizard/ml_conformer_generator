@@ -5,22 +5,15 @@ from rdkit import Chem
 
 from .adj_mat_seer import AdjMatSeer
 from .egnn import EGNNDynamics
-from .equivariant_diffusion import EquivariantDiffusion, PredefinedNoiseSchedule
-from .utils import (
-    ATOM_DECODER,
-    CONTEXT_NORMS,
-    DIMENSION,
-    MAX_N_NODES,
-    MIN_N_NODES,
-    NUM_BOND_TYPES,
-    get_context_shape,
-    prepare_adj_mat_seer_input,
-    prepare_edm_input,
-    prepare_fragment,
-    redefine_bonds,
-    samples_to_rdkit_mol,
-    standardize_mol,
-)
+from .equivariant_diffusion import (EquivariantDiffusion,
+                                    PredefinedNoiseSchedule)
+from .utils import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
+                    MIN_N_NODES, NUM_BOND_TYPES, get_context_shape,
+                    ifm_get_xh_from_fragment, ifm_prepare_fragments_for_merge,
+                    ifm_prepare_gen_fragment_context, inverse_coord_transform,
+                    prepare_adj_mat_seer_input, prepare_edm_input,
+                    prepare_fragment, redefine_bonds, samples_to_rdkit_mol,
+                    standardize_mol)
 
 
 class MLConformerGenerator(torch.nn.Module):
@@ -138,21 +131,28 @@ class MLConformerGenerator(torch.nn.Module):
         min_n_nodes: int = 25,
         resample_steps: int = 0,
         fixed_fragment: Chem.Mol = None,
+        inertial_fragment_matching: bool = True,
         blend_power: int = 3,
+        ifm_diffusion_level: int = 50,
     ) -> List[Chem.Mol]:
         """
-        Generates initial samples using generative diffusion model
+        Generates initial samples using the diffusion model
         :param reference_context: reference context - tensor of shape (3)
         :param n_samples: number of samples to be generated
         :param max_n_nodes: the maximal number of heavy atoms in the among requested molecules
         :param min_n_nodes: the minimal number of heavy atoms in the among requested molecules
         :param resample_steps: number of resampling steps applied for harmonisation of generation
         :param fixed_fragment: fragment to retain during generation, optional
+        :param inertial_fragment_matching: If Inertial fragment matching is to be used
+                                           for generation with a fixed fragment
         :param blend_power: power of polynomial blending of a fixed fragment during generation
+        :param ifm_diffusion_level: The timestep from which denoising applied during fragment merging.
+                                           Only applicable for inertial_fragment_matching = True.
+                                           Recommended between 20-50% of total diffusion steps.
         :return: a list of generated samples, without atom adjacency as RDkit Mol objects
         """
 
-        # Make sure that number of atoms of generated samples is within requested range
+        # Make sure that number of atoms of generated samples is within allowed range
         if min_n_nodes < self.min_n_nodes:
             min_n_nodes = self.min_n_nodes
 
@@ -176,23 +176,88 @@ class MLConformerGenerator(torch.nn.Module):
                 resample_steps,
             )
         else:
-            z_known, fixed_mask = prepare_fragment(
-                n_samples=n_samples,
-                fragment=fixed_fragment,
-                max_n_nodes=max_n_nodes,
-                min_n_nodes=min_n_nodes,
-                device=self.device,
-            )
+            if inertial_fragment_matching:
+                # Inertial Fragment Matching strategy:
+                # generate fragments separately -> merge fixed and generated fragments
 
-            x, h = self.generative_model.inpaint(
-                node_mask,
-                edge_mask,
-                batch_context,
-                z_known,
-                fixed_mask,
-                resample_steps,
-                blend_power,
-            )
+                # Prepare context for generation of individual fragments
+                n_nodes = torch.sum(node_mask, dim=1).to(torch.long)
+
+                fixed_fragment_x, fixed_fragment_h = ifm_get_xh_from_fragment(
+                    fixed_fragment=fixed_fragment, device=self.device
+                )
+
+                (
+                    frag_node_mask,
+                    frag_edge_mask,
+                    frag_context,
+                    shift,
+                    rotation,
+                ) = ifm_prepare_gen_fragment_context(
+                    fixed_fragment_x=fixed_fragment_x,
+                    reference_context=reference_context,
+                    n_nodes=n_nodes,
+                    context_norms=self.context_norms,
+                    max_n_nodes=max_n_nodes,
+                    min_n_nodes=min_n_nodes,
+                    device=self.device,
+                )
+
+                # Generate Fragments
+                x_gen_frag, h_gen_frag = self.generative_model(
+                    frag_node_mask,
+                    frag_edge_mask,
+                    frag_context,
+                    resample_steps,
+                )
+
+                # Inverse transformations applied to the coordinates of generated fragments
+
+                x_gen_frag = inverse_coord_transform(
+                    coord=x_gen_frag, shift=shift, rotation=rotation
+                )
+
+                # Merge Fixed fragment with the generated ones
+
+                z_known, fixed_mask = ifm_prepare_fragments_for_merge(
+                    fixed_fragment_x=fixed_fragment_x,
+                    fixed_fragment_h=fixed_fragment_h,
+                    gen_fragments_x=x_gen_frag,
+                    gen_fragments_h=h_gen_frag,
+                    device=self.device,
+                    max_n_nodes=max_n_nodes,
+                )
+
+                x, h = self.generative_model.merge_fragments(
+                    node_mask=node_mask,
+                    edge_mask=edge_mask,
+                    fixed_mask=fixed_mask,
+                    context=batch_context,
+                    z_known=z_known,
+                    diffusion_level=ifm_diffusion_level,  # light noise only
+                    resample_steps=resample_steps,
+                    blend_power=blend_power,
+                )
+
+            else:
+                # Simple strategy with fixed fragment blending
+                z_known, fixed_mask = prepare_fragment(
+                    n_samples=n_samples,
+                    fixed_fragment=fixed_fragment,
+                    max_n_nodes=max_n_nodes,
+                    min_n_nodes=min_n_nodes,
+                    device=self.device,
+                )
+
+                x, h = self.generative_model.inpaint(
+                    node_mask,
+                    edge_mask,
+                    batch_context,
+                    z_known,
+                    fixed_mask,
+                    resample_steps,
+                    blend_power,
+                )
 
         mols = samples_to_rdkit_mol(
             positions=x, one_hot=h, node_mask=node_mask, atom_decoder=self.atom_decoder
@@ -211,10 +276,13 @@ class MLConformerGenerator(torch.nn.Module):
         optimise_geometry: bool = True,
         resample_steps: int = 0,
         fixed_fragment: Chem.Mol = None,
+        inertial_fragment_matching: bool = True,
         blend_power: int = 3,
+        ifm_diffusion_level: int = 50,
     ) -> List[Chem.Mol]:
         """
         Main method to generate samples from either reference molecule or an arbitrary context.
+
         :param reference_conformer: A 3D conformer of a reference molecule as an RDKit Mol object
         :param n_samples: number of molecules to generate
         :param variance: int - variation in number of heavy atoms for generated molecules from reference
@@ -224,7 +292,11 @@ class MLConformerGenerator(torch.nn.Module):
         :param resample_steps: number of resampling steps applied for harmonisation of generation
                                improves generation quality, while sacrificing speed
         :param fixed_fragment: Fragment to fix during generation as an RDKit Mol object
+        :param inertial_fragment_matching: If Inertial fragment matching is to be used
+                                           for generation with a fixed fragment instead of a simple blending.
         :param blend_power: power of the polynomial blending schedule for generation with a fixed fragment
+        :param ifm_diffusion_level: The timestep from which denoising applied during fragment merging.
+                                           Only applicable for inertial_fragment_matching = True.
         :return: A list of valid standardised generated molecules as RDKit Mol objects
         """
         if reference_conformer:
@@ -262,7 +334,9 @@ class MLConformerGenerator(torch.nn.Module):
             max_n_nodes=ref_n_atoms + variance,
             resample_steps=resample_steps,
             fixed_fragment=fixed_fragment,
+            inertial_fragment_matching=inertial_fragment_matching,
             blend_power=blend_power,
+            ifm_diffusion_level=ifm_diffusion_level,
         )
 
         (
@@ -272,7 +346,6 @@ class MLConformerGenerator(torch.nn.Module):
             canonicalised_samples,
         ) = prepare_adj_mat_seer_input(
             mols=edm_samples,
-            n_samples=n_samples,
             dimension=self.dimension,
             device=self.device,
         )
@@ -305,7 +378,9 @@ class MLConformerGenerator(torch.nn.Module):
         optimise_geometry: bool = True,
         resample_steps: int = 0,
         fixed_fragment: Chem.Mol = None,
+        inertial_fragment_matching: bool = True,
         blend_power: int = 3,
+        ifm_diffusion_level: int = 50,
     ) -> List[Chem.Mol]:
         out = self.generate_conformers(
             reference_conformer,
@@ -316,7 +391,9 @@ class MLConformerGenerator(torch.nn.Module):
             optimise_geometry,
             resample_steps,
             fixed_fragment,
+            inertial_fragment_matching,
             blend_power,
+            ifm_diffusion_level,
         )
 
         return out

@@ -60,6 +60,9 @@ class GraphConv(nn.Module):
 class AdjMatSeer(nn.Module):
     """
     Suggests probabilities of atoms adjacency based on their type and coordinates
+    Based on https://doi.org/10.1039/D3DD00178D
+    Structure Seer – a machine learning model for chemical structure elucidation from node labelling
+    of a molecular graph.
     """
 
     def __init__(
