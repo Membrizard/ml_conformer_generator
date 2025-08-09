@@ -7,11 +7,15 @@ from mlconfgen.utils.config import CONTEXT_NORMS
 from mlconfgen.utils.mol_utils import prepare_adj_mat_seer_input
 from rdkit import Chem
 from torchinfo import summary
+from torchinfo import ModelStatistics
 from tqdm import tqdm
 import numpy as np
 
+import pandas as pd
+from pathlib import Path
 
-def get_total_bytes(model_stats):
+
+def get_total_bytes(model_stats: ModelStatistics) -> int:
     return (
         model_stats.total_input
         + model_stats.total_output_bytes
@@ -28,7 +32,7 @@ def profile_egnn(
     ),
     context_norms: dict = CONTEXT_NORMS,
     dtype: torch.dtype = torch.float32,
-):
+) -> int:
     egnn = generative_model.dynamics
 
     context_norms = {key: torch.tensor(value) for key, value in context_norms.items()}
@@ -46,8 +50,9 @@ def profile_egnn(
     )
 
     model_stats = summary(egnn, input_data=egnn_inputs, verbose=0)
+    total_bytes = get_total_bytes(model_stats)
 
-    return model_stats
+    return total_bytes
 
 
 def prepare_egnn_dummy_input(
@@ -60,7 +65,7 @@ def prepare_egnn_dummy_input(
     s: int = 50,
     timesteps: int = 100,
     dtype: torch.dtype = torch.float32,
-):
+) -> dict:
     device = generative_model.dynamics.device
     nodesxsample = []
 
@@ -114,7 +119,7 @@ def profile_adj_mat_seer(
     sample_mol: Chem.Mol,
     n_samples: int,
     dtype: torch.dtype = torch.float32,
-):
+) -> int:
     mols = [sample_mol] * n_samples
 
     device = adj_mat_seer.device
@@ -132,23 +137,46 @@ def profile_adj_mat_seer(
         "adj_mat": adj_mat.to(dtype),
     }
 
-    model_stats = summary(adj_mat_seer, input_data=input_data, verbose=1)
+    model_stats = summary(adj_mat_seer, input_data=input_data, verbose=0)
 
-    return model_stats
+    total_bytes = get_total_bytes(model_stats)
+
+    return total_bytes
 
 
 def profile_model(
     model: MLConformerGenerator,
-    csv_path: str = "memory_profile.csv",
+    csv_report_path: str = "memory_profile.csv",
     sample_mols: str = "./mol_examples/alkanes_C15_C39.sdf",
+    min_n_samples: int = 20,
+    max_n_samples: int = 100,
+    n_samples_step: int = 20,
+    min_n_atoms: int = 15,
+    max_n_atoms: int = 39,
+    n_atoms_step: int = 1,
     dtype: torch.dtype = torch.float32,
 ) -> None:
-    model = model.half()
+    """
+    Estimates Memory consumption of the model during inference using torchinfo and writes it to a .csv report.
+    :param model: MLConformerGenerator model
+    :param csv_report_path: A path to a .csv report
+    :param sample_mols: A path to a .sdf file containing the molecules with needed number of heavy atoms for profiling
+    :param min_n_samples: a number of samples to start profiling at
+    :param max_n_samples: a number of samples to stop profiling at
+    :param n_samples_step: step in number of samples
+    :param min_n_atoms: a number of atoms to start profiling at
+    :param max_n_atoms: a number of atoms to stop profiling at
+    :param n_atoms_step: step in number of atoms
+    :param dtype: torch.float16 or torch.float32 a dtype to which the model is cast to prior to profiling
+    """
+    model = model.to(dtype=dtype)
+    base_path = Path(__file__).parent
 
-    reader = Chem.SDMolSupplier(sample_mols)
-    mols = [x for x in reader]
+    reader = Chem.SDMolSupplier(base_path / sample_mols)
+    n_atoms_range = range(min_n_atoms, max_n_atoms + n_atoms_step, n_atoms_step)
+    mols = [x for x in reader if x.GetNumHeavyAtoms() in n_atoms_range ]
 
-    with open(csv_path, mode="a+", newline="") as csvfile:
+    with open(csv_report_path, mode="a+", newline="") as csvfile:
         fieldnames = [
             "n_samples",
             "n_atoms",
@@ -159,22 +187,20 @@ def profile_model(
 
         writer.writeheader()
 
-        for n_samples in tqdm(range(20, 120, 20)):
-            for i, n_atoms in enumerate(range(15, 40)):
-                eggn_stats = profile_egnn(
+        for n_samples in tqdm(range(min_n_samples, max_n_samples + n_samples_step, n_samples_step)):
+            for i, n_atoms in enumerate(n_atoms_range):
+                egnn_total_bytes = profile_egnn(
                     model.generative_model,
                     n_samples=n_samples,
                     n_nodes=n_atoms,
                     dtype=dtype,
                 )
-                adj_mat_seer_stats = profile_adj_mat_seer(
+                adj_mat_seer_bytes = profile_adj_mat_seer(
                     model.adj_mat_seer,
                     sample_mol=mols[i],
                     n_samples=n_samples,
                     dtype=dtype,
                 )
-                egnn_total_bytes = get_total_bytes(eggn_stats)
-                adj_mat_seer_bytes = get_total_bytes(adj_mat_seer_stats)
                 writer.writerow(
                     {
                         "n_samples": n_samples,
@@ -184,10 +210,16 @@ def profile_model(
                     }
                 )
 
+        return None
+
 
 def fit_profile(profile_csv: str):
+    """
+    Fit the memory profile with a linear function, get slope and intercept.
+    Memory in Mb as a function of n_samples * (n_atoms ** 2)
+    """
     # Load CSV (assumes columns: x, y)
-    df = pd.read_csv("./model_profiling/full_memory_profile_float16.csv")
+    df = pd.read_csv(profile_csv)
 
     n_samples = df['n_samples'].to_numpy()
     n_atoms = df['n_atoms'].to_numpy()
@@ -200,17 +232,6 @@ def fit_profile(profile_csv: str):
     x = n_samples * np.power(n_atoms, 2)
 
     # Do least-squares fit: y ≈ m*x + b
-    m, b = np.polyfit(x, y, 1)  # degree=1 → linear
+    slope, intercept = np.polyfit(x, y, 1)  # degree=1 → linear
 
-    print(f"Slope (m): {m}")
-    print(f"Intercept (b): {b}")
-
-    # Predict and plot
-    y_pred = m * x + b
-
-    plt.scatter(x, y, label="Data")
-    plt.plot(x, y_pred, color='red', label=f"Fit: y={m:.3f}x+{b:.3f}")
-    plt.legend()
-    plt.show()
-
-    return None
+    return slope, intercept
