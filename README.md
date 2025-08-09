@@ -148,7 +148,7 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 
 **Average SA Score**: **3.18**
 
-![sa_score](https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/benchmarks/sa_score_dist.png)
+<img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/benchmarks/sa_score_dist.png" width="300">
 
 ---
 
