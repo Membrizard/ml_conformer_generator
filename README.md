@@ -105,9 +105,11 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 
 *Tested on 100,000 samples using 1,000 CCDC Virtual Screening [[4]](https://www.ccdc.cam.ac.uk/support-and-resources/downloads/) reference compounds.*
 
+### General Overview
+
 - ⏱ **Avg time to generate 50 valid samples**: 11.46 sec (NVIDIA H100)
 - ⚡️ **Generation speed**: 4.18 valid molecules/sec
-- 💾 **GPU memory (per generation thread)**: Up to 4.0 GB
+- 💾 **GPU memory (per generation thread)**: Up to 14.0 GB (`float16` 39 atoms 100 samples)
 - 📐 **Avg Shape Tanimoto Similarity**: 53.32%
 - 🎯 **Max Shape Tanimoto Similarity**: 99.69%
 - 🔬 **Avg Chemical Tanimoto Similarity (2-hop 2048-bit Morgan Fingerprints)**: 10.87%
@@ -118,6 +120,35 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
   - To ChEMBL: 4.13  
   - To PubChem: 2.64  
   - To ZINC (250k): 4.95
+
+### PoseBusters [[5]](https://doi.org/10.1039/D3SC04185A) validity check results:
+
+**Overall stats**:
+
+  - PB-valid molecules: **91.33 %**
+
+**Detailed Problems**:
+
+   - position: 0.01 %
+   - mol_pred_loaded: 0.0 %
+   - sanitization: 0.01 %
+   - inchi_convertible: 0.01 %
+   - all_atoms_connected: 0.0 %
+   - bond_lengths: 0.24 %
+   - bond_angles: 0.70 %
+   - internal_steric_clash: 2.31 %
+   - aromatic_ring_flatness: 3.34 %
+   - non-aromatic_ring_non-flatness: 0.27 %
+
+### Synthesizability of the generated compounds
+
+#### SA Score [[6]](https://doi.org/10.1186/1758-2946-1-8)
+
+*1 (easy to make) - 10 (very difficult to make)*
+
+**Average SA Score**: **3.18**
+
+![sa_score](https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/benchmarks/sa_score_dist.png)
 
 ---
 
