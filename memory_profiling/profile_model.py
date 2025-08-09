@@ -1,18 +1,16 @@
 import csv
 import random
+from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import torch
 from mlconfgen import MLConformerGenerator
 from mlconfgen.utils.config import CONTEXT_NORMS
 from mlconfgen.utils.mol_utils import prepare_adj_mat_seer_input
 from rdkit import Chem
-from torchinfo import summary
-from torchinfo import ModelStatistics
+from torchinfo import ModelStatistics, summary
 from tqdm import tqdm
-import numpy as np
-
-import pandas as pd
-from pathlib import Path
 
 
 def get_total_bytes(model_stats: ModelStatistics) -> int:
@@ -174,7 +172,7 @@ def profile_model(
 
     reader = Chem.SDMolSupplier(base_path / sample_mols)
     n_atoms_range = range(min_n_atoms, max_n_atoms + n_atoms_step, n_atoms_step)
-    mols = [x for x in reader if x.GetNumHeavyAtoms() in n_atoms_range ]
+    mols = [x for x in reader if x.GetNumHeavyAtoms() in n_atoms_range]
 
     with open(csv_report_path, mode="a+", newline="") as csvfile:
         fieldnames = [
@@ -187,7 +185,9 @@ def profile_model(
 
         writer.writeheader()
 
-        for n_samples in tqdm(range(min_n_samples, max_n_samples + n_samples_step, n_samples_step)):
+        for n_samples in tqdm(
+            range(min_n_samples, max_n_samples + n_samples_step, n_samples_step)
+        ):
             for i, n_atoms in enumerate(n_atoms_range):
                 egnn_total_bytes = profile_egnn(
                     model.generative_model,
@@ -221,12 +221,12 @@ def fit_profile(profile_csv: str):
     # Load CSV (assumes columns: x, y)
     df = pd.read_csv(profile_csv)
 
-    n_samples = df['n_samples'].to_numpy()
-    n_atoms = df['n_atoms'].to_numpy()
-    egnn_memory = df['egnn_memory_bytes'].to_numpy()
-    gcn_memory = df['adj_mat_seer_memory_bytes'].to_numpy()
+    n_samples = df["n_samples"].to_numpy()
+    n_atoms = df["n_atoms"].to_numpy()
+    egnn_memory = df["egnn_memory_bytes"].to_numpy()
+    gcn_memory = df["adj_mat_seer_memory_bytes"].to_numpy()
 
-    y = (egnn_memory + gcn_memory) / 1024 ** 2
+    y = (egnn_memory + gcn_memory) / 1024**2
 
     # GCN is linear vs n_samles * n_atoms^2
     x = n_samples * np.power(n_atoms, 2)
