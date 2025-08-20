@@ -61,21 +61,26 @@ def flatten_tartrate_mol(m: Chem.Mol) -> Chem.Mol:
 
 def md_minimize_energy(mol: Chem.Mol) -> Tuple[Chem.Mol, bool]:
     """
-    Run Constrained Energy minimisation with MMF94
+    Run Constrained Energy minimisation with MMFF94
     :param mol: input conformer
     :return: optimised conformer
     """
+    # Add Hydrogens for correct minimisation
+    mol = Chem.AddHs(mol, addCoords=True)
     # Prepare the MMFF properties and force field
     mmff_props = AllChem.MMFFGetMoleculeProperties(mol, mmffVariant="MMFF94")
     forcefield = AllChem.MMFFGetMoleculeForceField(mol, mmff_props, confId=0)
 
-    # Add position constraints to every heavy atom with a moderately large force constant
+    # Add loose position constraints to every atom
     for atom in mol.GetAtoms():
-        forcefield.MMFFAddPositionConstraint(atom.GetIdx(), 0.2, 800.0)
+        forcefield.MMFFAddPositionConstraint(atom.GetIdx(), 2.0, 20.0)
 
     # Initialize and minimize with limited steps
     forcefield.Initialize()
     res = forcefield.Minimize(maxIts=1000, energyTol=1e-08)
+
+    # Remove Hydrogens after minimisation
+    mol = Chem.RemoveHs(mol)
 
     return mol, res
 
