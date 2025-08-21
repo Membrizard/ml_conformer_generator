@@ -79,7 +79,7 @@ def md_minimize_energy(mol: Chem.Mol) -> Tuple[Chem.Mol, bool]:
     forcefield.Initialize()
     res = forcefield.Minimize(maxIts=1000, energyTol=1e-08)
 
-    # Remove Hydrogens after minimisation
+    # Remove Hydrogens after energy minimisation
     mol = Chem.RemoveHs(mol)
 
     return mol, res
@@ -104,9 +104,7 @@ def standardize_mol(mol: Chem.Mol, optimize_geometry: bool = True) -> Chem.Mol:
         Chem.SanitizeMol(m)
 
         if optimize_geometry:
-            m = Chem.AddHs(m, addCoords=True)
             std_mol, _ = md_minimize_energy(m)
-            std_mol = Chem.RemoveHs(std_mol)
         else:
             std_mol = m
 
