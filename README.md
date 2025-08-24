@@ -1,4 +1,5 @@
 # ML Conformer Generator
+[![DOI](https://img.shields.io/badge/DOI-10.1039%2FD5DD00318K-blue)](https://doi.org/10.1039/D5DD00318K)
 
 <img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/logo/mlconfgen_logo.png" width="200" style="display: block; margin: 0 10%;">
 
@@ -23,6 +24,14 @@ that are both chemically valid and spatially similar to a reference shape.
 
     Fix specific substructures or fragments within a molecule and complete or grow the rest in a geometrically consistent manner.
 
+## Citation
+
+If you use **MLConfGen** in your research, please cite:
+
+Denis Sapegin, Fedor Bakharev, Dmitry Krupenya, Azamat Gafurov, Konstantin Pildish, and Joseph C. Bear.  
+*Moment of inertia as a simple shape descriptor for diffusion-based shape-constrained molecular generation.*  
+Digital Discovery, 2025.
+DOI: [10.1039/D5DD00318K](https://doi.org/10.1039/D5DD00318K)
 
 ---
 ## Installation
