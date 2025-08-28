@@ -125,7 +125,6 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 - 🧬 **% Chemically novel (vs. training set)**: 99.84%
 - ✔️ **% Valid molecules (post-standardization)**: 48%
 - 🔁 **% Unique molecules in generated set**: 99.94%
-- ⚡ **Average Strain (MMFF94)**: 2.36 kcal / mol
 - 📎 **Fréchet Fingerprint Distance (2-hop 2048-bit Morgan Fingerprints)**:  
   - To ChEMBL: 4.13  
   - To PubChem: 2.64  
