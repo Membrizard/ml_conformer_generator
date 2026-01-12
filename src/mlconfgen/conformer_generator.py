@@ -56,9 +56,9 @@ class MLConformerGenerator(torch.nn.Module):
 
         self.dimension = dimension
 
-        self.context_norms = {
-            key: torch.tensor(value) for key, value in context_norms.items()
-        }
+        # self.context_norms = {
+        #     key: torch.tensor(value) for key, value in context_norms.items()
+        # }
 
         self.atom_decoder = atom_decoder
 
@@ -87,6 +87,21 @@ class MLConformerGenerator(torch.nn.Module):
             num_bond_types=num_bond_types,
             device=device,
         )
+
+        gm_state_dict = torch.load(
+                edm_weights,
+                map_location=device,
+            )
+
+        # TODO: Improve logic,If model weights have context norms inside go with them, else set default
+        if "context_norms" in gm_state_dict:
+            self.context_norms = {
+                key: torch.tensor(value) for key, value in gm_state_dict["context_norms"].items()
+            }
+        else:
+            self.context_norms = {
+                key: torch.tensor(value) for key, value in context_norms.items()
+            }
 
         generative_model.load_state_dict(
             torch.load(

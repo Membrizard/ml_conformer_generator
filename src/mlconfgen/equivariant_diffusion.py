@@ -545,18 +545,18 @@ class EquivariantDiffusion(torch.nn.Module):
 
         n_samples, n_nodes, _ = node_mask.size()
 
-        # Forward diffuse the full structure
-        s_array_0 = torch.full(
-            [n_samples, 1], fill_value=diffusion_level, device=z_known.device
-        )
-        s_array_0 = s_array_0 / self.T
-        gamma_s = self.gamma(s_array_0)
-        alpha_s = self.alpha(gamma_s, z_known)
-        sigma_s = self.sigma(gamma_s, z_known)
-
-        eps = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
-        z_noised = alpha_s * z_known + sigma_s * eps
-        z = z_noised
+        # Forward diffuse the full structure, as investigated, works a bit worse than direct z_known seed.
+        # s_array_0 = torch.full(
+        #     [n_samples, 1], fill_value=diffusion_level, device=z_known.device
+        # )
+        # s_array_0 = s_array_0 / self.T
+        # gamma_s = self.gamma(s_array_0)
+        # alpha_s = self.alpha(gamma_s, z_known)
+        # sigma_s = self.sigma(gamma_s, z_known)
+        #
+        # eps = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
+        # z_noised = alpha_s * z_known + sigma_s * eps
+        z = z_known
 
         for s in self.time_steps:
             if s > diffusion_level:
@@ -601,6 +601,69 @@ class EquivariantDiffusion(torch.nn.Module):
                     + (1 - blend) * z * fixed_mask
                     + z * (1 - fixed_mask)
                 )
+
+        # Decode
+        x, h = self.sample_p_xh_given_z0(z, node_mask, edge_mask, context)
+        return x, h
+
+    def ifm_merge_fragments(
+        self,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+        context: torch.Tensor,
+        z_seed: torch.Tensor,
+        diffusion_level: int = 50,
+        resample_steps: int = 1,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Merges fragments, while allowing them to be adjusted by the model.
+        Inference
+
+        :param node_mask: node mask tensor
+        :param edge_mask: edge mask tensor
+        :param context: batched context for generation
+        :param z_seed: latent representation of unmerged fragments
+        :param diffusion_level: a depth of diffusion to be applied during merging
+        :param resample_steps: number of resampling steps for harmonisation
+        :return: generated samples in tensor representation
+        """
+        if resample_steps < 1:
+            resample_steps = 1
+
+        n_samples, n_nodes, _ = node_mask.size()
+
+        # Works better without forward Diffusion!
+        z = z_seed
+
+        for s in self.time_steps:
+            if s > diffusion_level:
+                continue
+
+            s_array = torch.full([n_samples, 1], fill_value=s, device=z.device)
+            t_array = s_array + 1.0
+            s_array = s_array / self.T
+            t_array = t_array / self.T
+
+            # Polynomial blending
+
+            for _ in range(resample_steps):
+                z = self.sample_p_zs_given_zt(
+                    s_array,
+                    t_array,
+                    z,
+                    node_mask,
+                    edge_mask,
+                    context,
+                )
+
+            z = self.sample_p_zs_given_zt(
+                s_array,
+                t_array,
+                z,
+                node_mask,
+                edge_mask,
+                context,
+            )
 
         # Decode
         x, h = self.sample_p_xh_given_z0(z, node_mask, edge_mask, context)
