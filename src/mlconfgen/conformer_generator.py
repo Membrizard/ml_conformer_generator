@@ -245,12 +245,12 @@ class MLConformerGenerator(torch.nn.Module):
                     max_n_nodes=max_n_nodes,
                 )
 
-                x, h = self.generative_model.merge_fragments(
+                x, h = self.generative_model.merge_fragments_with_injection(
                     node_mask=node_mask,
                     edge_mask=edge_mask,
                     fixed_mask=fixed_mask,
                     context=batch_context,
-                    z_known=z_known,
+                    z_seed=z_known,
                     diffusion_level=ifm_diffusion_level,  # light noise only
                     resample_steps=resample_steps,
                     blend_power=blend_power,
