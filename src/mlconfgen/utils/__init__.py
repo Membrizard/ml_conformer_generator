@@ -16,8 +16,10 @@ from .onnx_utils import (coord_to_pf_batched_onnx, get_context_shape_onnx,
                          prepare_edm_input_onnx, prepare_fragment_onnx,
                          redefine_bonds_onnx, samples_to_rdkit_mol_onnx)
 from .standardizer import standardize_mol
+from .mol_split import split_molecule_size_constrained, extract_fragment
 
 __all__ = [
+    "extract_fragment",
     "samples_to_rdkit_mol",
     "samples_to_rdkit_mol_onnx",
     "set_conformer_positions",
@@ -26,12 +28,14 @@ __all__ = [
     "coord_to_pf_batched_onnx",
     "get_context_shape",
     "get_context_shape_onnx",
+    "get_moment_of_inertia_tensor",
     "prepare_adj_mat_seer_input",
     "prepare_adj_mat_seer_input_onnx",
     "prepare_edm_input",
     "prepare_edm_input_onnx",
     "prepare_fragment",
     "prepare_fragment_onnx",
+    "prepare_masks",
     "ifm_prepare_gen_fragment_context",
     "ifm_prepare_gen_fragment_context_onnx",
     "ifm_prepare_fragments_for_merge",

@@ -1,9 +1,9 @@
 from rdkit import Chem
-from rdkit.Chem import Draw
-from IPython.display import display
+from typing import Iterable
 
 MIN_SIZE_DEFAULT = 6
 MAX_SIZE_DEFAULT = 20
+
 
 def find_cuttable_bonds(mol):
     """Single, non-ring bonds only."""
@@ -201,7 +201,7 @@ def _submol_from_atom_set(mol, atom_set):
     return frag
 
 
-def partition_molecule_size_constrained(
+def split_molecule_size_constrained(
     mol,
     min_size=MIN_SIZE_DEFAULT,
     max_size=MAX_SIZE_DEFAULT,
@@ -252,7 +252,7 @@ def partition_molecule_size_constrained(
             print("No further merges/splits possible; stopping.")
         break
 
-    frag_mols = [_submol_from_atom_set(mol, s) for s in fragments]
+    # frag_mols = [_submol_from_atom_set(mol, s) for s in fragments]
     final_sizes = [len(s) for s in fragments]
 
     if verbose and not all(min_size <= s <= max_size for s in final_sizes):
@@ -261,4 +261,46 @@ def partition_molecule_size_constrained(
             f"{final_sizes}"
         )
 
-    return fragments, frag_mols
+    return fragments
+
+
+def extract_fragment(mol: Chem.Mol, atom_indices: Iterable[int]) -> Chem.Mol:
+    """
+    Extract a Fragment of a Molecule object as a Chem.Mol object based on selected atom indexes
+    """
+    keep = sorted(set(int(i) for i in atom_indices))
+
+    n = mol.GetNumAtoms()
+    if keep[0] < 0 or keep[-1] > n:
+        raise IndexError(f"atom index out of range (0..{n - 1}): {keep}")
+
+    keep_set = set(keep)
+
+    # Map old atom idx -> new atom idx
+    rw = Chem.RWMol()
+    old2new = {}
+    for old_i in keep:
+        # Copy the atom object to preserve charge/isotope/aromaticity/etc.
+        new_i = rw.AddAtom(Chem.Atom(mol.GetAtomWithIdx(old_i)))
+        old2new[old_i] = new_i
+
+    # Add bonds that connect kept atoms
+    for b in mol.GetBonds():
+        a, c = b.GetBeginAtomIdx(), b.GetEndAtomIdx()
+        if a in keep_set and c in keep_set:
+            rw.AddBond(old2new[a], old2new[c], b.GetBondType())
+            nb = rw.GetBondBetweenAtoms(old2new[a], old2new[c])
+            nb.SetIsAromatic(b.GetIsAromatic())
+
+    out = rw.GetMol()
+
+    # Copy coordinates for EACH conformer
+    out.RemoveAllConformers()
+    for conf in mol.GetConformers():
+        new_conf = Chem.Conformer(len(keep))
+        new_conf.Set3D(conf.Is3D())
+        for old_i in keep:
+            new_conf.SetAtomPosition(old2new[old_i], conf.GetAtomPosition(old_i))
+        out.AddConformer(new_conf, assignId=True)
+
+    return out
