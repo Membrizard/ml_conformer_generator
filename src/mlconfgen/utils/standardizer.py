@@ -112,3 +112,37 @@ def standardize_mol(mol: Chem.Mol, optimize_geometry: bool = True) -> Chem.Mol:
         std_mol = None
 
     return std_mol
+
+
+# IFM-specific Standardisation DEBUG, if we find more than one fragment - return None
+
+def ifm_standardize_mol(mol: Chem.Mol, optimize_geometry: bool = True) -> Chem.Mol:
+    """
+    Molecule Standardization
+    :param mol: input conformer
+    :param optimize_geometry: if MMFF94 optimisation is required
+    :return: standardized conformer
+    """
+    try:
+        # If we have unconnected fragments - return None
+        frags = Chem.GetMolFrags(mol, asMols=False, sanitizeFrags=False)
+        if len(frags) > 1:
+            return None
+        # m = rdMolStandardize.FragmentParent(mol)
+        # Kekulize
+        Chem.Kekulize(mol)
+        # Flatten Tartrates
+        m = flatten_tartrate_mol(mol)
+
+        # Sanitise
+        Chem.SanitizeMol(m)
+
+        if optimize_geometry:
+            std_mol, _ = md_minimize_energy(m)
+        else:
+            std_mol = m
+
+    except:
+        std_mol = None
+
+    return std_mol

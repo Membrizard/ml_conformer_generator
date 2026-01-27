@@ -10,9 +10,48 @@ from .utils import (
                     samples_to_rdkit_mol,
                     prepare_masks,
                     get_moment_of_inertia_tensor,
-
+                    standardize_mol,
+                    ifm_standardize_mol,
                     )
 from .cheminformatics.pipeline import set_conformer_positions, rotate_coord, tanimoto_score
+from openbabel import openbabel
+
+
+def strip_mol(mol: Chem.Mol) -> Chem.Mol:
+    rw = Chem.RWMol()
+    for a in mol.GetAtoms():
+        rw.AddAtom(Chem.Atom(a.GetAtomicNum()))
+    conf_in = mol.GetConformer(0)
+    conf_out = Chem.Conformer(mol.GetNumAtoms())
+    conf_out.SetPositions(conf_in.GetPositions())
+    rw.AddConformer(conf_out, assignId=True)
+    for b in mol.GetBonds():
+        rw.AddBond(b.GetBeginAtomIdx(), b.GetEndAtomIdx(), b.GetBondType())
+    out = rw.GetMol()
+
+    return out
+
+
+def predict_bonds_openbabel(mol: Chem.Mol, optimize_geometry: bool = True) -> Chem.Mol:
+    ob_conv = openbabel.OBConversion()
+    ob_conv.SetInAndOutFormats("xyz", "mol")
+    obmol = openbabel.OBMol()
+    xyz_block = Chem.MolToXYZBlock(mol)
+    ob_conv.ReadString(obmol, xyz_block)
+
+    obmol.ConnectTheDots()
+    obmol.PerceiveBondOrders()
+
+    mol_block = ob_conv.WriteString(obmol)
+    raw_mol = Chem.MolFromMolBlock(mol_block)
+    if raw_mol:
+        out_mol = strip_mol(raw_mol)
+        out_mol = ifm_standardize_mol(mol=out_mol, optimize_geometry=optimize_geometry)
+    else:
+        out_mol = None
+
+
+    return out_mol
 
 
 def inertial_fragment_matching(ref_mol,  # Reference rdkit Mol
