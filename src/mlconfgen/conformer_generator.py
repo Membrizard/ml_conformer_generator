@@ -26,7 +26,7 @@ class MLConformerGenerator(torch.nn.Module):
     def __init__(
         self,
         diffusion_steps: int = 100,
-        device: torch.device = torch.device("cpu"),
+        device: torch.device | str = torch.device("cpu"),
         dimension: int = DIMENSION,
         num_bond_types: int = NUM_BOND_TYPES,
         min_n_nodes: int = MIN_N_NODES,
