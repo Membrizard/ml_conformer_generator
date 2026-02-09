@@ -142,7 +142,7 @@ def inertial_fragment_matching(ref_mol,  # Reference rdkit Mol
 
     # Compute Total Edge Mask
     total_edge_mask = helper_node_mask.unsqueeze(1) * helper_node_mask.unsqueeze(2)
-    diag_mask = ~torch.eye(total_edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
+    diag_mask = ~torch.eye(total_edge_mask.size(1), dtype=torch.bool, device=device).unsqueeze(0)
     total_edge_mask *= diag_mask
     total_edge_mask = total_edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1)
 
@@ -165,15 +165,16 @@ def inertial_fragment_matching(ref_mol,  # Reference rdkit Mol
     coord_for_merge = []
 
     for i, frag_coord in enumerate(x_fragments):
-        batch_shift = fragment_shifts[i].unsqueeze(0).expand(n_samples, -1)
-        batch_rot = fragment_rotations[i].transpose(0, 1).unsqueeze(0).expand(n_samples, 3, -1)
+        batch_shift = fragment_shifts[i].unsqueeze(0).expand(n_samples, -1).to(device)
+        batch_rot = fragment_rotations[i].transpose(0, 1).unsqueeze(0).expand(n_samples, 3, -1).to(device)
 
         # Align generated fragments to principal frame to maximize ref fragment volume overlay
         aligned_x = []
+        frag_coord = frag_coord.to('cpu')
         for old_x in frag_coord:
             aligned_x.append(align_coord(ref_fragment_coords[i], old_x))
 
-        aligned_x = torch.stack(aligned_x, dim=0)
+        aligned_x = torch.stack(aligned_x, dim=0).to(device)
 
         new_x = inverse_coord_transform(coord=aligned_x,
                                         shift=batch_shift,
@@ -187,7 +188,7 @@ def inertial_fragment_matching(ref_mol,  # Reference rdkit Mol
     merged_x = concat_masked_and_pad(coord_for_merge, node_masks, pad_to=max_n_atoms_final)
     merged_h = concat_masked_and_pad(h_fragments, node_masks, pad_to=max_n_atoms_final)
 
-    z_seed = torch.cat([merged_x, merged_h], dim=2)
+    z_seed = torch.cat([merged_x, merged_h], dim=2).to(device)
 
     # Here we prepare masks as for normal generation
     merging_node_mask, merging_edge_mask, batch_ref_context = prepare_edm_input(
@@ -255,8 +256,6 @@ def align_coord(ref_coord, cand_coord):
     # move coord to center
     virtual_com = torch.mean(cand_coord, dim=0)
     ref_coord = ref_coord - virtual_com
-
-    shift = - virtual_com
 
     # Get Coords in Principal Frame
     ref_context, aligned_coord, rotation = ifm_get_context_shape(cand_coord)
