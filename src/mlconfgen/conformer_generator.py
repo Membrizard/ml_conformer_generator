@@ -211,7 +211,7 @@ class MLConformerGenerator(torch.nn.Module):
                     resample_steps,
                 )
 
-                # Re-align generated fragment coordinates to principal frames
+                # Re-align generated fragment coordinates to principal frames after generation
                 x_gen_frag = coord_to_pf_batched(x_gen_frag * frag_node_mask)
 
                 # Inverse transformations applied to the coordinates of generated fragments

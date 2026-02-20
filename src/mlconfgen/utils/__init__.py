@@ -32,6 +32,7 @@ from .onnx_utils import (
     prepare_fragment_onnx,
     redefine_bonds_onnx,
     samples_to_rdkit_mol_onnx,
+    coord_to_pf_batched_onnx,
 )
 from .standardizer import standardize_mol
 
@@ -41,6 +42,7 @@ __all__ = [
     "set_conformer_positions",
     "apply_transform",
     "coord_to_pf_batched",
+    "coord_to_pf_batched_onnx",
     "get_context_shape",
     "get_context_shape_onnx",
     "prepare_adj_mat_seer_input",

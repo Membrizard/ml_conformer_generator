@@ -536,7 +536,7 @@ def inverse_coord_transform(
     return x_translated
 
 
-def apply_transform(coord: torch.Tensor, shift: torch.Tensor, rotation: torch.Tensor) -> torch.Tensor:
+def apply_transform(coord, shift, rotation):
     """
     Apply Translation -> Rotation transform to a set of coordinates
     :param coord: Coordinates
@@ -545,7 +545,7 @@ def apply_transform(coord: torch.Tensor, shift: torch.Tensor, rotation: torch.Te
     :returns: Transformed coordinates
     """
     coord_shifted = coord + shift
-    coord_transformed = torch.matmul(coord_shifted.to(torch.float32), rotation)
+    coord_transformed = coord_shifted @ rotation
     return coord_transformed
 
 
@@ -601,12 +601,10 @@ def get_moment_of_inertia_tensor_batched(
     coord: torch.Tensor, weights: torch.Tensor
 ) -> torch.Tensor:
     """
-    coord:
-      - (B, N, 3)
-    weights:
-      - (B, N)
-    returns:
-      -(B,3,3)
+    Computes Moment of inertia tensor for a batch of coordinates.
+    :param coord: (B, N, 3)
+    :param weights: (B, N)
+    :return: (B,3,3)
     """
     coord = coord.to(torch.float32)
     weights = weights.to(coord.dtype)
@@ -623,8 +621,8 @@ def get_moment_of_inertia_tensor_batched(
     i_xz = -(weights * (x * z)).sum(dim=1)
     i_yz = -(weights * (y * z)).sum(dim=1)
 
-    B = coord.shape[0]
-    moi = coord.new_zeros((B, 3, 3))
+    batch_size = coord.shape[0]
+    moi = coord.new_zeros((batch_size, 3, 3))
     moi[:, 0, 0] = i_xx
     moi[:, 1, 1] = i_yy
     moi[:, 2, 2] = i_zz
