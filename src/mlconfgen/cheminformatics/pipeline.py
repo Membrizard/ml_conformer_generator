@@ -3,8 +3,8 @@ import torch
 from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
-from ..utils import set_conformer_positions
 
+from ..utils import set_conformer_positions
 from .shape_similarity import (get_shape_quadrupole_for_molecule, rotate_coord,
                                tanimoto_score)
 

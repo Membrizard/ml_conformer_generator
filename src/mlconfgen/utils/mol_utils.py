@@ -5,7 +5,6 @@ from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 from rdkit.Geometry import Point3D
 
-
 from .config import DIMENSION
 from .molgraph import MolGraph
 
@@ -574,8 +573,6 @@ def shift_moi_to_com_batch(
 
     return moi_origin - shift  # (B, 3, 3)
 
-
-# TODO: New
 
 def coord_to_pf_batched(coord: torch.Tensor) -> torch.Tensor:
     """

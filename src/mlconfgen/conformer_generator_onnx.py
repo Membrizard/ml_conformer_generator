@@ -5,15 +5,15 @@ from rdkit import Chem
 
 from .equivariant_diffusion_onnx import EquivariantDiffusionONNX
 from .utils import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
-                    MIN_N_NODES, get_context_shape_onnx,
-                    ifm_get_xh_from_fragment_onnx,
+                    MIN_N_NODES, apply_transform, coord_to_pf_batched_onnx,
+                    get_context_shape_onnx, ifm_get_xh_from_fragment_onnx,
                     ifm_prepare_fragments_for_merge_onnx,
                     ifm_prepare_gen_fragment_context_onnx,
                     inverse_coord_transform_onnx,
                     prepare_adj_mat_seer_input_onnx, prepare_edm_input_onnx,
                     prepare_fragment_onnx, redefine_bonds_onnx,
-                    samples_to_rdkit_mol_onnx, standardize_mol, set_conformer_positions, apply_transform,
-                    coord_to_pf_batched_onnx)
+                    samples_to_rdkit_mol_onnx, set_conformer_positions,
+                    standardize_mol)
 
 
 class MLConformerGeneratorONNX:
@@ -131,7 +131,9 @@ class MLConformerGeneratorONNX:
                 # Prepare context for generation of individual fragments
                 n_nodes = np.sum(node_mask, axis=1).astype(np.int64)
 
-                fixed_fragment_x, fixed_fragment_h = ifm_get_xh_from_fragment_onnx(fixed_fragment=fixed_fragment)
+                fixed_fragment_x, fixed_fragment_h = ifm_get_xh_from_fragment_onnx(
+                    fixed_fragment=fixed_fragment
+                )
 
                 (
                     frag_node_mask,
@@ -251,14 +253,18 @@ class MLConformerGeneratorONNX:
             virtual_com = np.mean(ref_coord, axis=0)
             ref_coord = ref_coord - virtual_com
 
-            ref_context, _, rotation = get_context_shape_onnx(ref_coord, include_rotation=True)
+            ref_context, _, rotation = get_context_shape_onnx(
+                ref_coord, include_rotation=True
+            )
 
             if fixed_fragment:
                 # Apply the Reference Transformation to Fixed fragment to keep consistency
                 ff_conf = fixed_fragment.GetConformer()
                 ff_coord = np.array(ff_conf.GetPositions(), dtype=np.float32)
                 ff_coord_ref_aligned = apply_transform(ff_coord, -virtual_com, rotation)
-                fixed_fragment = set_conformer_positions(fixed_fragment, ff_coord_ref_aligned)
+                fixed_fragment = set_conformer_positions(
+                    fixed_fragment, ff_coord_ref_aligned
+                )
 
         elif reference_context is not None:
             if n_atoms:

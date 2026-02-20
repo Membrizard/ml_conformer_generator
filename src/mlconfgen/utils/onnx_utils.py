@@ -445,7 +445,9 @@ def distance_matrix(coordinates: np.ndarray) -> np.ndarray:
     return dist_matrix
 
 
-def get_context_shape_onnx(coord: np.ndarray, include_rotation: bool = False) -> Tuple[np.ndarray, np.ndarray] | Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def get_context_shape_onnx(
+    coord: np.ndarray, include_rotation: bool = False
+) -> Tuple[np.ndarray, np.ndarray] | Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Finds the principal axes for the conformer,
     and calculates Moment of Inertia tensor for the conformer in principal axes.
@@ -703,15 +705,15 @@ def coord_to_pf_batched_onnx(coord: np.ndarray) -> np.ndarray:
     # (N,) weights like torch.ones(coord.shape[-2])
     weights = np.ones(coord.shape[-2], dtype=np.float32)
 
-    coord_b_f = coord.astype(np.float32, copy=False)   # (B, N, 3)
-    com_b = coord_b_f.mean(axis=1, keepdims=True)      # (B, 1, 3)
-    coord_b_f = coord_b_f - com_b                      # center coordinates
+    coord_b_f = coord.astype(np.float32, copy=False)  # (B, N, 3)
+    com_b = coord_b_f.mean(axis=1, keepdims=True)  # (B, 1, 3)
+    coord_b_f = coord_b_f - com_b  # center coordinates
 
     # must return (B, 3, 3)
     moi = get_moment_of_inertia_tensor_batched_onnx(coord_b_f, weights)
 
     # NumPy: eigh returns (eigenvalues, eigenvectors), eigenvectors are columns
-    _, eigenvectors = np.linalg.eigh(moi)              # (B, 3, 3)
+    _, eigenvectors = np.linalg.eigh(moi)  # (B, 3, 3)
 
     # Batched matmul: (B, N, 3) @ (B, 3, 3) -> (B, N, 3)
     rotated = coord_b_f @ eigenvectors
