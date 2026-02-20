@@ -496,7 +496,7 @@ def get_moment_of_inertia_tensor_onnx(
 
 
 def ifm_get_xh_from_fragment_onnx(
-    fixed_fragment: Chem.Mol
+    fixed_fragment: Chem.Mol,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Get coordinates and atom types as tensors for a fragment torch-free
@@ -582,9 +582,7 @@ def ifm_prepare_gen_fragment_context_onnx(
 
     # Diagonalize MOI of generated fragment
     frag_context, rotation = np.linalg.eigh(moi_gen_com)  # (B, 3), (B, 3, 3)
-    normed_frag_context = (
-        (frag_context - context_norms["mean"]) / context_norms["mad"]
-    )
+    normed_frag_context = (frag_context - context_norms["mean"]) / context_norms["mad"]
 
     max_n_nodes_frag = max_n_nodes - ff_n_atoms
 
@@ -597,7 +595,8 @@ def ifm_prepare_gen_fragment_context_onnx(
     )
 
     batched_normed_frag_context = (
-            np.repeat(normed_frag_context[:, None, :], max_n_nodes_frag, axis=1) * frag_node_mask
+        np.repeat(normed_frag_context[:, None, :], max_n_nodes_frag, axis=1)
+        * frag_node_mask
     )
 
     return frag_node_mask, frag_edge_mask, batched_normed_frag_context, shift, rotation
@@ -664,12 +663,12 @@ def shift_moi_to_com_batch_onnx(
 
     r = r_coms.reshape(batch_size, 3, 1)  # (B, 3, 1)
     r_outer = np.matmul(r, np.transpose(r, (0, 2, 1)))  # (B, 3, 3)
-    r_norm_sq = np.sum(r_coms ** 2, axis=1).reshape(batch_size, 1, 1)  # (B, 1, 1)
+    r_norm_sq = np.sum(r_coms**2, axis=1).reshape(batch_size, 1, 1)  # (B, 1, 1)
 
     masses = masses.reshape(batch_size, 1, 1)  # (B, 1, 1)
     shift = masses * (r_norm_sq * i_3 - r_outer)  # (B, 3, 3)
 
-    return moi_origin - shift   # (B, 3, 3)
+    return moi_origin - shift  # (B, 3, 3)
 
 
 def inverse_coord_transform_onnx(

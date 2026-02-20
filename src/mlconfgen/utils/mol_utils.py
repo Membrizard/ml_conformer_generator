@@ -3,6 +3,8 @@ from typing import List, Tuple
 import torch
 from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
+from rdkit.Geometry import Point3D
+
 
 from .config import DIMENSION
 from .molgraph import MolGraph
@@ -85,13 +87,19 @@ def get_moment_of_inertia_tensor(
     return moi_tensor
 
 
-def get_context_shape(coord: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+def get_context_shape(
+    coord: torch.Tensor, include_rotation: bool = False
+) -> (
+    Tuple[torch.Tensor, torch.Tensor] | Tuple[torch.Tensor, torch.Tensor, torch.Tensor]
+):
     """
     Finds the principal axes for the conformer,
     and calculates Moment of Inertia tensor for the conformer in principal axes.
     All atom masses are considered equal to one, to capture shape only.
     :param coord: initial coordinates of the atoms
-    :return: Principal components of MOI tensor, and coordinates rotated to a principal frame as a tuple of tensors
+    :param include_rotation: bool flag, if True rotation (eigenvectors) applied to coord is returned
+    :return: Principal components of MOI tensor, and coordinates rotated to a principal frame as a tuple of tensors,
+    and optionally the rotation matrix applied
     """
     masses = torch.ones(coord.size(0))
     moi_tensor = get_moment_of_inertia_tensor(coord, masses)
@@ -104,7 +112,10 @@ def get_context_shape(coord: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
     # Get the three main moments of inertia from the main diagonal
     context = torch.diag(get_moment_of_inertia_tensor(rotated_points, masses))
 
-    return context, rotated_points
+    if include_rotation:
+        return context, rotated_points, eigenvectors
+    else:
+        return context, rotated_points
 
 
 def canonicalise(mol: Chem.Mol) -> Chem.Mol:
@@ -382,7 +393,7 @@ def ifm_prepare_gen_fragment_context(
     """
     Prepare Contexts for Generation of Individual Fragments based on Reference and Fixed Fragment MOI tensors.
     Fixed Fragment should be expressed in the same coordinate system as the reference, The origin of such coordinate
-    system should be place in the COM of the Reference.
+    system should be placed in the COM of the Reference.
 
     :param fixed_fragment_x:  coordinates of the fixed fragment atoms
     :param reference_context: Principal components of MOI Tensor of the reference shape (3)
@@ -435,6 +446,7 @@ def ifm_prepare_gen_fragment_context(
 
     # Diagonalize MOI of generated fragment
     frag_context, rotation = torch.linalg.eigh(moi_gen_com)  # (B, 3), (B, 3, 3)
+
     normed_frag_context = (
         (frag_context - context_norms["mean"]) / context_norms["mad"]
     ).to(device)
@@ -524,6 +536,19 @@ def inverse_coord_transform(
     return x_translated
 
 
+def apply_transform(coord: torch.Tensor, shift: torch.Tensor, rotation: torch.Tensor) -> torch.Tensor:
+    """
+    Apply Translation -> Rotation transform to a set of coordinates
+    :param coord: Coordinates
+    :param shift: Shift (Translation) matrix
+    :param rotation: Rotation matrix
+    :returns: Transformed coordinates
+    """
+    coord_shifted = coord + shift
+    coord_transformed = torch.matmul(coord_shifted.to(torch.float32), rotation)
+    return coord_transformed
+
+
 def shift_moi_to_com_batch(
     moi_origin: torch.Tensor, r_coms: torch.Tensor, masses: torch.Tensor
 ) -> torch.Tensor:
@@ -548,3 +573,73 @@ def shift_moi_to_com_batch(
     shift = shift.to(moi_origin.device)
 
     return moi_origin - shift  # (B, 3, 3)
+
+
+# TODO: New
+
+def coord_to_pf_batched(coord: torch.Tensor) -> torch.Tensor:
+    """
+    Puts a batch of coordinates to their principal inertial frame
+    :param coord: (B, N, 3) coordinates batched
+    :return: (B, N, 3) coordinates in pf batched
+    """
+
+    weights = torch.ones(coord.shape[-2], device=coord.device)
+    coord_b_f = coord.to(torch.float32)
+    com_b = coord_b_f.mean(dim=1, keepdim=True)
+    coord_b_f = coord_b_f - com_b
+    moi = get_moment_of_inertia_tensor_batched(coord_b_f, weights)  # (B,3,3)
+
+    _, eigenvectors = torch.linalg.eigh(moi)
+
+    rotated = torch.matmul(coord_b_f, eigenvectors)
+
+    return rotated
+
+
+def get_moment_of_inertia_tensor_batched(
+    coord: torch.Tensor, weights: torch.Tensor
+) -> torch.Tensor:
+    """
+    coord:
+      - (B, N, 3)
+    weights:
+      - (B, N)
+    returns:
+      -(B,3,3)
+    """
+    coord = coord.to(torch.float32)
+    weights = weights.to(coord.dtype)
+
+    x = coord[..., 0]  # (B, N)
+    y = coord[..., 1]
+    z = coord[..., 2]
+
+    i_xx = (weights * (y**2 + z**2)).sum(dim=1)  # (B,)
+    i_yy = (weights * (x**2 + z**2)).sum(dim=1)
+    i_zz = (weights * (x**2 + y**2)).sum(dim=1)
+
+    i_xy = -(weights * (x * y)).sum(dim=1)
+    i_xz = -(weights * (x * z)).sum(dim=1)
+    i_yz = -(weights * (y * z)).sum(dim=1)
+
+    B = coord.shape[0]
+    moi = coord.new_zeros((B, 3, 3))
+    moi[:, 0, 0] = i_xx
+    moi[:, 1, 1] = i_yy
+    moi[:, 2, 2] = i_zz
+
+    moi[:, 0, 1] = moi[:, 1, 0] = i_xy
+    moi[:, 0, 2] = moi[:, 2, 0] = i_xz
+    moi[:, 1, 2] = moi[:, 2, 1] = i_yz
+
+    return moi
+
+
+def set_conformer_positions(mol, coord):
+    conf = mol.GetConformer()
+    for i, point in enumerate(coord):
+        x, y, z = point.tolist()
+        conf.SetAtomPosition(i, Point3D(x, y, z))
+
+    return mol
