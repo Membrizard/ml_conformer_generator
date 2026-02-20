@@ -212,7 +212,6 @@ class MLConformerGenerator(torch.nn.Module):
                 )
 
                 # Re-align generated fragment coordinates to principal frames
-                print(x_gen_frag)
                 x_gen_frag = coord_to_pf_batched(x_gen_frag * frag_node_mask)
 
                 # Inverse transformations applied to the coordinates of generated fragments
@@ -314,12 +313,12 @@ class MLConformerGenerator(torch.nn.Module):
 
             ref_context, _, rotation = get_context_shape(ref_coord, include_rotation=True)
 
-            # if fixed_fragment:
-            #     # Apply the Reference Transformation to Fixed fragment for keeping consistency
-            #     ff_conf = fixed_fragment.GetConformer()
-            #     ff_coord = torch.tensor(ff_conf.GetPositions(), dtype=torch.float32)
-            #     ff_coord_ref_aligned = apply_transform(ff_coord, -virtual_com, rotation)
-            #     fixed_fragment = set_conformer_positions(fixed_fragment, ff_coord_ref_aligned)
+            if fixed_fragment:
+                # Apply the Reference Transformation to Fixed fragment to keep consistency
+                ff_conf = fixed_fragment.GetConformer()
+                ff_coord = torch.tensor(ff_conf.GetPositions(), dtype=torch.float32)
+                ff_coord_ref_aligned = apply_transform(ff_coord, -virtual_com, rotation)
+                fixed_fragment = set_conformer_positions(fixed_fragment, ff_coord_ref_aligned)
 
         elif reference_context is not None:
             if n_atoms:
