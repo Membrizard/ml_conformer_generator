@@ -445,12 +445,15 @@ def distance_matrix(coordinates: np.ndarray) -> np.ndarray:
     return dist_matrix
 
 
-def get_context_shape_onnx(coord: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def get_context_shape_onnx(
+    coord: np.ndarray, include_rotation: bool = False
+) -> Tuple[np.ndarray, np.ndarray] | Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Finds the principal axes for the conformer,
     and calculates Moment of Inertia tensor for the conformer in principal axes.
     All atom masses are considered equal to one, to capture shape only.
     :param coord: initial coordinates of the atoms
+    :param include_rotation: bool flag, if True rotation (eigenvectors) applied to coord is returned
     :return: Principal components of MOI tensor, and coordinates rotated to a principal frame as a tuple of ndarrays
     """
     masses = np.ones(coord.shape[0])
@@ -464,7 +467,10 @@ def get_context_shape_onnx(coord: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     # Get the three main moments of inertia from the main diagonal
     context = np.diag(get_moment_of_inertia_tensor_onnx(rotated_points, masses))
 
-    return context, rotated_points
+    if include_rotation:
+        return context, rotated_points, eigenvectors
+    else:
+        return context, rotated_points
 
 
 def get_moment_of_inertia_tensor_onnx(
@@ -496,7 +502,7 @@ def get_moment_of_inertia_tensor_onnx(
 
 
 def ifm_get_xh_from_fragment_onnx(
-    fixed_fragment: Chem.Mol
+    fixed_fragment: Chem.Mol,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Get coordinates and atom types as tensors for a fragment torch-free
@@ -582,9 +588,7 @@ def ifm_prepare_gen_fragment_context_onnx(
 
     # Diagonalize MOI of generated fragment
     frag_context, rotation = np.linalg.eigh(moi_gen_com)  # (B, 3), (B, 3, 3)
-    normed_frag_context = (
-        (frag_context - context_norms["mean"]) / context_norms["mad"]
-    )
+    normed_frag_context = (frag_context - context_norms["mean"]) / context_norms["mad"]
 
     max_n_nodes_frag = max_n_nodes - ff_n_atoms
 
@@ -597,7 +601,8 @@ def ifm_prepare_gen_fragment_context_onnx(
     )
 
     batched_normed_frag_context = (
-            np.repeat(normed_frag_context[:, None, :], max_n_nodes_frag, axis=1) * frag_node_mask
+        np.repeat(normed_frag_context[:, None, :], max_n_nodes_frag, axis=1)
+        * frag_node_mask
     )
 
     return frag_node_mask, frag_edge_mask, batched_normed_frag_context, shift, rotation
@@ -664,12 +669,12 @@ def shift_moi_to_com_batch_onnx(
 
     r = r_coms.reshape(batch_size, 3, 1)  # (B, 3, 1)
     r_outer = np.matmul(r, np.transpose(r, (0, 2, 1)))  # (B, 3, 3)
-    r_norm_sq = np.sum(r_coms ** 2, axis=1).reshape(batch_size, 1, 1)  # (B, 1, 1)
+    r_norm_sq = np.sum(r_coms**2, axis=1).reshape(batch_size, 1, 1)  # (B, 1, 1)
 
     masses = masses.reshape(batch_size, 1, 1)  # (B, 1, 1)
     shift = masses * (r_norm_sq * i_3 - r_outer)  # (B, 3, 3)
 
-    return moi_origin - shift   # (B, 3, 3)
+    return moi_origin - shift  # (B, 3, 3)
 
 
 def inverse_coord_transform_onnx(
@@ -689,3 +694,66 @@ def inverse_coord_transform_onnx(
     x_translated = x_rotated - shift.reshape(batch_size, 1, 3)
 
     return x_translated
+
+
+def coord_to_pf_batched_onnx(coord: np.ndarray) -> np.ndarray:
+    """
+    Puts a batch of coordinates to their principal inertial frame
+    :param coord: (B, N, 3) coordinates batched
+    :return: (B, N, 3) coordinates in pf batched
+    """
+    # (N,) weights like torch.ones(coord.shape[-2])
+    weights = np.ones(coord.shape[-2], dtype=np.float32)
+
+    coord_b_f = coord.astype(np.float32, copy=False)  # (B, N, 3)
+    com_b = coord_b_f.mean(axis=1, keepdims=True)  # (B, 1, 3)
+    coord_b_f = coord_b_f - com_b  # center coordinates
+
+    # must return (B, 3, 3)
+    moi = get_moment_of_inertia_tensor_batched_onnx(coord_b_f, weights)
+
+    # NumPy: eigh returns (eigenvalues, eigenvectors), eigenvectors are columns
+    _, eigenvectors = np.linalg.eigh(moi)  # (B, 3, 3)
+
+    # Batched matmul: (B, N, 3) @ (B, 3, 3) -> (B, N, 3)
+    rotated = coord_b_f @ eigenvectors
+
+    return rotated
+
+
+def get_moment_of_inertia_tensor_batched_onnx(
+    coord: np.ndarray, weights: np.ndarray
+) -> np.ndarray:
+    """
+    Computes Moment of inertia tensor for a batch of coordinates.
+    :param coord: (B, N, 3)
+    :param weights: (B, N) or (N,)
+    :return: (B, 3, 3)
+    """
+    coord = coord.astype(np.float32, copy=False)
+    weights = weights.astype(coord.dtype, copy=False)
+
+    x = coord[..., 0]  # (B, N)
+    y = coord[..., 1]
+    z = coord[..., 2]
+
+    i_xx = (weights * (y**2 + z**2)).sum(axis=1)  # (B,)
+    i_yy = (weights * (x**2 + z**2)).sum(axis=1)
+    i_zz = (weights * (x**2 + y**2)).sum(axis=1)
+
+    i_xy = -(weights * (x * y)).sum(axis=1)
+    i_xz = -(weights * (x * z)).sum(axis=1)
+    i_yz = -(weights * (y * z)).sum(axis=1)
+
+    batch_size = coord.shape[0]
+    moi = np.zeros((batch_size, 3, 3), dtype=coord.dtype)
+
+    moi[:, 0, 0] = i_xx
+    moi[:, 1, 1] = i_yy
+    moi[:, 2, 2] = i_zz
+
+    moi[:, 0, 1] = moi[:, 1, 0] = i_xy
+    moi[:, 0, 2] = moi[:, 2, 0] = i_xz
+    moi[:, 1, 2] = moi[:, 2, 1] = i_yz
+
+    return moi

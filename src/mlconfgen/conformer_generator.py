@@ -8,12 +8,13 @@ from .egnn import EGNNDynamics
 from .equivariant_diffusion import (EquivariantDiffusion,
                                     PredefinedNoiseSchedule)
 from .utils import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
-                    MIN_N_NODES, NUM_BOND_TYPES, get_context_shape,
+                    MIN_N_NODES, NUM_BOND_TYPES, apply_transform,
+                    coord_to_pf_batched, get_context_shape,
                     ifm_get_xh_from_fragment, ifm_prepare_fragments_for_merge,
                     ifm_prepare_gen_fragment_context, inverse_coord_transform,
                     prepare_adj_mat_seer_input, prepare_edm_input,
                     prepare_fragment, redefine_bonds, samples_to_rdkit_mol,
-                    standardize_mol)
+                    set_conformer_positions, standardize_mol)
 
 
 class MLConformerGenerator(torch.nn.Module):
@@ -211,14 +212,15 @@ class MLConformerGenerator(torch.nn.Module):
                     resample_steps,
                 )
 
-                # Inverse transformations applied to the coordinates of generated fragments
+                # Re-align generated fragment coordinates to principal frames after generation
+                x_gen_frag = coord_to_pf_batched(x_gen_frag * frag_node_mask)
 
+                # Inverse transformations applied to the coordinates of generated fragments
                 x_gen_frag = inverse_coord_transform(
                     coord=x_gen_frag, shift=shift, rotation=rotation
                 )
 
                 # Merge Fixed fragment with the generated ones
-
                 z_known, fixed_mask = ifm_prepare_fragments_for_merge(
                     fixed_fragment_x=fixed_fragment_x,
                     fixed_fragment_h=fixed_fragment_h,
@@ -310,7 +312,18 @@ class MLConformerGenerator(torch.nn.Module):
             virtual_com = torch.mean(ref_coord, dim=0)
             ref_coord = ref_coord - virtual_com
 
-            ref_context, aligned_coord = get_context_shape(ref_coord)
+            ref_context, _, rotation = get_context_shape(
+                ref_coord, include_rotation=True
+            )
+
+            if fixed_fragment:
+                # Apply the Reference Transformation to Fixed fragment to keep consistency
+                ff_conf = fixed_fragment.GetConformer()
+                ff_coord = torch.tensor(ff_conf.GetPositions(), dtype=torch.float32)
+                ff_coord_ref_aligned = apply_transform(ff_coord, -virtual_com, rotation)
+                fixed_fragment = set_conformer_positions(
+                    fixed_fragment, ff_coord_ref_aligned
+                )
 
         elif reference_context is not None:
             if n_atoms:

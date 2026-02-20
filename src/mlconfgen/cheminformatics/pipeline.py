@@ -3,8 +3,8 @@ import torch
 from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
-from rdkit.Geometry import Point3D
 
+from ..utils import set_conformer_positions
 from .shape_similarity import (get_shape_quadrupole_for_molecule, rotate_coord,
                                tanimoto_score)
 
@@ -94,12 +94,3 @@ def evaluate_samples(
             }
         )
     return ref_mol_block, results
-
-
-def set_conformer_positions(mol, coord):
-    conf = mol.GetConformer()
-    for i, point in enumerate(coord):
-        x, y, z = point.tolist()
-        conf.SetAtomPosition(i, Point3D(x, y, z))
-
-    return mol

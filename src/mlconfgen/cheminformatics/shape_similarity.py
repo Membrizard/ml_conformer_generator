@@ -472,7 +472,6 @@ def tanimoto_score(
     amplitude: float = AMPLITUDE,
     n: int = 40,
 ):
-
     cat_coord = torch.cat((ref_coord, cand_coord), dim=0)
 
     min_, _ = torch.min(cat_coord, dim=1)
