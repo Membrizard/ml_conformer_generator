@@ -10,8 +10,10 @@ from .utils import (
                     samples_to_rdkit_mol,
                     prepare_masks,
                     get_moment_of_inertia_tensor,
-                    standardize_mol,
                     ifm_standardize_mol,
+                    ifm_get_xh_from_fragment,
+                    ifm_prepare_fragments_for_merge,
+                    ifm_prepare_gen_fragment_context,
                     )
 from .cheminformatics.pipeline import set_conformer_positions, rotate_coord, tanimoto_score
 from openbabel import openbabel
@@ -50,11 +52,10 @@ def predict_bonds_openbabel(mol: Chem.Mol, optimize_geometry: bool = True) -> Ch
     else:
         out_mol = None
 
-
     return out_mol
 
 
-def inertial_fragment_matching(ref_mol,  # Reference rdkit Mol
+def inertial_fragment_matching( ref_mol,  # Reference rdkit Mol
                                 n_samples,  # number of samples
                                 generator,  # MLConformerGenerator object
                                 resample_steps,  # resample steps
@@ -367,3 +368,178 @@ def ifm_get_context_shape(coord: torch.Tensor):
     context = torch.diag(get_moment_of_inertia_tensor(rotated_points, masses))
 
     return context, rotated_points, eigenvectors
+
+
+# FIXED FRAGMENT GENERATION
+# ------------------------------------------------------
+
+# Function splits ref mol automatically and takes the first fragment as fixed by default.
+def ff_inertial_fragment_matching(
+                                    ref_mol,
+                                    generator,
+                                    merger,
+                                    n_samples: int,
+                                    variance: int,
+                                    resample_steps: int,
+                                    blend_power: int,
+                                    merging_diffusion_level: int,
+                                    min_frag_size: int,
+                                    max_frag_size: int,
+                                    max_iter: int = 200,
+                                    verbose: bool = False,
+
+                                  ):
+    g_context_norms = generator.context_norms
+    m_context_norms = merger.context_norms
+
+    device = generator.device
+
+    # Strip of Hs and align Reference to principal Inertial Frame, saving rotation and shift
+    ref_mol = Chem.RemoveHs(ref_mol)
+    ref_context, shift, rotation, aligned_ref_coord = align_mol(ref_mol)
+
+    aligned_ref_mol = set_conformer_positions(ref_mol, aligned_ref_coord)
+
+    # Split Reference molecule into fragments
+
+    fragment_sets = split_molecule_size_constrained(
+        mol=aligned_ref_mol,
+        min_size=min_frag_size,
+        max_size=max_frag_size,
+        max_iter=max_iter,
+        verbose=verbose)
+
+    # Select fixed fragment
+    # Automatic Hard-Coded fixed fragment selection
+    # First fragment is fixed, second fragment used as a reference, only works for molecules splittable into 2 fragments
+
+    assert len(fragment_sets) == 2
+
+    fixed_fragment = new_mol_from_atom_indices(aligned_ref_mol, fragment_sets[0])
+    ref_fragment = new_mol_from_atom_indices(aligned_ref_mol, fragment_sets[1])
+
+    # Align ref fragment
+    _, _, _, ref_fragment_coords = align_mol(ref_fragment)
+
+    n_nodes = aligned_ref_coord.size(0)
+    min_n_nodes = n_nodes - variance
+    max_n_nodes = n_nodes + variance
+
+    ff_coord = torch.tensor(fixed_fragment.GetConformer().GetPositions(), dtype=torch.float32).to(device)
+
+    node_mask, edge_mask, batch_context = prepare_edm_input(
+        n_samples=n_samples,
+        reference_context=ref_context,
+        context_norms=m_context_norms,
+        min_n_nodes=min_n_nodes,
+        max_n_nodes=max_n_nodes,
+        device=device,
+    )
+
+    ff_n_nodes = torch.sum(node_mask, dim=1).to(torch.long)
+
+    (frag_node_mask,
+     frag_edge_mask,
+     batched_normed_frag_context,
+     shift,
+     rotation) = ifm_prepare_gen_fragment_context(
+        fixed_fragment_x=ff_coord,
+        reference_context=ref_context,
+        context_norms=g_context_norms,
+        n_nodes=ff_n_nodes,
+        max_n_nodes=max_n_nodes,
+        min_n_nodes=min_n_nodes,
+        device=device,
+    )
+
+    with torch.no_grad():
+        total_x, total_h = generator.generative_model(
+            frag_node_mask,
+            frag_edge_mask,
+            batched_normed_frag_context,
+            resample_steps=resample_steps,
+        )
+
+    # Aligning generated fragments to corresponding places inside the reference molecule
+
+    aligned_x = []
+    frag_coord = total_x.to('cpu')
+    for old_x in frag_coord:
+        aligned_x.append(align_coord(ref_fragment_coords, old_x))
+
+    aligned_x = torch.stack(aligned_x, dim=0).to(device)
+
+    new_x = inverse_coord_transform(coord=aligned_x,
+                                    shift=shift,
+                                    rotation=rotation,
+                                    )
+
+    fixed_fragment_x, fixed_fragment_h = ifm_get_xh_from_fragment(
+        fixed_fragment=fixed_fragment, device=device
+    )
+
+    z_known, fixed_mask = ifm_prepare_fragments_for_merge(
+        fixed_fragment_x=fixed_fragment_x,
+        fixed_fragment_h=fixed_fragment_h,
+        gen_fragments_x=new_x.to(device),
+        gen_fragments_h=total_h,
+        device=device,
+        max_n_nodes=max_n_nodes,
+    )
+
+    with torch.no_grad():
+        final_x, final_h = merger.generative_model.merge_fragments_with_injection(
+            node_mask,
+            edge_mask,
+            fixed_mask,
+            context=batch_context,
+            z_seed=z_known,
+            diffusion_level=merging_diffusion_level,
+            resample_steps=resample_steps,
+            blend_power=blend_power,
+        )
+
+    mols = samples_to_rdkit_mol(
+        positions=final_x, one_hot=final_h, node_mask=node_mask, atom_decoder=merger.atom_decoder
+    )
+
+    return mols, fixed_fragment
+
+
+def new_mol_from_atom_indices(mol: Chem.Mol, atom_indices) -> Chem.Mol:
+    keep = sorted(set(int(i) for i in atom_indices))
+
+    n = mol.GetNumAtoms()
+    if keep[0] < 0 or keep[-1] > n:
+        raise IndexError(f"atom index out of range (0..{n - 1}): {keep}")
+
+    keep_set = set(keep)
+
+    # Map old atom idx -> new atom idx
+    rw = Chem.RWMol()
+    old2new = {}
+    for old_i in keep:
+        # Copy the atom object to preserve charge/isotope/aromaticity/etc.
+        new_i = rw.AddAtom(Chem.Atom(mol.GetAtomWithIdx(old_i)))
+        old2new[old_i] = new_i
+
+    # Add bonds that connect kept atoms
+    for b in mol.GetBonds():
+        a, c = b.GetBeginAtomIdx(), b.GetEndAtomIdx()
+        if a in keep_set and c in keep_set:
+            rw.AddBond(old2new[a], old2new[c], b.GetBondType())
+            nb = rw.GetBondBetweenAtoms(old2new[a], old2new[c])
+            nb.SetIsAromatic(b.GetIsAromatic())
+
+    out = rw.GetMol()
+
+    # Copy coordinates for EACH conformer
+    out.RemoveAllConformers()
+    for conf in mol.GetConformers():
+        new_conf = Chem.Conformer(len(keep))
+        new_conf.Set3D(conf.Is3D())
+        for old_i in keep:
+            new_conf.SetAtomPosition(old2new[old_i], conf.GetAtomPosition(old_i))
+        out.AddConformer(new_conf, assignId=True)
+
+    return out
