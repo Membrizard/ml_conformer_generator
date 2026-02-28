@@ -11,3 +11,4 @@ dist/
 *.egg-info/
 *.pt
 memory_profile.csv
+.venv/
