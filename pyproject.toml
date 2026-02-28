@@ -46,4 +46,9 @@ onnx = [
 Homepage = "https://github.com/Membrizard/ml_conformer_generator"
 Issues = "https://github.com/Membrizard/ml_conformer_generator/issues"
 
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
 [tool.setuptools_scm]
