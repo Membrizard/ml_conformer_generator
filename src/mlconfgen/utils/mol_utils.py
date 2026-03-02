@@ -142,15 +142,7 @@ def distance_matrix(coordinates: torch.Tensor) -> torch.Tensor:
     :param coordinates: xyz coordinates tensor
     :return: distance matrix
     """
-    n = coordinates.size(0)
-    i_mat = coordinates.unsqueeze(1).repeat(
-        1, n, 1
-    )  # Repeat coordinates tensor along new dimension
-    j_mat = i_mat.transpose(0, 1)
-
-    dist_matrix = torch.sqrt(torch.sum(torch.pow(i_mat - j_mat, 2), 2))
-
-    return dist_matrix
+    return torch.cdist(coordinates, coordinates)
 
 
 def prepare_adj_mat_seer_input(
@@ -247,17 +239,19 @@ def prepare_masks(
     """
 
     batch_size = n_nodes.size(0)
+    n_nodes = n_nodes.view(-1)  # flatten (B,1) to (B,) so unsqueeze(1) below produces 2D, not 3D
 
-    node_mask = torch.zeros(batch_size, max_n_nodes)
-    for i in range(batch_size):
-        node_mask[i, 0 : n_nodes[i]] = 1
+    arange = torch.arange(max_n_nodes, device=device).unsqueeze(0)
+    node_mask_bool = arange < n_nodes.unsqueeze(1)
 
     # Compute edge_mask
-    edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
-    diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
-    edge_mask *= diag_mask
-    edge_mask = edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1).to(device)
-    node_mask = node_mask.unsqueeze(2).to(device)
+    edge_mask_bool = node_mask_bool.unsqueeze(1) & node_mask_bool.unsqueeze(2)
+    diag_mask = ~torch.eye(max_n_nodes, dtype=torch.bool, device=device).unsqueeze(0)
+    edge_mask_bool = edge_mask_bool & diag_mask
+
+    # Return float masks
+    node_mask = node_mask_bool.to(torch.float32).unsqueeze(2)
+    edge_mask = edge_mask_bool.to(torch.float32).view(batch_size * max_n_nodes * max_n_nodes, 1)
 
     return node_mask, edge_mask
 
