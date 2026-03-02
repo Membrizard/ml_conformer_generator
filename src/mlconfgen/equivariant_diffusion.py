@@ -460,6 +460,10 @@ class EquivariantDiffusion(torch.nn.Module):
             # Polynomial blending
             blend = torch.pow((1 - s_array), blend_power).view(n_samples, 1, 1)
 
+            gamma_s = self.gamma(s_array)
+            alpha_s = self.alpha(gamma_s, z_known)
+            sigma_s = self.sigma(gamma_s, z_known)
+
             for _ in range(resample_steps):
                 z = self.sample_p_zs_given_zt(
                     s_array,
@@ -471,10 +475,6 @@ class EquivariantDiffusion(torch.nn.Module):
                 )
 
                 # Forward-diffuse the known fragment at timestep s
-                gamma_s = self.gamma(s_array)
-                alpha_s = self.alpha(gamma_s, z_known)
-                sigma_s = self.sigma(gamma_s, z_known)
-
                 eps_frag = self.sample_combined_position_feature_noise(
                     n_samples, n_nodes, node_mask
                 )
@@ -570,6 +570,10 @@ class EquivariantDiffusion(torch.nn.Module):
             # Polynomial blending
             blend = torch.pow((1 - s_array), blend_power).view(n_samples, 1, 1)
 
+            gamma_s = self.gamma(s_array)
+            alpha_s = self.alpha(gamma_s, z_known)
+            sigma_s = self.sigma(gamma_s, z_known)
+
             for _ in range(resample_steps):
                 z = self.sample_p_zs_given_zt(
                     s_array,
@@ -581,10 +585,6 @@ class EquivariantDiffusion(torch.nn.Module):
                 )
 
                 # Forward-diffuse the known fragment at timestep s
-                gamma_s = self.gamma(s_array)
-                alpha_s = self.alpha(gamma_s, z_known)
-                sigma_s = self.sigma(gamma_s, z_known)
-
                 eps_frag = self.sample_combined_position_feature_noise(
                     n_samples, n_nodes, node_mask
                 )

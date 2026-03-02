@@ -80,25 +80,16 @@ class MolGraph:
                 f"Adjacency matrix should be of size {DIMENSION} with bond encoding with size of {NUM_BOND_TYPES}"
             )
 
-        edge_index = [[], []]
-        edge_attr = []
-
-        repr_m = torch.argmax(adjacency_matrix, dim=2)
-
-        for i in range(n):
-            for j in range(n):
-                # Find out the bond type by indexing 1 in the matrix bond
-                bond_type = repr_m[i, j]
-
-                if bond_type != 0:
-                    edge_index[0].append(i)
-                    edge_index[1].append(j)
-                    edge_attr.append(bond_type)
+        repr_m = torch.argmax(adjacency_matrix, dim=2)[:n, :n]
+        mask = repr_m != 0
+        rows, cols = torch.where(mask)
+        edge_index = torch.stack([rows, cols])
+        edge_attr = repr_m[mask]
 
         return cls(
             x=nodes,
-            edge_index=torch.tensor(edge_index),
-            edge_attr=torch.tensor(edge_attr),
+            edge_index=edge_index,
+            edge_attr=edge_attr,
         )
 
     @classmethod
@@ -156,7 +147,7 @@ class MolGraph:
 
         return cls(x=x, edge_index=edge_index, edge_attr=edge_attr)
 
-    def adjacency_matrix(self, padded: bool = True) -> torch.tensor:
+    def adjacency_matrix(self, padded: bool = True) -> torch.Tensor:
         """
         Creates a 0-1 normalised adjacency matrix with a specified size from a MolGraph object
         representing a molecule. Bond types are represented as follows:
@@ -170,13 +161,14 @@ class MolGraph:
         graph_size = len(self.x)
         bonds_size = len(self.edge_attr)
 
+        device = self.x.device
         if padded:
             adjacency_matrix = torch.zeros(
-                DIMENSION, DIMENSION, NUM_BOND_TYPES, dtype=torch.float
+                DIMENSION, DIMENSION, NUM_BOND_TYPES, dtype=torch.float, device=device
             )
         else:
             adjacency_matrix = torch.zeros(
-                graph_size, graph_size, NUM_BOND_TYPES, dtype=torch.float
+                graph_size, graph_size, NUM_BOND_TYPES, dtype=torch.float, device=device
             )
 
         adjacency_matrix[:, :, 0] = 1
@@ -228,11 +220,8 @@ class MolGraph:
         Returns a fixed-sized elements vector
         :return: [atomic_num, ...0...] size(DIMENSION, 1)
         """
-        elements_vector = torch.zeros(DIMENSION, dtype=torch.long)
-
-        for i in range(len(self.x)):
-            elements_vector[i] = self.x[i]
-
+        elements_vector = torch.zeros(DIMENSION, dtype=torch.long, device=self.x.device)
+        elements_vector[:len(self.x)] = self.x.to(torch.long)
         return elements_vector
 
     def one_hot_elements_encoding(self, max_n_nodes) -> torch.Tensor:
@@ -242,12 +231,18 @@ class MolGraph:
         :return: [, ...0...] size(DIMENSION, len(PERMITTED_ELEMENTS), 1)
         """
         one_hot = torch.zeros(
-            max_n_nodes, len(elements_decoder.keys()), dtype=torch.long
+            max_n_nodes, len(elements_decoder),
+            dtype=torch.long,
+            device=self.x.device
         )
 
-        for i in range(len(self.x)):
-            atom_type = elements_decoder[self.x[i].item()]
-            one_hot[i][atom_type] = 1
+        atom_types = torch.tensor(
+            [elements_decoder[int(a)] for a in self.x],
+            dtype=torch.long,
+            device=self.x.device
+        )
+
+        one_hot[torch.arange(len(self.x), device=self.x.device), atom_types] = 1
 
         return one_hot
 

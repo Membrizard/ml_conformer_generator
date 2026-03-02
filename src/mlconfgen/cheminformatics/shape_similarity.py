@@ -123,16 +123,11 @@ def get_shape_quadrupole_for_molecule(
             -1,
         )
 
-    s_mom_tensor_0 = (
-        torch.tensor(
-            [
-                [ii_s_mom_0[0].item(), ij_s_mom_0[0].item(), ij_s_mom_0[1].item()],
-                [ij_s_mom_0[0].item(), ii_s_mom_0[1].item(), ij_s_mom_0[2].item()],
-                [ij_s_mom_0[1].item(), ij_s_mom_0[2].item(), ii_s_mom_0[2].item()],
-            ]
-        )
-        / volume
-    )
+    s_mom_tensor_0 = torch.stack([
+        torch.stack([ii_s_mom_0[0], ij_s_mom_0[0], ij_s_mom_0[1]]),
+        torch.stack([ij_s_mom_0[0], ii_s_mom_0[1], ij_s_mom_0[2]]),
+        torch.stack([ij_s_mom_0[1], ij_s_mom_0[2], ii_s_mom_0[2]]),
+    ]) / volume
 
     # Rotate the molecule to set all non-main moments to zero
 
@@ -181,16 +176,11 @@ def get_shape_quadrupole_for_molecule(
             -1,
         )
 
-    s_mom_tensor = (
-        torch.tensor(
-            [
-                [ii_s_mom[0].item(), ij_s_mom[0].item(), ij_s_mom[1].item()],
-                [ij_s_mom[0].item(), ii_s_mom[1].item(), ij_s_mom[2].item()],
-                [ij_s_mom[1].item(), ij_s_mom[2].item(), ii_s_mom[2].item()],
-            ]
-        )
-        / volume
-    )
+    s_mom_tensor = torch.stack([
+        torch.stack([ii_s_mom[0], ij_s_mom[0], ij_s_mom[1]]),
+        torch.stack([ij_s_mom[0], ii_s_mom[1], ij_s_mom[2]]),
+        torch.stack([ij_s_mom[1], ij_s_mom[2], ii_s_mom[2]]),
+    ]) / volume
 
     # Set coordinates in a way, that XX is the largest moment
 
@@ -242,16 +232,8 @@ def get_valid_combinations(
              such as all elements within each combination are mutual neighbors
     """
 
-    n = coordinates.size(0)
-    i_mat = coordinates.unsqueeze(1).repeat(
-        1, n, 1
-    )  # Repeat coordinates tensor along new dimension
-    j_mat = i_mat.transpose(0, 1)
-
     # Create a distance matrix
-    dist_mat = torch.sqrt(
-        torch.sum(torch.pow(i_mat - j_mat, 2), 2)
-    )  # => Add self connections
+    dist_mat = torch.cdist(coordinates, coordinates)
 
     # Nullify all values which are greater than R boundary
     dist_mat[dist_mat >= neighbour_threshold] = 0
