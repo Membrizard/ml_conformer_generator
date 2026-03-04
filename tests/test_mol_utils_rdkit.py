@@ -1,6 +1,7 @@
 import pytest
 import torch
 from rdkit import Chem
+from rdkit.Chem import AllChem
 
 from src.mlconfgen.utils.config import DIMENSION, MIN_N_NODES, PERMITTED_ELEMENTS
 from src.mlconfgen.utils.mol_utils import (
@@ -172,8 +173,11 @@ def test_fragment_too_large_raises(device):
 # --- ifm_prepare_gen_fragment_context ---
 
 
-def test_gen_fragment_context_shapes(paba_mol, device, context_norms):
-    x, h = ifm_get_xh_from_fragment(paba_mol, device)
+def test_gen_fragment_context_shapes(device, context_norms):
+    # Use a small fragment (< MIN_N_NODES heavy atoms) to satisfy the size constraint
+    small_mol = Chem.AddHs(Chem.MolFromSmiles("CCO"))
+    AllChem.EmbedMolecule(small_mol, randomSeed=42)
+    x, h = ifm_get_xh_from_fragment(small_mol, device)
     n_heavy = x.size(0)
     ref_context = torch.tensor([100.0, 400.0, 500.0])
     n_nodes = torch.tensor([20, 25])
