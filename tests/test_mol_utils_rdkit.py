@@ -2,8 +2,8 @@ import pytest
 import torch
 from rdkit import Chem
 
-from mlconfgen.utils.config import ATOM_DECODER, DIMENSION, MAX_N_NODES, MIN_N_NODES, PERMITTED_ELEMENTS
-from mlconfgen.utils.mol_utils import (
+from src.mlconfgen.utils.config import DIMENSION, MIN_N_NODES, PERMITTED_ELEMENTS
+from src.mlconfgen.utils.mol_utils import (
     canonicalise,
     ifm_get_xh_from_fragment,
     ifm_prepare_fragments_for_merge,

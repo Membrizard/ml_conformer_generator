@@ -276,7 +276,7 @@ def prepare_edm_input(
     """
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
 
-    nodesxsample = torch.randint(min_n_nodes, max_n_nodes + 1, (n_samples,))
+    nodesxsample = torch.randint(min_n_nodes, max_n_nodes + 1, (n_samples,), device=device)
 
     node_mask, edge_mask = prepare_masks(
         n_nodes=nodesxsample,

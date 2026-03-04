@@ -1,4 +1,4 @@
-from mlconfgen.utils.config import (
+from src.mlconfgen.utils.config import (
     ATOM_DECODER,
     CONTEXT_NORMS,
     DIMENSION,

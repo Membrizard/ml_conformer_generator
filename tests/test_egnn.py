@@ -1,6 +1,6 @@
 import torch
 
-from mlconfgen.egnn import (
+from src.mlconfgen.egnn import (
     GCL,
     EGNN,
     EGNNDynamics,

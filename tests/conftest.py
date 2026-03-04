@@ -2,7 +2,7 @@ import pytest
 import torch
 from rdkit import Chem
 
-from mlconfgen.utils.config import ATOM_DECODER, CONTEXT_NORMS
+from src.mlconfgen.utils.config import ATOM_DECODER, CONTEXT_NORMS
 
 
 @pytest.fixture(scope="session")

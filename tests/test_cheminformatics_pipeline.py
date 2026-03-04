@@ -1,6 +1,6 @@
 from rdkit import Chem
 
-from mlconfgen.cheminformatics.pipeline import evaluate_samples
+from src.mlconfgen.cheminformatics.pipeline import evaluate_samples
 
 
 def test_evaluate_samples_returns_tuple(paba_mol_no_hs):
