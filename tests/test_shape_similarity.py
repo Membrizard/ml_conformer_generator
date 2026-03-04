@@ -1,6 +1,6 @@
 import torch
 
-from mlconfgen.cheminformatics.shape_similarity import (
+from src.mlconfgen.cheminformatics.shape_similarity import (
     _0th_moment_integral,
     build_neighbor_sets,
     find_r_cliques_fast,
@@ -12,7 +12,6 @@ from mlconfgen.cheminformatics.shape_similarity import (
     rotate_coord,
     tanimoto_score,
     AMPLITUDE,
-    ATOM_RADIUS,
 )
 
 

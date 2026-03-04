@@ -25,8 +25,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from mlconfgen import MLConformerGenerator
-from mlconfgen.utils import (
+from src.mlconfgen import MLConformerGenerator
+from src.mlconfgen.utils import (
     get_context_shape,
     prepare_adj_mat_seer_input,
     prepare_edm_input,

@@ -2,8 +2,8 @@ import math
 
 import torch
 
-from mlconfgen.utils.config import DIMENSION, MAX_N_NODES, MIN_N_NODES, PERMITTED_ELEMENTS
-from mlconfgen.utils.mol_utils import (
+from src.mlconfgen.utils.config import MAX_N_NODES, MIN_N_NODES
+from src.mlconfgen.utils.mol_utils import (
     apply_transform,
     coord_to_pf_batched,
     distance_matrix,

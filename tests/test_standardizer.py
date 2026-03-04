@@ -1,7 +1,7 @@
 import pytest
 from rdkit import Chem
 
-from mlconfgen.utils.standardizer import (
+from src.mlconfgen.utils.standardizer import (
     flatten_tartrate_mol,
     md_minimize_energy,
     standardize_mol,

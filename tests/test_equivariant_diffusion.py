@@ -1,7 +1,7 @@
 import torch
 
-from mlconfgen.egnn import EGNNDynamics
-from mlconfgen.equivariant_diffusion import (
+from src.mlconfgen.egnn import EGNNDynamics
+from src.mlconfgen.equivariant_diffusion import (
     EquivariantDiffusion,
     PredefinedNoiseSchedule,
     align_fragment_com_to_generated,
