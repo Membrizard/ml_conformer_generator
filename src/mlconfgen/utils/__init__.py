@@ -1,12 +1,14 @@
 from .config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
                      MIN_N_NODES, NUM_BOND_TYPES)
 from .mol_utils import (apply_transform, coord_to_pf_batched,
-                        get_context_shape, ifm_get_xh_from_fragment,
+                        get_context_shape, get_moment_of_inertia_tensor,
+                        ifm_get_xh_from_fragment,
                         ifm_prepare_fragments_for_merge,
                         ifm_prepare_gen_fragment_context,
                         inverse_coord_transform, prepare_adj_mat_seer_input,
-                        prepare_edm_input, prepare_fragment, redefine_bonds,
-                        samples_to_rdkit_mol, set_conformer_positions)
+                        prepare_edm_input, prepare_fragment, prepare_masks,
+                        redefine_bonds, samples_to_rdkit_mol,
+                        set_conformer_positions)
 from .onnx_utils import (coord_to_pf_batched_onnx, get_context_shape_onnx,
                          ifm_get_xh_from_fragment_onnx,
                          ifm_prepare_fragments_for_merge_onnx,
@@ -23,6 +25,7 @@ __all__ = [
     "samples_to_rdkit_mol",
     "samples_to_rdkit_mol_onnx",
     "set_conformer_positions",
+    "split_molecule_size_constrained",
     "apply_transform",
     "coord_to_pf_batched",
     "coord_to_pf_batched_onnx",
