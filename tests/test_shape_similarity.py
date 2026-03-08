@@ -2,6 +2,7 @@ import torch
 
 from src.mlconfgen.cheminformatics.shape_similarity import (
     _0th_moment_integral,
+    best_pi_rotation_by_tanimoto,
     build_neighbor_sets,
     find_r_cliques_fast,
     get_alpha,
@@ -145,3 +146,42 @@ def test_quadrupole_moments_sorted(paba_coords):
     moments, _ = get_shape_quadrupole_for_molecule(paba_coords)
     assert moments[0] >= moments[1] - 1e-5
     assert moments[1] >= moments[2] - 1e-5
+
+
+# --- best_pi_rotation_by_tanimoto ---
+
+
+def test_best_pi_rotation_returns_tuple(paba_coords):
+    result = best_pi_rotation_by_tanimoto(paba_coords, paba_coords)
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+    best_coord, best_score = result
+    assert best_coord.shape == paba_coords.shape
+    assert isinstance(best_score, float)
+
+
+def test_best_pi_rotation_self_similarity(paba_coords):
+    _, score = best_pi_rotation_by_tanimoto(paba_coords, paba_coords)
+    assert score > 0.9
+
+
+def test_best_pi_rotation_improves_or_keeps_score(paba_coords):
+    # Rotate candidate by pi around y-axis so it needs correction
+    pi_y = torch.tensor([0.0, torch.pi, 0.0])
+    rotated = rotate_coord(paba_coords, pi_y)
+    baseline = tanimoto_score(paba_coords, rotated)
+    _, best_score = best_pi_rotation_by_tanimoto(paba_coords, rotated)
+    assert best_score >= baseline - 1e-6
+
+
+def test_best_pi_rotation_custom_tanimoto_fn(paba_coords):
+    calls = []
+
+    def fake_tanimoto(ref, cand):
+        calls.append(1)
+        return 0.5
+
+    best_coord, score = best_pi_rotation_by_tanimoto(paba_coords, paba_coords, tanimoto_fn=fake_tanimoto)
+    # identity + 3 pi-rotations = 4 calls
+    assert len(calls) == 4
+    assert score == 0.5

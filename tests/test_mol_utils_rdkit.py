@@ -5,6 +5,7 @@ from rdkit.Chem import AllChem
 
 from src.mlconfgen.utils.config import DIMENSION, MIN_N_NODES, PERMITTED_ELEMENTS
 from src.mlconfgen.utils.mol_utils import (
+    align_mol_to_principal_frame,
     canonicalise,
     ifm_get_xh_from_fragment,
     ifm_prepare_fragments_for_merge,
@@ -218,3 +219,22 @@ def test_merge_fragments_shapes(paba_mol, device):
     total_atoms = n_heavy + 5
     assert z_known.shape == (B, total_atoms, 3 + len(PERMITTED_ELEMENTS))
     assert fixed_mask.shape == (B, DIMENSION, 1)
+
+
+# --- align_mol_to_principal_frame ---
+
+
+def test_align_mol_to_principal_frame(paba_mol_no_hs):
+    context, shift, rotation, aligned_coord = align_mol_to_principal_frame(paba_mol_no_hs)
+    n_atoms = paba_mol_no_hs.GetNumAtoms()
+
+    assert context.shape == (3,)
+    assert shift.shape == (3,)
+    assert rotation.shape == (3, 3)
+    assert aligned_coord.shape == (n_atoms, 3)
+
+    # Rotation matrix is orthogonal
+    assert torch.allclose(rotation.T @ rotation, torch.eye(3), atol=1e-5)
+
+    # Coordinates are centered (COM near zero)
+    assert torch.allclose(aligned_coord.mean(dim=0), torch.zeros(3), atol=1e-4)

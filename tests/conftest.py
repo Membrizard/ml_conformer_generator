@@ -12,14 +12,15 @@ def paba_mol():
     return mol
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def paba_mol_no_hs(paba_mol):
     return Chem.RemoveHs(paba_mol)
 
 
 @pytest.fixture(scope="session")
-def paba_coords(paba_mol_no_hs):
-    conf = paba_mol_no_hs.GetConformer()
+def paba_coords(paba_mol):
+    mol_no_hs = Chem.RemoveHs(paba_mol)
+    conf = mol_no_hs.GetConformer()
     return torch.tensor(conf.GetPositions(), dtype=torch.float32)
 
 

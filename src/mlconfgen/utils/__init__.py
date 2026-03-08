@@ -1,6 +1,7 @@
 from .config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
                      MIN_N_NODES, NUM_BOND_TYPES)
-from .mol_utils import (apply_transform, coord_to_pf_batched,
+from .mol_utils import (align_mol_to_principal_frame, apply_transform,
+                        coord_to_pf_batched,
                         get_context_shape, get_moment_of_inertia_tensor,
                         ifm_get_xh_from_fragment,
                         ifm_prepare_fragments_for_merge,
@@ -21,6 +22,7 @@ from .standardizer import standardize_mol, ifm_standardize_mol
 from .mol_split import split_molecule_size_constrained, extract_fragment
 
 __all__ = [
+    "align_mol_to_principal_frame",
     "extract_fragment",
     "samples_to_rdkit_mol",
     "samples_to_rdkit_mol_onnx",
