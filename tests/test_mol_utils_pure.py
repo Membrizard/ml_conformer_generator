@@ -247,3 +247,47 @@ def test_edm_input_context_masked(context_norms, device):
     )
     masked_out = context * (1 - node_mask)
     assert torch.allclose(masked_out, torch.zeros_like(masked_out), atol=1e-5)
+
+
+def test_edm_input_pad_to_shapes(context_norms, device):
+    """When pad_to > max_n_nodes, output tensors use pad_to for the node dimension."""
+    torch.manual_seed(42)
+    n_samples = 2
+    min_n = 10
+    max_n = 10
+    pad_to = 20
+    ref_context = torch.tensor([100.0, 400.0, 500.0])
+    node_mask, edge_mask, context = prepare_edm_input(
+        n_samples=n_samples,
+        reference_context=ref_context,
+        context_norms=context_norms,
+        min_n_nodes=min_n,
+        max_n_nodes=max_n,
+        device=device,
+        pad_to=pad_to,
+    )
+    assert node_mask.shape == (n_samples, pad_to, 1)
+    assert edge_mask.shape == (n_samples * pad_to * pad_to, 1)
+    assert context.shape == (n_samples, pad_to, 3)
+
+
+def test_edm_input_pad_to_node_counts(context_norms, device):
+    """With pad_to, actual node counts should still match min/max_n_nodes, not pad_to."""
+    torch.manual_seed(42)
+    n_samples = 4
+    n_atoms = 8
+    pad_to = 15
+    ref_context = torch.tensor([100.0, 400.0, 500.0])
+    node_mask, _, _ = prepare_edm_input(
+        n_samples=n_samples,
+        reference_context=ref_context,
+        context_norms=context_norms,
+        min_n_nodes=n_atoms,
+        max_n_nodes=n_atoms,
+        device=device,
+        pad_to=pad_to,
+    )
+    counts = node_mask.squeeze(-1).sum(dim=1)
+    assert torch.allclose(counts, torch.full((n_samples,), float(n_atoms)))
+
+

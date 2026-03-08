@@ -263,6 +263,7 @@ def prepare_edm_input(
     min_n_nodes: int,
     max_n_nodes: int,
     device: torch.device,
+    pad_to: int = None,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """
     Prepares Input for EDM model
@@ -272,15 +273,18 @@ def prepare_edm_input(
     :param min_n_nodes: minimal allowable molecule size
     :param max_n_nodes: maximal allowable molecule size
     :param device: device to prepare input for - torch.device
+    :param pad_to: if set, use this instead of max_n_nodes for the padding dimension
     :return: a tuple of tensors ready to be used by the EDM
     """
+    pad_dim = pad_to if pad_to is not None else max_n_nodes
+
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
 
     nodesxsample = torch.randint(min_n_nodes, max_n_nodes + 1, (n_samples,), device=device)
 
     node_mask, edge_mask = prepare_masks(
         n_nodes=nodesxsample,
-        max_n_nodes=max_n_nodes,
+        max_n_nodes=pad_dim,
         device=device,
     )
 
@@ -290,7 +294,7 @@ def prepare_edm_input(
 
     batch_context = normed_context.unsqueeze(0).repeat(n_samples, 1)
 
-    batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
+    batch_context = batch_context.unsqueeze(1).repeat(1, pad_dim, 1) * node_mask
 
     return (
         node_mask,
@@ -632,3 +636,22 @@ def set_conformer_positions(mol, coord):
         conf.SetAtomPosition(i, Point3D(x, y, z))
 
     return mol
+
+
+def align_mol_to_principal_frame(mol):
+    """
+    Align a molecule to its principal inertial frame.
+    :param mol: rdkit Mol with a conformer
+    :return: (context, shift, rotation, aligned_coord)
+    """
+    conf = mol.GetConformer()
+    coord = torch.tensor(conf.GetPositions(), dtype=torch.float32)
+
+    virtual_com = torch.mean(coord, dim=0)
+    coord = coord - virtual_com
+
+    shift = -virtual_com
+
+    context, aligned_coord, rotation = get_context_shape(coord, include_rotation=True)
+
+    return context, shift, rotation, aligned_coord

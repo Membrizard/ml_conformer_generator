@@ -5,17 +5,18 @@ from rdkit import Chem
 from .utils import (
                     split_molecule_size_constrained,
                     extract_fragment,
+                    align_mol_to_principal_frame,
                     inverse_coord_transform,
                     prepare_edm_input,
                     samples_to_rdkit_mol,
-                    prepare_masks,
-                    get_moment_of_inertia_tensor,
+                    get_context_shape,
                     ifm_standardize_mol,
                     ifm_get_xh_from_fragment,
                     ifm_prepare_fragments_for_merge,
                     ifm_prepare_gen_fragment_context,
                     )
-from .cheminformatics.pipeline import set_conformer_positions, rotate_coord, tanimoto_score
+from .cheminformatics.pipeline import set_conformer_positions
+from .cheminformatics.shape_similarity import best_pi_rotation_by_tanimoto
 from openbabel import openbabel
 
 
@@ -73,7 +74,7 @@ def inertial_fragment_matching( ref_mol,  # Reference rdkit Mol
 
     # Strip of Hs and align Reference to principal Inertial Frame, saving rotation and shift
     ref_mol = Chem.RemoveHs(ref_mol)
-    ref_context, shift, rotation, aligned_ref_coord = align_mol(ref_mol)
+    ref_context, shift, rotation, aligned_ref_coord = align_mol_to_principal_frame(ref_mol)
 
     aligned_ref_mol = set_conformer_positions(ref_mol, aligned_ref_coord)
 
@@ -112,19 +113,20 @@ def inertial_fragment_matching( ref_mol,  # Reference rdkit Mol
     # Prepare concatenatable edm inputs for all fragments
     for frag in extracted_frags:
         n_atoms = frag.GetNumHeavyAtoms()
-        f_context, f_shift, f_rotation, f_coord = align_mol(frag)
+        f_context, f_shift, f_rotation, f_coord = align_mol_to_principal_frame(frag)
         fragment_contexts.append(f_context)
         fragment_shifts.append(f_shift)
         fragment_rotations.append(f_rotation)
         ref_fragment_coords.append(f_coord)
 
-        node_mask, edge_mask, batch_context = ifm_prepare_edm_input(
+        node_mask, edge_mask, batch_context = prepare_edm_input(
             n_samples=n_samples,
             reference_context=f_context,
             context_norms=context_norms,
-            n_atoms=n_atoms,
-            max_n_nodes=max_n_nodes,
+            min_n_nodes=n_atoms,
+            max_n_nodes=n_atoms,
             device=device,
+            pad_to=max_n_nodes,
         )
 
         edm_inputs.append({
@@ -218,84 +220,16 @@ def inertial_fragment_matching( ref_mol,  # Reference rdkit Mol
     return mols
 
 
-def ifm_prepare_edm_input(
-    n_samples: int,
-    reference_context: torch.Tensor,
-    context_norms: dict,
-    n_atoms: int,
-    max_n_nodes: int,
-    device: torch.device,
-):
-
-    # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
-
-    # nodesxsample = torch.randint(min_n_atoms, max_n_atoms + 1, (n_samples,))
-    nodesxsample = torch.full((n_samples,), fill_value=n_atoms, dtype=torch.long)
-
-    node_mask, edge_mask = prepare_masks(
-        n_nodes=nodesxsample,
-        max_n_nodes=max_n_nodes,
-        device=device,
-    )
-
-    normed_context = (
-        (reference_context - context_norms["mean"]) / context_norms["mad"]
-    ).to(device)
-
-    batch_context = normed_context.unsqueeze(0).repeat(n_samples, 1)
-
-    batch_context = batch_context.unsqueeze(1).repeat(1, max_n_nodes, 1) * node_mask
-
-    return (
-        node_mask,
-        edge_mask,
-        batch_context,
-    )
-
-
 def align_coord(ref_coord, cand_coord):
     # move coord to center
     virtual_com = torch.mean(cand_coord, dim=0)
     ref_coord = ref_coord - virtual_com
 
     # Get Coords in Principal Frame
-    ref_context, aligned_coord, rotation = ifm_get_context_shape(cand_coord)
+    _, aligned_coord, _ = get_context_shape(cand_coord, include_rotation=True)
 
-    # Try All 3 rotations, to account for eigenvalues equivariance
-    pi = torch.pi
-    rotations = [
-        torch.tensor([pi, 0, 0]),
-        torch.tensor([0, pi, 0]),
-        torch.tensor([0, 0, pi]),
-    ]
-
-    shape_tanimoto = tanimoto_score(ref_coord, aligned_coord)
-    best_coord = aligned_coord
-
-    # Calculate Best shape similarity Tanimoto score
-    for angles in rotations:
-        rot_coord = rotate_coord(coord=aligned_coord, angles=angles)
-        score = tanimoto_score(ref_coord, rot_coord)
-        if score > shape_tanimoto:
-            shape_tanimoto = score
-            best_coord = rot_coord
-
+    best_coord, _ = best_pi_rotation_by_tanimoto(ref_coord, aligned_coord)
     return best_coord
-
-
-def align_mol(mol):
-    conf = mol.GetConformer()
-    ref_coord = torch.tensor(conf.GetPositions(), dtype=torch.float32)
-
-    # move coord to center
-    virtual_com = torch.mean(ref_coord, dim=0)
-    ref_coord = ref_coord - virtual_com
-
-    shift = - virtual_com
-
-    ref_context, aligned_coord, rotation = ifm_get_context_shape(ref_coord)
-
-    return ref_context, shift, rotation, aligned_coord
 
 
 def concat_masked_and_pad(xs, masks, pad_extra=0, pad_to=None, pad_value=0.0):
@@ -348,28 +282,6 @@ def concat_masked_and_pad(xs, masks, pad_extra=0, pad_to=None, pad_value=0.0):
     return out
 
 
-def ifm_get_context_shape(coord: torch.Tensor):
-    """
-    Finds the principal axes for the conformer,
-    and calculates Moment of Inertia tensor for the conformer in principal axes.
-    All atom masses are considered equal to one, to capture shape only.
-    :param coord: initial coordinates of the atoms
-    :return: Principal components of MOI tensor, and coordinates rotated to a principal frame as a tuple of tensors
-    """
-    masses = torch.ones(coord.size(0))
-    moi_tensor = get_moment_of_inertia_tensor(coord, masses)
-    # Diagonalize the MOI tensor using eigen decomposition
-    _, eigenvectors = torch.linalg.eigh(moi_tensor)
-
-    # Rotate points to principal axes
-    rotated_points = torch.matmul(coord.to(torch.float32), eigenvectors)
-
-    # Get the three main moments of inertia from the main diagonal
-    context = torch.diag(get_moment_of_inertia_tensor(rotated_points, masses))
-
-    return context, rotated_points, eigenvectors
-
-
 # FIXED FRAGMENT GENERATION
 # ------------------------------------------------------
 
@@ -396,7 +308,7 @@ def ff_inertial_fragment_matching(
 
     # Strip of Hs and align Reference to principal Inertial Frame, saving rotation and shift
     ref_mol = Chem.RemoveHs(ref_mol)
-    ref_context, shift, rotation, aligned_ref_coord = align_mol(ref_mol)
+    ref_context, shift, rotation, aligned_ref_coord = align_mol_to_principal_frame(ref_mol)
 
     aligned_ref_mol = set_conformer_positions(ref_mol, aligned_ref_coord)
 
@@ -415,11 +327,11 @@ def ff_inertial_fragment_matching(
 
     assert len(fragment_sets) == 2
 
-    fixed_fragment = new_mol_from_atom_indices(aligned_ref_mol, fragment_sets[0])
-    ref_fragment = new_mol_from_atom_indices(aligned_ref_mol, fragment_sets[1])
+    fixed_fragment = extract_fragment(aligned_ref_mol, fragment_sets[0])
+    ref_fragment = extract_fragment(aligned_ref_mol, fragment_sets[1])
 
     # Align ref fragment
-    _, _, _, ref_fragment_coords = align_mol(ref_fragment)
+    _, _, _, ref_fragment_coords = align_mol_to_principal_frame(ref_fragment)
 
     n_nodes = aligned_ref_coord.size(0)
     min_n_nodes = n_nodes - variance
@@ -506,40 +418,3 @@ def ff_inertial_fragment_matching(
     return mols, fixed_fragment
 
 
-def new_mol_from_atom_indices(mol: Chem.Mol, atom_indices) -> Chem.Mol:
-    keep = sorted(set(int(i) for i in atom_indices))
-
-    n = mol.GetNumAtoms()
-    if keep[0] < 0 or keep[-1] > n:
-        raise IndexError(f"atom index out of range (0..{n - 1}): {keep}")
-
-    keep_set = set(keep)
-
-    # Map old atom idx -> new atom idx
-    rw = Chem.RWMol()
-    old2new = {}
-    for old_i in keep:
-        # Copy the atom object to preserve charge/isotope/aromaticity/etc.
-        new_i = rw.AddAtom(Chem.Atom(mol.GetAtomWithIdx(old_i)))
-        old2new[old_i] = new_i
-
-    # Add bonds that connect kept atoms
-    for b in mol.GetBonds():
-        a, c = b.GetBeginAtomIdx(), b.GetEndAtomIdx()
-        if a in keep_set and c in keep_set:
-            rw.AddBond(old2new[a], old2new[c], b.GetBondType())
-            nb = rw.GetBondBetweenAtoms(old2new[a], old2new[c])
-            nb.SetIsAromatic(b.GetIsAromatic())
-
-    out = rw.GetMol()
-
-    # Copy coordinates for EACH conformer
-    out.RemoveAllConformers()
-    for conf in mol.GetConformers():
-        new_conf = Chem.Conformer(len(keep))
-        new_conf.Set3D(conf.Is3D())
-        for old_i in keep:
-            new_conf.SetAtomPosition(old2new[old_i], conf.GetAtomPosition(old_i))
-        out.AddConformer(new_conf, assignId=True)
-
-    return out

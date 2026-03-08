@@ -446,6 +446,23 @@ def rotate_coord(coord: torch.Tensor, angles: torch.Tensor):
 ALPHA = get_alpha(atom_radius=ATOM_RADIUS, gaussian_amplitude=AMPLITUDE)
 
 
+def best_pi_rotation_by_tanimoto(ref_coord, cand_coord, tanimoto_fn=None):
+    """Try identity + pi-rotations around x/y/z, return (best_coord, best_score)."""
+    if tanimoto_fn is None:
+        tanimoto_fn = tanimoto_score
+    pi = torch.pi
+    rotations = [torch.tensor([pi, 0, 0]), torch.tensor([0, pi, 0]), torch.tensor([0, 0, pi])]
+    best_score = tanimoto_fn(ref_coord, cand_coord)
+    best_coord = cand_coord
+    for angles in rotations:
+        rot_coord = rotate_coord(coord=cand_coord, angles=angles)
+        score = tanimoto_fn(ref_coord, rot_coord)
+        if score > best_score:
+            best_score = score
+            best_coord = rot_coord
+    return best_coord, best_score
+
+
 # Implementation of Gaussian volumes intersection tanimoto score
 def tanimoto_score(
     ref_coord,
