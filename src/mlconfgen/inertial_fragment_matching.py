@@ -204,7 +204,7 @@ def inertial_fragment_matching( ref_mol,  # Reference rdkit Mol
     )
 
     with torch.no_grad():
-        final_x, final_h = generator.generative_model.merge_fragments(
+        final_x, final_h = generator.generative_model.ifm_merge_fragments(
             node_mask=merging_node_mask,
             edge_mask=merging_edge_mask,
             context=batch_ref_context,
@@ -400,7 +400,7 @@ def ff_inertial_fragment_matching(
     )
 
     with torch.no_grad():
-        final_x, final_h = merger.generative_model.merge_fragments_with_injection(
+        final_x, final_h = merger.generative_model.ifm_merge_fragments_with_injection(
             node_mask,
             edge_mask,
             fixed_mask,
