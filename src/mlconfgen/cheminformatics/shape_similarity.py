@@ -123,11 +123,16 @@ def get_shape_quadrupole_for_molecule(
             -1,
         )
 
-    s_mom_tensor_0 = torch.stack([
-        torch.stack([ii_s_mom_0[0], ij_s_mom_0[0], ij_s_mom_0[1]]),
-        torch.stack([ij_s_mom_0[0], ii_s_mom_0[1], ij_s_mom_0[2]]),
-        torch.stack([ij_s_mom_0[1], ij_s_mom_0[2], ii_s_mom_0[2]]),
-    ]) / volume
+    s_mom_tensor_0 = (
+        torch.stack(
+            [
+                torch.stack([ii_s_mom_0[0], ij_s_mom_0[0], ij_s_mom_0[1]]),
+                torch.stack([ij_s_mom_0[0], ii_s_mom_0[1], ij_s_mom_0[2]]),
+                torch.stack([ij_s_mom_0[1], ij_s_mom_0[2], ii_s_mom_0[2]]),
+            ]
+        )
+        / volume
+    )
 
     # Rotate the molecule to set all non-main moments to zero
 
@@ -176,11 +181,16 @@ def get_shape_quadrupole_for_molecule(
             -1,
         )
 
-    s_mom_tensor = torch.stack([
-        torch.stack([ii_s_mom[0], ij_s_mom[0], ij_s_mom[1]]),
-        torch.stack([ij_s_mom[0], ii_s_mom[1], ij_s_mom[2]]),
-        torch.stack([ij_s_mom[1], ij_s_mom[2], ii_s_mom[2]]),
-    ]) / volume
+    s_mom_tensor = (
+        torch.stack(
+            [
+                torch.stack([ii_s_mom[0], ij_s_mom[0], ij_s_mom[1]]),
+                torch.stack([ij_s_mom[0], ii_s_mom[1], ij_s_mom[2]]),
+                torch.stack([ij_s_mom[1], ij_s_mom[2], ii_s_mom[2]]),
+            ]
+        )
+        / volume
+    )
 
     # Set coordinates in a way, that XX is the largest moment
 
@@ -427,7 +437,7 @@ def torch_evaluate_density_on_grid(
     return density
 
 
-def rotate_coord(coord: torch.Tensor, angles: torch.Tensor):
+def rotate_coord(coord: torch.Tensor, angles: torch.Tensor) -> torch.Tensor:
     cos_a = torch.cos(angles)
     sin_a = torch.sin(angles)
 
@@ -446,12 +456,18 @@ def rotate_coord(coord: torch.Tensor, angles: torch.Tensor):
 ALPHA = get_alpha(atom_radius=ATOM_RADIUS, gaussian_amplitude=AMPLITUDE)
 
 
-def best_pi_rotation_by_tanimoto(ref_coord, cand_coord, tanimoto_fn=None):
+def best_pi_rotation_by_tanimoto(
+    ref_coord: torch.Tensor, cand_coord: torch.Tensor, tanimoto_fn: callable = None
+) -> tuple:
     """Try identity + pi-rotations around x/y/z, return (best_coord, best_score)."""
     if tanimoto_fn is None:
         tanimoto_fn = tanimoto_score
     pi = torch.pi
-    rotations = [torch.tensor([pi, 0, 0]), torch.tensor([0, pi, 0]), torch.tensor([0, 0, pi])]
+    rotations = [
+        torch.tensor([pi, 0, 0]),
+        torch.tensor([0, pi, 0]),
+        torch.tensor([0, 0, pi]),
+    ]
     best_score = tanimoto_fn(ref_coord, cand_coord)
     best_coord = cand_coord
     for angles in rotations:

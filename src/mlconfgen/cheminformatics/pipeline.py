@@ -5,8 +5,10 @@ from rdkit.Chem import rdFingerprintGenerator
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 
 from ..utils import set_conformer_positions
-from .shape_similarity import (best_pi_rotation_by_tanimoto,
-                               get_shape_quadrupole_for_molecule)
+from .shape_similarity import (
+    best_pi_rotation_by_tanimoto,
+    get_shape_quadrupole_for_molecule,
+)
 
 FP_SIZE = 2048
 GENERATOR = rdFingerprintGenerator.GetMorganGenerator(
@@ -66,7 +68,9 @@ def evaluate_samples(
             coordinates=sample_coord
         )
 
-        best_coord, shape_tanimoto = best_pi_rotation_by_tanimoto(sq_ref_coord, sq_sample_coord)
+        best_coord, shape_tanimoto = best_pi_rotation_by_tanimoto(
+            sq_ref_coord, sq_sample_coord
+        )
 
         aligned_sample = set_conformer_positions(sample, best_coord)
 
