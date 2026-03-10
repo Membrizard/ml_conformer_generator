@@ -2,18 +2,11 @@ from typing import List, Tuple
 
 import torch
 from rdkit import Chem
-from rdkit.Chem import rdDetermineBonds
-from rdkit.Geometry import Point3D
 
+from .common import (apply_transform, bond_type_dict, canonicalise,
+                     set_conformer_positions)
 from .config import DIMENSION
 from .molgraph import MolGraph
-
-bond_type_dict = {
-    1: Chem.rdchem.BondType.SINGLE,
-    2: Chem.rdchem.BondType.DOUBLE,
-    3: Chem.rdchem.BondType.TRIPLE,
-    4: Chem.rdchem.BondType.AROMATIC,
-}
 
 
 def samples_to_rdkit_mol(
@@ -115,25 +108,6 @@ def get_context_shape(
         return context, rotated_points, eigenvectors
     else:
         return context, rotated_points
-
-
-def canonicalise(mol: Chem.Mol) -> Chem.Mol:
-    """
-    Bring order of atoms in the molecule to canonical based on generic one-order connectivity
-    :param mol: Mol object with unordered atoms
-    :return: Mol object with canonicalised order of atoms
-    """
-    # Guess simple 1-order connectivity and re-order the molecule
-    rdDetermineBonds.DetermineConnectivity(mol)
-    _ = Chem.MolToSmiles(mol)
-    order_str = mol.GetProp("_smilesAtomOutputOrder")
-
-    order_str = order_str.replace("[", "").replace("]", "")
-    order = [int(x) for x in order_str.split(",") if x != ""]
-
-    mol_ordered = Chem.RenumberAtoms(mol, order)
-
-    return mol_ordered
 
 
 def distance_matrix(coordinates: torch.Tensor) -> torch.Tensor:
@@ -533,19 +507,6 @@ def inverse_coord_transform(
     return x_translated
 
 
-def apply_transform(coord, shift, rotation):
-    """
-    Apply Translation -> Rotation transform to a set of coordinates
-    :param coord: Coordinates
-    :param shift: Shift (Translation) matrix
-    :param rotation: Rotation matrix
-    :returns: Transformed coordinates
-    """
-    coord_shifted = coord + shift
-    coord_transformed = coord_shifted @ rotation
-    return coord_transformed
-
-
 def shift_moi_to_com_batch(
     moi_origin: torch.Tensor, r_coms: torch.Tensor, masses: torch.Tensor
 ) -> torch.Tensor:
@@ -627,15 +588,6 @@ def get_moment_of_inertia_tensor_batched(
     moi[:, 1, 2] = moi[:, 2, 1] = i_yz
 
     return moi
-
-
-def set_conformer_positions(mol, coord):
-    conf = mol.GetConformer()
-    for i, point in enumerate(coord):
-        x, y, z = point.tolist()
-        conf.SetAtomPosition(i, Point3D(x, y, z))
-
-    return mol
 
 
 def align_mol_to_principal_frame(mol):

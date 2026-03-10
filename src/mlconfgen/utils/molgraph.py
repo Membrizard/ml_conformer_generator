@@ -5,40 +5,9 @@ import torch
 from rdkit import Chem
 from rdkit.Chem import rdmolops
 
-from .config import DIMENSION, NUM_BOND_TYPES, PERMITTED_ELEMENTS
-
-elements_decoder = {x: i for i, x in enumerate(sorted(PERMITTED_ELEMENTS))}
-
-# allowable node and edge features
-allowable_features = {
-    "possible_atomic_num_list": list(range(1, 35)),
-    "possible_implicit_valence_list": [0, 1, 2, 3, 4, 5, 6],
-    "possible_degree_list": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    "possible_bonds": [
-        Chem.rdchem.BondType.SINGLE,
-        Chem.rdchem.BondType.DOUBLE,
-        Chem.rdchem.BondType.TRIPLE,
-        Chem.rdchem.BondType.AROMATIC,
-    ],
-}
-
-elements_dict = {
-    1: "H",
-    6: "C",
-    7: "N",
-    8: "O",
-    9: "F",
-    15: "P",
-    16: "S",
-    17: "Cl",
-    35: "Br",
-}
-bonds_dict = {
-    1: Chem.BondType.SINGLE,
-    2: Chem.BondType.DOUBLE,
-    3: Chem.BondType.TRIPLE,
-    4: Chem.BondType.AROMATIC,
-}
+from .common import (allowable_features, bond_type_dict as bonds_dict,
+                     elements_decoder, elements_dict)
+from .config import DIMENSION, NUM_BOND_TYPES
 
 
 class MolGraph:
