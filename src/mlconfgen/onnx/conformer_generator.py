@@ -3,17 +3,23 @@ from typing import List
 import numpy as np
 from rdkit import Chem
 
-from .equivariant_diffusion_onnx import EquivariantDiffusionONNX
-from .utils import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
-                    MIN_N_NODES, apply_transform, coord_to_pf_batched_onnx,
-                    get_context_shape_onnx, ifm_get_xh_from_fragment_onnx,
-                    ifm_prepare_fragments_for_merge_onnx,
-                    ifm_prepare_gen_fragment_context_onnx,
-                    inverse_coord_transform_onnx,
-                    prepare_adj_mat_seer_input_onnx, prepare_edm_input_onnx,
-                    prepare_fragment_onnx, redefine_bonds_onnx,
-                    samples_to_rdkit_mol_onnx, set_conformer_positions,
-                    standardize_mol)
+from .equivariant_diffusion import EquivariantDiffusionONNX
+from ..utils.common import apply_transform, set_conformer_positions
+from ..utils.config import ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES, MIN_N_NODES
+from ..utils.standardizer import standardize_mol
+from .utils import (
+    coord_to_pf_batched_onnx,
+    get_context_shape_onnx,
+    ifm_get_xh_from_fragment_onnx,
+    ifm_prepare_fragments_for_merge_onnx,
+    ifm_prepare_gen_fragment_context_onnx,
+    inverse_coord_transform_onnx,
+    prepare_adj_mat_seer_input_onnx,
+    prepare_edm_input_onnx,
+    prepare_fragment_onnx,
+    redefine_bonds_onnx,
+    samples_to_rdkit_mol_onnx,
+)
 
 
 class MLConformerGeneratorONNX:
