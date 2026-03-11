@@ -87,9 +87,9 @@ class MLConformerGeneratorONNX:
         min_n_nodes: int = 25,
         resample_steps: int = 0,
         fixed_fragment: Chem.Mol = None,
-        inertial_fragment_matching: bool = True,
+        # inertial_fragment_matching: bool = True,
         blend_power: int = 3,
-        ifm_diffusion_level: int = 50,
+        # ifm_diffusion_level: int = 50,
     ) -> List[Chem.Mol]:
         """
         Generates initial samples using generative diffusion model
@@ -130,69 +130,69 @@ class MLConformerGeneratorONNX:
                 resample_steps,
             )
         else:
-            if inertial_fragment_matching:
-                # Inertial Fragment Matching strategy:
-                # generate fragments separately -> merge fixed and generated fragments
-
-                # Prepare context for generation of individual fragments
-                n_nodes = np.sum(node_mask, axis=1).astype(np.int64)
-
-                fixed_fragment_x, fixed_fragment_h = ifm_get_xh_from_fragment_onnx(
-                    fixed_fragment=fixed_fragment
-                )
-
-                (
-                    frag_node_mask,
-                    frag_edge_mask,
-                    frag_context,
-                    shift,
-                    rotation,
-                ) = ifm_prepare_gen_fragment_context_onnx(
-                    fixed_fragment_x=fixed_fragment_x,
-                    reference_context=reference_context,
-                    n_nodes=n_nodes,
-                    context_norms=self.context_norms,
-                    max_n_nodes=max_n_nodes,
-                    min_n_nodes=min_n_nodes,
-                )
-
-                # Generate Fragments
-                x_gen_frag, h_gen_frag = self.generative_model(
-                    frag_node_mask,
-                    frag_edge_mask,
-                    frag_context,
-                    resample_steps,
-                )
-
-                # Re-align generated fragment coordinates to principal frames
-                x_gen_frag = coord_to_pf_batched_onnx(x_gen_frag * frag_node_mask)
-
-                # Inverse transformations applied to the coordinates of generated fragments
-                x_gen_frag = inverse_coord_transform_onnx(
-                    coord=x_gen_frag, shift=shift, rotation=rotation
-                )
-
-                # Merge Fixed fragment with the generated ones
-
-                z_known, fixed_mask = ifm_prepare_fragments_for_merge_onnx(
-                    fixed_fragment_x=fixed_fragment_x,
-                    fixed_fragment_h=fixed_fragment_h,
-                    gen_fragments_x=x_gen_frag,
-                    gen_fragments_h=h_gen_frag,
-                    max_n_nodes=max_n_nodes,
-                )
-
-                x, h = self.generative_model.merge_fragments(
-                    node_mask=node_mask,
-                    edge_mask=edge_mask,
-                    fixed_mask=fixed_mask,
-                    context=batch_context,
-                    z_known=z_known,
-                    diffusion_level=ifm_diffusion_level,  # light noise only
-                    resample_steps=resample_steps,
-                    blend_power=blend_power,
-                )
-            else:
+            # if inertial_fragment_matching:
+            #     # Inertial Fragment Matching strategy:
+            #     # generate fragments separately -> merge fixed and generated fragments
+            #
+            #     # Prepare context for generation of individual fragments
+            #     n_nodes = np.sum(node_mask, axis=1).astype(np.int64)
+            #
+            #     fixed_fragment_x, fixed_fragment_h = ifm_get_xh_from_fragment_onnx(
+            #         fixed_fragment=fixed_fragment
+            #     )
+            #
+            #     (
+            #         frag_node_mask,
+            #         frag_edge_mask,
+            #         frag_context,
+            #         shift,
+            #         rotation,
+            #     ) = ifm_prepare_gen_fragment_context_onnx(
+            #         fixed_fragment_x=fixed_fragment_x,
+            #         reference_context=reference_context,
+            #         n_nodes=n_nodes,
+            #         context_norms=self.context_norms,
+            #         max_n_nodes=max_n_nodes,
+            #         min_n_nodes=min_n_nodes,
+            #     )
+            #
+            #     # Generate Fragments
+            #     x_gen_frag, h_gen_frag = self.generative_model(
+            #         frag_node_mask,
+            #         frag_edge_mask,
+            #         frag_context,
+            #         resample_steps,
+            #     )
+            #
+            #     # Re-align generated fragment coordinates to principal frames
+            #     x_gen_frag = coord_to_pf_batched_onnx(x_gen_frag * frag_node_mask)
+            #
+            #     # Inverse transformations applied to the coordinates of generated fragments
+            #     x_gen_frag = inverse_coord_transform_onnx(
+            #         coord=x_gen_frag, shift=shift, rotation=rotation
+            #     )
+            #
+            #     # Merge Fixed fragment with the generated ones
+            #
+            #     z_known, fixed_mask = ifm_prepare_fragments_for_merge_onnx(
+            #         fixed_fragment_x=fixed_fragment_x,
+            #         fixed_fragment_h=fixed_fragment_h,
+            #         gen_fragments_x=x_gen_frag,
+            #         gen_fragments_h=h_gen_frag,
+            #         max_n_nodes=max_n_nodes,
+            #     )
+            #
+            #     x, h = self.generative_model.merge_fragments(
+            #         node_mask=node_mask,
+            #         edge_mask=edge_mask,
+            #         fixed_mask=fixed_mask,
+            #         context=batch_context,
+            #         z_known=z_known,
+            #         diffusion_level=ifm_diffusion_level,  # light noise only
+            #         resample_steps=resample_steps,
+            #         blend_power=blend_power,
+            #     )
+            # else:
                 z_known, fixed_mask = prepare_fragment_onnx(
                     n_samples=n_samples,
                     fragment=fixed_fragment,
@@ -225,9 +225,9 @@ class MLConformerGeneratorONNX:
         optimise_geometry: bool = True,
         resample_steps: int = 0,
         fixed_fragment: Chem.Mol = None,
-        inertial_fragment_matching: bool = True,
+        # inertial_fragment_matching: bool = True,
         blend_power: int = 3,
-        ifm_diffusion_level: int = 50,
+        # ifm_diffusion_level: int = 50,
     ) -> List[Chem.Mol]:
         """
         Main method to generate samples from either reference molecule or an arbitrary context.
@@ -294,9 +294,9 @@ class MLConformerGeneratorONNX:
             max_n_nodes=ref_n_atoms + variance,
             resample_steps=resample_steps,
             fixed_fragment=fixed_fragment,
-            inertial_fragment_matching=inertial_fragment_matching,
+            # inertial_fragment_matching=inertial_fragment_matching,
             blend_power=blend_power,
-            ifm_diffusion_level=ifm_diffusion_level,
+            # ifm_diffusion_level=ifm_diffusion_level,
         )
 
         (
