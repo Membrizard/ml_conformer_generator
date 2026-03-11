@@ -49,7 +49,7 @@ def remove_mean_with_mask(x, node_mask):
 def sample_center_gravity_zero_gaussian_with_mask(
     size: Tuple[int, int, int], node_mask: np.ndarray
 ):
-    x = np.random.rand(size[0], size[1], size[2])
+    x = np.random.randn(size[0], size[1], size[2])
 
     x_masked = x * node_mask
 

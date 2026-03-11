@@ -42,14 +42,17 @@ def prepare_edm_input_onnx(
     context_norms: dict,
     min_n_nodes: int,
     max_n_nodes: int,
+    pad_to: int = None,
 ):
+    pad_dim = pad_to if pad_to is not None else max_n_nodes
+
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
     nodesxsample = np.random.randint(min_n_nodes, max_n_nodes + 1, size=n_samples)
 
     batch_size = nodesxsample.shape[0]
 
     node_mask, edge_mask = prepare_masks_onnx(
-        n_nodes=nodesxsample, max_n_nodes=max_n_nodes
+        n_nodes=nodesxsample, max_n_nodes=pad_dim
     )
 
     normed_context = (reference_context - context_norms["mean"]) / context_norms["mad"]
@@ -57,7 +60,7 @@ def prepare_edm_input_onnx(
     batch_context = np.repeat(normed_context[None, :], batch_size, axis=0)
 
     batch_context = (
-        np.repeat(batch_context[:, None, :], max_n_nodes, axis=1) * node_mask
+        np.repeat(batch_context[:, None, :], pad_dim, axis=1) * node_mask
     )
 
     return (
@@ -84,7 +87,7 @@ def samples_to_rdkit_mol_onnx(
     rdkit_mols = []
 
     if node_mask is not None:
-        atomsxmol = np.sum(node_mask, axis=1)
+        atomsxmol = np.sum(node_mask, axis=1).flatten()
     else:
         atomsxmol = [one_hot.shape[1]] * one_hot.shape[0]
 
