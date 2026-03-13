@@ -1,6 +1,7 @@
 from typing import List, Tuple
 
 import torch
+from torch.nn.utils.rnn import pad_sequence
 from rdkit import Chem
 
 from .common import (apply_transform, bond_type_dict, canonicalise,
@@ -607,3 +608,53 @@ def align_mol_to_principal_frame(mol):
     context, aligned_coord, rotation = get_context_shape(coord, include_rotation=True)
 
     return context, shift, rotation, aligned_coord
+
+
+def concat_masked_and_pad(xs: list[torch.Tensor], masks: list[torch.Tensor], pad_extra: int = 0, pad_to: int = None, pad_value=0.0):
+    """
+    xs:    tuple/list of tensors, each (B, N, *D)
+    masks: tuple/list of masks,  each (B, N, 1) or (B, N) (bool or 0/1)
+
+    Returns: (B, L, *D), where L depends on pad_extra / pad_to.
+    """
+    # (B, K, N, *D)
+    x = torch.stack(xs, dim=1)
+
+    # (B, K, N, 1) or (B, K, N)
+    m = torch.stack(masks, dim=1)
+    if m.dim() == x.dim():  # mask has trailing singleton like (.., 1)
+        m = m.squeeze(-1)
+    m = m.bool()  # (B, K, N)
+
+    b, k, n = m.shape
+    feat_shape = x.shape[3:]  # (*D)
+    flat_len = k * n
+
+    # Flatten K and N -> (B, K*N, *D)
+    x_f = x.reshape(b, flat_len, *feat_shape)
+    m_f = m.reshape(b, flat_len)
+
+    # Select ragged per batch: list of (Li, *D)
+    selected = [x_f[b][m_f[b]] for b in range(b)]
+
+    # If some batch has zero selected rows, ensure correct shape for padding
+    empty = x.new_zeros((0, *feat_shape))
+    selected = [t if t.numel() else empty for t in selected]
+
+    # Pad to max Li in batch -> (B, Lmax, *D)
+    out = pad_sequence(selected, batch_first=True, padding_value=pad_value)
+
+    # Decide final length
+    if pad_to is not None:
+        l_ = pad_to
+    else:
+        l_ = out.size(1) + pad_extra
+
+    # Pad/truncate to L
+    if out.size(1) < l_:
+        pad = out.new_full((b, l_ - out.size(1), *feat_shape), pad_value)
+        out = torch.cat([out, pad], dim=1)
+    else:
+        out = out[:, :l_]
+
+    return out

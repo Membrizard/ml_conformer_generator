@@ -10,10 +10,10 @@ CONTEXT_NORMS = {
 }
 
 # Context norms for 6-39 model
-CONTEXT_NORMS_NEW = {
-    'mean': [92.1179, 413.7875, 470.5253],
-    'mad': [53.4742, 232.5775, 251.1813],
-}
+# CONTEXT_NORMS_NEW = {
+#     'mean': [92.1179, 413.7875, 470.5253],
+#     'mad': [53.4742, 232.5775, 251.1813],
+# }
 ATOM_DECODER = {
     0: "C",
     1: "N",

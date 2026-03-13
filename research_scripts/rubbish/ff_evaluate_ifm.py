@@ -69,7 +69,7 @@ def ff_generate_molecules(
         logging.info("Inertial Fragment Matching happening...")
 
     final_mols, fixed_fragment = ff_inertial_fragment_matching(
-            ref_mol=ref_mol,
+            ref_conformer=ref_mol,
             generator=generator,
             merger=merger,
             n_samples=n_samples,

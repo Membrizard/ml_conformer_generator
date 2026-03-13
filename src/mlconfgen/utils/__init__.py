@@ -2,7 +2,7 @@ from .common import (apply_transform, bond_type_dict, canonicalise,
                      elements_decoder, set_conformer_positions)
 from .config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
                      MIN_N_NODES, NUM_BOND_TYPES)
-from .mol_utils import (align_mol_to_principal_frame, coord_to_pf_batched,
+from .mol_utils import (align_mol_to_principal_frame, coord_to_pf_batched, concat_masked_and_pad,
                         get_context_shape, get_moment_of_inertia_tensor,
                         ifm_get_xh_from_fragment,
                         ifm_prepare_fragments_for_merge,
@@ -10,7 +10,7 @@ from .mol_utils import (align_mol_to_principal_frame, coord_to_pf_batched,
                         inverse_coord_transform, prepare_adj_mat_seer_input,
                         prepare_edm_input, prepare_fragment, prepare_masks,
                         redefine_bonds, samples_to_rdkit_mol)
-from .standardizer import standardize_mol, ifm_standardize_mol
+from .standardizer import standardize_mol
 from .mol_split import split_molecule_size_constrained, extract_fragment
 
 __all__ = [
@@ -24,6 +24,7 @@ __all__ = [
     "canonicalise",
     "elements_decoder",
     "coord_to_pf_batched",
+    "concat_masked_and_pad",
     "get_context_shape",
     "get_moment_of_inertia_tensor",
     "prepare_adj_mat_seer_input",
@@ -36,7 +37,6 @@ __all__ = [
     "inverse_coord_transform",
     "redefine_bonds",
     "standardize_mol",
-    "ifm_standardize_mol",
     "DIMENSION",
     "NUM_BOND_TYPES",
     "MIN_N_NODES",

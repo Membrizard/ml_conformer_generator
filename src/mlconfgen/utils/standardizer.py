@@ -123,8 +123,3 @@ def standardize_mol(
         std_mol = None
 
     return std_mol
-
-
-def ifm_standardize_mol(mol: Chem.Mol, optimize_geometry: bool = True) -> Chem.Mol:
-    """IFM-specific standardization — rejects molecules with multiple fragments."""
-    return standardize_mol(mol, optimize_geometry=optimize_geometry, ifm_mode=True)

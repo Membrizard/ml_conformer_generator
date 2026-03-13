@@ -9,9 +9,9 @@ from .equivariant_diffusion import (EquivariantDiffusion,
                                     PredefinedNoiseSchedule)
 from .utils import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
                     MIN_N_NODES, NUM_BOND_TYPES, apply_transform,
-                    get_context_shape, prepare_adj_mat_seer_input,
+                    extract_fragment, prepare_adj_mat_seer_input,
                     prepare_edm_input, prepare_fragment, redefine_bonds,
-                    samples_to_rdkit_mol, set_conformer_positions,
+                    samples_to_rdkit_mol, set_conformer_positions, align_mol_to_principal_frame,
                     standardize_mol)
 
 
@@ -85,11 +85,11 @@ class MLConformerGenerator(torch.nn.Module):
 
         if "context_norms" in gm_state_dict:
             self.context_norms = {
-                key: torch.tensor(value, device=device) for key, value in gm_state_dict["context_norms"].items()
+                key: torch.tensor(value) for key, value in gm_state_dict["context_norms"].items()
             }
         else:
             self.context_norms = {
-                key: torch.tensor(value, device=device) for key, value in context_norms.items()
+                key: torch.tensor(value) for key, value in context_norms.items()
             }
 
         generative_model.load_state_dict(gm_state_dict["state_dict"])
@@ -117,6 +117,40 @@ class MLConformerGenerator(torch.nn.Module):
 
         self.generative_model = generative_model
         self.adj_mat_seer = adj_mat_seer
+
+    @torch.inference_mode()
+    def predict_bonds(self, edm_samples: list[Chem.Mol]) -> list[Chem.Mol]:
+        """
+        Predict bonds using the AdjMatSeer GCN model.
+        :param edm_samples: List of RDKit molecule objects without bonds or with incorrect bonds.
+        :return: List of RDKit molecule objects with predicted bonds.
+        """
+
+        (
+            el_batch,
+            dm_batch,
+            b_adj_mat_batch,
+            canonicalised_samples,
+        ) = prepare_adj_mat_seer_input(
+            mols=edm_samples,
+            dimension=self.dimension,
+            device=self.device,
+        )
+
+        adj_mat_batch = self.adj_mat_seer(
+            elements=el_batch, dist_mat=dm_batch, adj_mat=b_adj_mat_batch
+        )
+
+        adj_mat_batch = adj_mat_batch.to("cpu")
+
+        # Append generated bonds and standardise existing samples
+        out_mols = []
+
+        for i, adj_mat in enumerate(adj_mat_batch):
+            mol = redefine_bonds(canonicalised_samples[i], adj_mat)
+            out_mols.append(mol)
+
+        return out_mols
 
     @torch.inference_mode()
     def edm_samples(
@@ -197,9 +231,9 @@ class MLConformerGenerator(torch.nn.Module):
         variance: int = 2,
         reference_context: torch.Tensor = None,
         n_atoms: int = None,
-        optimise_geometry: bool = True,
+        optimize_geometry: bool = True,
         resample_steps: int = 0,
-        fixed_fragment: Chem.Mol = None,
+        fixed_fragment: Chem.Mol | set = None,  # Add fixed fragment definition as a subset of a reference conformer
         blend_power: int = 3,
     ) -> List[Chem.Mol]:
         """
@@ -210,36 +244,30 @@ class MLConformerGenerator(torch.nn.Module):
         :param variance: int - variation in number of heavy atoms for generated molecules from reference
         :param reference_context: Arbitrary Reference context if applicable, instead of reference_conformer
         :param n_atoms: Reference number of atoms when generating using arbitrary context
-        :param optimise_geometry: If true will apply constrained MMFF94 geometry optimisation to generated molecules
+        :param optimize_geometry: If true will apply constrained MMFF94 geometry optimisation to generated molecules
         :param resample_steps: number of resampling steps applied for harmonisation of generation
                                improves generation quality, while sacrificing speed
-        :param fixed_fragment: Fragment to fix during generation as an RDKit Mol object
+        :param fixed_fragment: Fragment to fix during generation as an RDKit Mol object or
+                               a set of atom idxs of reference conformer
         :param blend_power: power of the polynomial blending schedule for generation with a fixed fragment
         :return: A list of valid standardised generated molecules as RDKit Mol objects
         """
         if reference_conformer:
             # Ensure the initial mol is stripped off Hs
-            reference_conformer = Chem.RemoveHs(reference_conformer)
+            reference_conformer = Chem.RemoveAllHs(reference_conformer)
             ref_n_atoms = reference_conformer.GetNumAtoms()
-            conf = reference_conformer.GetConformer()
-            ref_coord = torch.tensor(conf.GetPositions(), dtype=torch.float32)
-
-            # move coord to center
-            virtual_com = torch.mean(ref_coord, dim=0)
-            ref_coord = ref_coord - virtual_com
-
-            ref_context, _, rotation = get_context_shape(
-                ref_coord, include_rotation=True
-            )
+            ref_context, shift, rotation, aligned_coord = align_mol_to_principal_frame(reference_conformer)
 
             if fixed_fragment:
-                # Apply the Reference Transformation to Fixed fragment to keep consistency
-                ff_conf = fixed_fragment.GetConformer()
-                ff_coord = torch.tensor(ff_conf.GetPositions(), dtype=torch.float32)
-                ff_coord_ref_aligned = apply_transform(ff_coord, -virtual_com, rotation)
-                fixed_fragment = set_conformer_positions(
-                    fixed_fragment, ff_coord_ref_aligned
-                )
+                if isinstance(fixed_fragment, set):
+                    aligned_ref_mol = set_conformer_positions(reference_conformer, aligned_coord)
+                    fixed_fragment = extract_fragment(aligned_ref_mol, fixed_fragment)
+                elif isinstance(fixed_fragment, Chem.Mol):
+                    fixed_fragment = Chem.RemoveAllHs(fixed_fragment)
+                    ff_conf = fixed_fragment.GetConformer()
+                    ff_coord = torch.tensor(ff_conf.GetPositions(), dtype=torch.float32)
+                    ff_coord_ref_aligned = apply_transform(ff_coord, shift, rotation)
+                    fixed_fragment = set_conformer_positions(fixed_fragment, ff_coord_ref_aligned)
 
         elif reference_context is not None:
             if n_atoms:
@@ -250,6 +278,9 @@ class MLConformerGenerator(torch.nn.Module):
                 )
 
             ref_context = reference_context
+
+            if isinstance(fixed_fragment, set):
+                raise ValueError("'fixed_fragment' must be a Mol object when generating from a reference context.")
 
         else:
             raise ValueError(
@@ -266,29 +297,12 @@ class MLConformerGenerator(torch.nn.Module):
             blend_power=blend_power,
         )
 
-        (
-            el_batch,
-            dm_batch,
-            b_adj_mat_batch,
-            canonicalised_samples,
-        ) = prepare_adj_mat_seer_input(
-            mols=edm_samples,
-            dimension=self.dimension,
-            device=self.device,
-        )
-
-        adj_mat_batch = self.adj_mat_seer(
-            elements=el_batch, dist_mat=dm_batch, adj_mat=b_adj_mat_batch
-        )
-
-        adj_mat_batch = adj_mat_batch.to("cpu")
+        raw_mols = self.predict_bonds(edm_samples)
 
         # Append generated bonds and standardise existing samples
         optimised_conformers = []
-
-        for i, adj_mat in enumerate(adj_mat_batch):
-            f_mol = redefine_bonds(canonicalised_samples[i], adj_mat)
-            std_mol = standardize_mol(mol=f_mol, optimize_geometry=optimise_geometry)
+        for f_mol in raw_mols:
+            std_mol = standardize_mol(mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=False)
             if std_mol:
                 optimised_conformers.append(std_mol)
 
@@ -302,9 +316,9 @@ class MLConformerGenerator(torch.nn.Module):
         variance: int = 2,
         reference_context: torch.Tensor = None,
         n_atoms: int = None,
-        optimise_geometry: bool = True,
+        optimize_geometry: bool = True,
         resample_steps: int = 0,
-        fixed_fragment: Chem.Mol = None,
+        fixed_fragment: Chem.Mol | set = None,
         blend_power: int = 3,
     ) -> List[Chem.Mol]:
         return self.generate_conformers(
@@ -313,7 +327,7 @@ class MLConformerGenerator(torch.nn.Module):
             variance=variance,
             reference_context=reference_context,
             n_atoms=n_atoms,
-            optimise_geometry=optimise_geometry,
+            optimise_geometry=optimize_geometry,
             resample_steps=resample_steps,
             fixed_fragment=fixed_fragment,
             blend_power=blend_power,
