@@ -31,13 +31,11 @@ def egnn_onnx_export(
     num_edges = Dim("num_edges")
 
     try:
-        export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
         onnx_model = torch.onnx.export(
             egnn,
             egnn_inputs,
             input_names=["t", "xh", "node_mask", "edge_mask", "context"],
             output_names=["out"],
-            export_options=export_options,
             export_params=True,
             dynamic_shapes={
                 "t": {0: batch_size},
@@ -45,7 +43,6 @@ def egnn_onnx_export(
                 "node_mask": {0: batch_size, 1: num_nodes},
                 "edge_mask": {0: num_edges},
                 "context": {0: batch_size, 1: num_nodes},
-                "out": {0: batch_size, 1: num_nodes},
             },
             opset_version=18,
             verbose=True,
@@ -129,19 +126,16 @@ def adj_mat_seer_onnx_export(
 
     batch_size = Dim("batch_size")
 
-    export_options = torch.onnx.ExportOptions(dynamic_shapes=True)
     onnx_model = torch.onnx.export(
         adj_mat_seer,
         inputs[:-1],
         input_names=["elements", "dist_mat", "adj_mat"],
         output_names=["out"],
-        export_options=export_options,
         export_params=True,
         dynamic_shapes={
             "elements": {0: batch_size},
             "dist_mat": {0: batch_size},
             "adj_mat": {0: batch_size},
-            "out": {0: batch_size},
         },
         opset_version=18,
         verbose=True,

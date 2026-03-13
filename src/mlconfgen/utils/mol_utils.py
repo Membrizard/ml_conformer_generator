@@ -266,9 +266,9 @@ def prepare_edm_input(
         (reference_context - context_norms["mean"]) / context_norms["mad"]
     ).to(device)
 
-    batch_context = normed_context.unsqueeze(0).repeat(n_samples, 1)
+    batch_context = normed_context.unsqueeze(0).expand(n_samples, -1)
 
-    batch_context = batch_context.unsqueeze(1).repeat(1, pad_dim, 1) * node_mask
+    batch_context = batch_context.unsqueeze(1).expand(-1, pad_dim, -1) * node_mask
 
     return (
         node_mask,
@@ -396,8 +396,8 @@ def ifm_prepare_gen_fragment_context(
     # Reference MOI as diagonal matrix (expand to B)
     moi_ref = torch.diag(reference_context)  # (3, 3)
 
-    moi_ref_batch = moi_ref.unsqueeze(0).repeat(batch_size, 1, 1)  # (B, 3, 3)
-    moi_ff_batch = moi_ff.unsqueeze(0).repeat(batch_size, 1, 1)  # (B, 3, 3)
+    moi_ref_batch = moi_ref.unsqueeze(0).expand(batch_size, -1, -1)  # (B, 3, 3)
+    moi_ff_batch = moi_ff.unsqueeze(0).expand(batch_size, -1, -1)  # (B, 3, 3)
 
     # Gen frag MOI around origin
     moi_gen_origin = moi_ref_batch - moi_ff_batch  # (B, 3, 3)
@@ -431,7 +431,7 @@ def ifm_prepare_gen_fragment_context(
     )
 
     batched_normed_frag_context = (
-        normed_frag_context.unsqueeze(1).repeat(1, max_n_nodes_frag, 1) * frag_node_mask
+        normed_frag_context.unsqueeze(1).expand(-1, max_n_nodes_frag, -1) * frag_node_mask
     )
 
     rotation = rotation.to(device)

@@ -178,7 +178,7 @@ class MolGraph:
                     atom_indexes[bond_index[1][i]],
                     bonds_dict[bond_attr[i]],
                 )
-            except:
+            except Exception:
                 pass
 
         mol = rw_mol.GetMol()

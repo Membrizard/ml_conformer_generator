@@ -314,86 +314,15 @@ class EGNN(nn.Module):
 
         h = self.embedding(h)
 
-        h, x = self.e_block_0(
-            h=h,
-            x=x,
-            edge_index=edge_index,
-            node_mask=node_mask,
-            edge_mask=edge_mask,
-            edge_attr=distances,
-        )
-
-        h, x = self.e_block_1(
-            h=h,
-            x=x,
-            edge_index=edge_index,
-            node_mask=node_mask,
-            edge_mask=edge_mask,
-            edge_attr=distances,
-        )
-
-        h, x = self.e_block_2(
-            h=h,
-            x=x,
-            edge_index=edge_index,
-            node_mask=node_mask,
-            edge_mask=edge_mask,
-            edge_attr=distances,
-        )
-
-        h, x = self.e_block_3(
-            h=h,
-            x=x,
-            edge_index=edge_index,
-            node_mask=node_mask,
-            edge_mask=edge_mask,
-            edge_attr=distances,
-        )
-
-        h, x = self.e_block_4(
-            h=h,
-            x=x,
-            edge_index=edge_index,
-            node_mask=node_mask,
-            edge_mask=edge_mask,
-            edge_attr=distances,
-        )
-
-        h, x = self.e_block_5(
-            h=h,
-            x=x,
-            edge_index=edge_index,
-            node_mask=node_mask,
-            edge_mask=edge_mask,
-            edge_attr=distances,
-        )
-
-        h, x = self.e_block_6(
-            h=h,
-            x=x,
-            edge_index=edge_index,
-            node_mask=node_mask,
-            edge_mask=edge_mask,
-            edge_attr=distances,
-        )
-
-        h, x = self.e_block_7(
-            h=h,
-            x=x,
-            edge_index=edge_index,
-            node_mask=node_mask,
-            edge_mask=edge_mask,
-            edge_attr=distances,
-        )
-
-        h, x = self.e_block_8(
-            h=h,
-            x=x,
-            edge_index=edge_index,
-            node_mask=node_mask,
-            edge_mask=edge_mask,
-            edge_attr=distances,
-        )
+        h, x = self.e_block_0(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
+        h, x = self.e_block_1(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
+        h, x = self.e_block_2(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
+        h, x = self.e_block_3(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
+        h, x = self.e_block_4(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
+        h, x = self.e_block_5(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
+        h, x = self.e_block_6(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
+        h, x = self.e_block_7(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
+        h, x = self.e_block_8(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
 
         h = self.embedding_out(h)
         h = h * node_mask
@@ -457,7 +386,6 @@ class EGNNDynamics(nn.Module):
     ):
         super().__init__()
 
-        # Should have 9 Equivarinat blocks n_layers = 9
         self.egnn = EGNN(
             in_node_nf=in_node_nf + context_node_nf,
             hidden_nf=hidden_nf,
@@ -469,10 +397,12 @@ class EGNNDynamics(nn.Module):
         self.device = device
         self.n_dims = n_dims
 
+        self._adj_cache: dict[tuple[int, int], torch.Tensor] = {}
+
     def forward(self, t, xh, node_mask, edge_mask, context):
         bs, n_nodes, _ = xh.size()
 
-        edges = self.get_adj_matrix(n_nodes, bs, self.device)
+        edges = self._get_adj_matrix_cached(n_nodes, bs, xh.device)
 
         node_mask = node_mask.view(bs * n_nodes, 1)
         edge_mask = edge_mask.view(bs * n_nodes * n_nodes, 1)
@@ -481,12 +411,10 @@ class EGNNDynamics(nn.Module):
 
         h = xh[:, self.n_dims :]
 
-        h_time = t.view(bs, 1).repeat(1, n_nodes)
-        h_time = h_time.view(bs * n_nodes, 1)
+        h_time = t.view(bs, 1).expand(bs, n_nodes)
+        h_time = h_time.reshape(bs * n_nodes, 1)
 
         h = torch.cat([h, h_time], dim=1)
-
-        # Context is added for conditional generation
 
         context = context.view(bs * n_nodes, self.context_node_nf)
 
@@ -496,46 +424,41 @@ class EGNNDynamics(nn.Module):
             h=h, x=x, edge_index=edges, node_mask=node_mask, edge_mask=edge_mask
         )
 
-        vel = (
-            x_final - x
-        ) * node_mask  # This masking operation is redundant but just in case
+        vel = (x_final - x) * node_mask
 
         h_final = h_final[:, : -self.context_node_nf]
-
         h_final = h_final[:, :-1]
 
         vel = vel.view(bs, n_nodes, -1)
-
         vel = remove_mean_with_mask(vel, node_mask.view(bs, n_nodes, 1))
 
         h_final = h_final.view(bs, n_nodes, -1)
 
         return torch.cat([vel, h_final], dim=2)
 
+    def _get_adj_matrix_cached(
+        self, n_nodes: int, batch_size: int, device: torch.device
+    ) -> torch.Tensor:
+        key = (n_nodes, batch_size)
+        cached = self._adj_cache.get(key)
+        if cached is not None and cached.device == device:
+            return cached
+        edges = self._build_adj_matrix(n_nodes, batch_size, device)
+        self._adj_cache[key] = edges
+        return edges
+
     @staticmethod
-    def get_adj_matrix(
+    def _build_adj_matrix(
         n_nodes: int, batch_size: int, device: torch.device
     ) -> torch.Tensor:
-        # Generate batch offsets
         batch_offsets = torch.arange(batch_size, device=device).unsqueeze(1) * n_nodes
 
-        # Generate row and column indices for a single batch
         row_indices = (
             torch.arange(n_nodes, device=device).repeat(n_nodes, 1).T.flatten()
         )
         col_indices = torch.arange(n_nodes, device=device).repeat(n_nodes)
 
-        # Expand to all batches
         rows = (row_indices.unsqueeze(0) + batch_offsets).flatten()
         cols = (col_indices.unsqueeze(0) + batch_offsets).flatten()
 
-        # Store the edges as LongTensor
-        edges = torch.stack(
-            [
-                rows.long(),
-                cols.long(),
-            ],
-            dim=0,
-        ).to(device)
-
-        return edges
+        return torch.stack([rows, cols], dim=0).long()

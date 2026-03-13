@@ -134,7 +134,7 @@ class MolGraphONNX:
                     atom_indexes[bond_index[1][i]],
                     bond_type_dict[bond_attr[i]],
                 )
-            except:
+            except Exception:
                 pass
 
         mol = rw_mol.GetMol()
