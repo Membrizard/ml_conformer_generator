@@ -327,7 +327,7 @@ class MLConformerGenerator(torch.nn.Module):
             variance=variance,
             reference_context=reference_context,
             n_atoms=n_atoms,
-            optimise_geometry=optimize_geometry,
+            optimize_geometry=optimize_geometry,
             resample_steps=resample_steps,
             fixed_fragment=fixed_fragment,
             blend_power=blend_power,

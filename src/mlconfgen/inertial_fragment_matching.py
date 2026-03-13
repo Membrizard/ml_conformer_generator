@@ -20,31 +20,8 @@ from .cheminformatics.pipeline import set_conformer_positions
 from .cheminformatics.shape_similarity import best_pi_rotation_by_tanimoto
 from .conformer_generator import MLConformerGenerator
 
-# from openbabel import openbabel
-
 MIN_FRAG_SIZE = 6
 MAX_FRAG_SIZE = 20
-
-
-# def predict_bonds_openbabel(mol: Chem.Mol, optimize_geometry: bool = True) -> Chem.Mol:
-#     ob_conv = openbabel.OBConversion()
-#     ob_conv.SetInAndOutFormats("xyz", "mol")
-#     obmol = openbabel.OBMol()
-#     xyz_block = Chem.MolToXYZBlock(mol)
-#     ob_conv.ReadString(obmol, xyz_block)
-#
-#     obmol.ConnectTheDots()
-#     obmol.PerceiveBondOrders()
-#
-#     mol_block = ob_conv.WriteString(obmol)
-#     raw_mol = Chem.MolFromMolBlock(mol_block)
-#     if raw_mol:
-#         out_mol = strip_mol(raw_mol)
-#         out_mol = ifm_standardize_mol(mol=out_mol, optimize_geometry=optimize_geometry)
-#     else:
-#         out_mol = None
-#
-#     return out_mol
 
 
 def inertial_fragment_matching(
@@ -89,7 +66,6 @@ def inertial_fragment_matching(
     aligned_ref_mol = set_conformer_positions(ref_mol, aligned_ref_coord)
 
     # Split Reference molecule into fragments
-    # TODO - Add exception when we can't split the mocleule in fragments
     fragment_sets = split_molecule_size_constrained(
         mol=aligned_ref_mol,
         min_size=min_frag_size,
@@ -98,8 +74,10 @@ def inertial_fragment_matching(
         verbose=verbose,
     )
 
-    # Extract fragments as individual conformers
+    if len(fragment_sets) == 0:
+        raise RuntimeError("Could not split reference molecule into fragments, aborting IFM generation.")
 
+    # Extract fragments as individual conformers
     extracted_frags = []
 
     for frag_set in fragment_sets:
@@ -121,7 +99,7 @@ def inertial_fragment_matching(
 
     # Align Fragments to their respective Principal Inertial Frames,
     # while remembering corresponding Shifts and Rotations
-    # Prepare concatenatable edm inputs for all fragments
+    # Prepare concatenate-able edm inputs for all fragments
     for frag in extracted_frags:
         n_atoms = frag.GetNumHeavyAtoms()
         f_context, f_shift, f_rotation, f_coord = align_mol_to_principal_frame(frag)
@@ -338,6 +316,7 @@ def ff_inertial_fragment_matching(
 
         min_n_nodes = n_atoms - variance
         max_n_nodes = n_atoms + variance
+        ref_context = reference_context
 
     else:
         raise ValueError(
@@ -432,11 +411,11 @@ def ff_inertial_fragment_matching(
 
     if predict_bonds:
         raw_mols = merger.predict_bonds(ff_ifm_mols)
-        ifm_mols = []
+        ff_ifm_mols = []
         for f_mol in raw_mols:
             std_mol = standardize_mol(mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=True)
             if std_mol:
-                ifm_mols.append(std_mol)
+                ff_ifm_mols.append(std_mol)
 
     return ff_ifm_mols, fixed_fragment
 
