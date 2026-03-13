@@ -8,11 +8,11 @@ from .egnn import EGNNDynamics
 from .equivariant_diffusion import (EquivariantDiffusion,
                                     PredefinedNoiseSchedule)
 from .utils import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
-                    MIN_N_NODES, NUM_BOND_TYPES, apply_transform,
-                    extract_fragment, prepare_adj_mat_seer_input,
-                    prepare_edm_input, prepare_fragment, redefine_bonds,
-                    samples_to_rdkit_mol, set_conformer_positions, align_mol_to_principal_frame,
-                    standardize_mol)
+                    MIN_N_NODES, NUM_BOND_TYPES, align_mol_to_principal_frame,
+                    apply_transform, extract_fragment,
+                    prepare_adj_mat_seer_input, prepare_edm_input,
+                    prepare_fragment, redefine_bonds, samples_to_rdkit_mol,
+                    set_conformer_positions, standardize_mol)
 
 
 class MLConformerGenerator(torch.nn.Module):
@@ -85,7 +85,8 @@ class MLConformerGenerator(torch.nn.Module):
 
         if "context_norms" in gm_state_dict:
             self.context_norms = {
-                key: torch.tensor(value) for key, value in gm_state_dict["context_norms"].items()
+                key: torch.tensor(value)
+                for key, value in gm_state_dict["context_norms"].items()
             }
         else:
             self.context_norms = {
@@ -233,7 +234,8 @@ class MLConformerGenerator(torch.nn.Module):
         n_atoms: int = None,
         optimize_geometry: bool = True,
         resample_steps: int = 0,
-        fixed_fragment: Chem.Mol | set = None,  # Add fixed fragment definition as a subset of a reference conformer
+        fixed_fragment: Chem.Mol
+        | set = None,  # Add fixed fragment definition as a subset of a reference conformer
         blend_power: int = 3,
     ) -> List[Chem.Mol]:
         """
@@ -256,18 +258,24 @@ class MLConformerGenerator(torch.nn.Module):
             # Ensure the initial mol is stripped off Hs
             reference_conformer = Chem.RemoveAllHs(reference_conformer)
             ref_n_atoms = reference_conformer.GetNumAtoms()
-            ref_context, shift, rotation, aligned_coord = align_mol_to_principal_frame(reference_conformer)
+            ref_context, shift, rotation, aligned_coord = align_mol_to_principal_frame(
+                reference_conformer
+            )
 
             if fixed_fragment:
                 if isinstance(fixed_fragment, set):
-                    aligned_ref_mol = set_conformer_positions(reference_conformer, aligned_coord)
+                    aligned_ref_mol = set_conformer_positions(
+                        reference_conformer, aligned_coord
+                    )
                     fixed_fragment = extract_fragment(aligned_ref_mol, fixed_fragment)
                 elif isinstance(fixed_fragment, Chem.Mol):
                     fixed_fragment = Chem.RemoveAllHs(fixed_fragment)
                     ff_conf = fixed_fragment.GetConformer()
                     ff_coord = torch.tensor(ff_conf.GetPositions(), dtype=torch.float32)
                     ff_coord_ref_aligned = apply_transform(ff_coord, shift, rotation)
-                    fixed_fragment = set_conformer_positions(fixed_fragment, ff_coord_ref_aligned)
+                    fixed_fragment = set_conformer_positions(
+                        fixed_fragment, ff_coord_ref_aligned
+                    )
 
         elif reference_context is not None:
             if n_atoms:
@@ -280,7 +288,9 @@ class MLConformerGenerator(torch.nn.Module):
             ref_context = reference_context
 
             if isinstance(fixed_fragment, set):
-                raise ValueError("'fixed_fragment' must be a Mol object when generating from a reference context.")
+                raise ValueError(
+                    "'fixed_fragment' must be a Mol object when generating from a reference context."
+                )
 
         else:
             raise ValueError(
@@ -302,7 +312,9 @@ class MLConformerGenerator(torch.nn.Module):
         # Append generated bonds and standardise existing samples
         optimised_conformers = []
         for f_mol in raw_mols:
-            std_mol = standardize_mol(mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=False)
+            std_mol = standardize_mol(
+                mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=False
+            )
             if std_mol:
                 optimised_conformers.append(std_mol)
 

@@ -1,5 +1,6 @@
-from rdkit import Chem
 from typing import Iterable
+
+from rdkit import Chem
 
 MIN_SIZE_DEFAULT = 6
 MAX_SIZE_DEFAULT = 20
@@ -38,9 +39,6 @@ def _build_fragment_adjacency(mol, fragments):
 
 
 def _components_after_cut(mol, atom_set, cut_bond_idx):
-    bond = mol.GetBondWithIdx(cut_bond_idx)
-    a_rm1 = bond.GetBeginAtomIdx()
-    a_rm2 = bond.GetEndAtomIdx()
 
     local_adj = {a: set() for a in atom_set}
     for b in mol.GetBonds():
@@ -208,10 +206,7 @@ def split_molecule_size_constrained(
     max_iter=200,
     verbose=False,
 ):
-    heavy_atoms = [
-        i for i, a in enumerate(mol.GetAtoms())
-        if a.GetAtomicNum() > 1
-    ]
+    heavy_atoms = [i for i, a in enumerate(mol.GetAtoms()) if a.GetAtomicNum() > 1]
     if len(heavy_atoms) <= min_size:
         if verbose:
             print("Molecule has <= min_size heavy atoms; single fragment.")
@@ -232,7 +227,7 @@ def split_molecule_size_constrained(
                 print("All fragments within size window; stopping.")
             break
 
-        changed = False
+        # changed = False
 
         if any(s > max_size for s in sizes):
             changed, fragments = _try_split_large_fragment(
@@ -252,7 +247,6 @@ def split_molecule_size_constrained(
             print("No further merges/splits possible; stopping.")
         break
 
-    # frag_mols = [_submol_from_atom_set(mol, s) for s in fragments]
     final_sizes = [len(s) for s in fragments]
 
     if verbose and not all(min_size <= s <= max_size for s in final_sizes):

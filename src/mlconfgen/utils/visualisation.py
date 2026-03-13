@@ -3,12 +3,12 @@ from rdkit import Chem
 
 def show_overlay_grid_animated(
     reference_mol,
-    candidate_mols_ll,   # list[list[Mol]]  (frames per cell)
+    candidate_mols_ll,  # list[list[Mol]]  (frames per cell)
     n_cols=3,
     width=300,
     height=300,
-    interval=80,         # ms per frame
-    loop="forward",      # "forward", "backward", "backAndForth"
+    interval=80,  # ms per frame
+    loop="forward",  # "forward", "backward", "backAndForth"
 ):
     def mols_to_xyz_frames(mols):
         # xyz "trajectory": concatenate multiple XYZ blocks
@@ -75,7 +75,6 @@ def show_overlay_grid(
     width=300,
     height=300,
 ):
-
     def mol_to_block(mol):
         return Chem.MolToXYZBlock(mol)
 
@@ -93,7 +92,6 @@ def show_overlay_grid(
         r = i // n_cols
         c = i % n_cols
 
-
         # Add reference (magenta)
         view.addModel(ref_block, "xyz", viewer=(r, c))
         view.setStyle(
@@ -106,16 +104,18 @@ def show_overlay_grid(
         cand_block = mol_to_block(cand)
         view.addModel(cand_block, "xyz", viewer=(r, c))
         view.setStyle(
-                {"model":1},
-                {"stick": {"radius": 0.2}},
-                viewer=(r, c),
-            )
-        view.addSphere({
-                        "center": {"x": 0, "y": 0, "z": 0},
-                        "radius": 0.3,      # tweak size
-                        "color": "red",
-                        "opacity": 1.0
-                    })
+            {"model": 1},
+            {"stick": {"radius": 0.2}},
+            viewer=(r, c),
+        )
+        view.addSphere(
+            {
+                "center": {"x": 0, "y": 0, "z": 0},
+                "radius": 0.3,  # tweak size
+                "color": "red",
+                "opacity": 1.0,
+            }
+        )
 
         view.zoomTo(viewer=(r, c))
 

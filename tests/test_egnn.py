@@ -37,7 +37,9 @@ def test_coord2diff_radial_non_negative():
 def test_unsorted_segment_sum_known():
     data = torch.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
     segment_ids = torch.tensor([0, 1, 0])
-    result = unsorted_segment_sum(data, segment_ids, num_segments=2, normalization_factor=1.0)
+    result = unsorted_segment_sum(
+        data, segment_ids, num_segments=2, normalization_factor=1.0
+    )
     expected = torch.tensor([[6.0, 8.0], [3.0, 4.0]])
     assert torch.allclose(result, expected, atol=1e-5)
 
@@ -45,7 +47,9 @@ def test_unsorted_segment_sum_known():
 def test_unsorted_segment_sum_normalization():
     data = torch.tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])
     segment_ids = torch.tensor([0, 1, 0])
-    result = unsorted_segment_sum(data, segment_ids, num_segments=2, normalization_factor=2.0)
+    result = unsorted_segment_sum(
+        data, segment_ids, num_segments=2, normalization_factor=2.0
+    )
     expected = torch.tensor([[6.0, 8.0], [3.0, 4.0]]) / 2.0
     assert torch.allclose(result, expected, atol=1e-5)
 
@@ -74,7 +78,11 @@ def test_remove_mean_preserves_masked_out():
 
 def test_gcl_forward_shape():
     torch.manual_seed(42)
-    in_nf, out_nf, hidden_nf = 8, 8, 32  # out_nf must equal in_nf for residual connection
+    in_nf, out_nf, hidden_nf = (
+        8,
+        8,
+        32,
+    )  # out_nf must equal in_nf for residual connection
     N = 10
     gcl = GCL(input_nf=in_nf, output_nf=out_nf, hidden_nf=hidden_nf, edges_in_d=1)
     h = torch.randn(N, in_nf)

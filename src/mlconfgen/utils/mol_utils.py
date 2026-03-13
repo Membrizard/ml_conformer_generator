@@ -1,8 +1,8 @@
 from typing import List, Tuple
 
 import torch
-from torch.nn.utils.rnn import pad_sequence
 from rdkit import Chem
+from torch.nn.utils.rnn import pad_sequence
 
 from .common import (apply_transform, bond_type_dict, canonicalise,
                      set_conformer_positions)
@@ -214,7 +214,9 @@ def prepare_masks(
     """
 
     batch_size = n_nodes.size(0)
-    n_nodes = n_nodes.view(-1)  # flatten (B,1) to (B,) so unsqueeze(1) below produces 2D, not 3D
+    n_nodes = n_nodes.view(
+        -1
+    )  # flatten (B,1) to (B,) so unsqueeze(1) below produces 2D, not 3D
 
     arange = torch.arange(max_n_nodes, device=device).unsqueeze(0)
     node_mask_bool = arange < n_nodes.unsqueeze(1)
@@ -226,7 +228,9 @@ def prepare_masks(
 
     # Return float masks
     node_mask = node_mask_bool.to(torch.float32).unsqueeze(2)
-    edge_mask = edge_mask_bool.to(torch.float32).view(batch_size * max_n_nodes * max_n_nodes, 1)
+    edge_mask = edge_mask_bool.to(torch.float32).view(
+        batch_size * max_n_nodes * max_n_nodes, 1
+    )
 
     return node_mask, edge_mask
 
@@ -255,7 +259,9 @@ def prepare_edm_input(
 
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
 
-    nodesxsample = torch.randint(min_n_nodes, max_n_nodes + 1, (n_samples,), device=device)
+    nodesxsample = torch.randint(
+        min_n_nodes, max_n_nodes + 1, (n_samples,), device=device
+    )
 
     node_mask, edge_mask = prepare_masks(
         n_nodes=nodesxsample,
@@ -432,7 +438,8 @@ def ifm_prepare_gen_fragment_context(
     )
 
     batched_normed_frag_context = (
-        normed_frag_context.unsqueeze(1).expand(-1, max_n_nodes_frag, -1) * frag_node_mask
+        normed_frag_context.unsqueeze(1).expand(-1, max_n_nodes_frag, -1)
+        * frag_node_mask
     )
 
     rotation = rotation.to(device)
@@ -610,7 +617,13 @@ def align_mol_to_principal_frame(mol):
     return context, shift, rotation, aligned_coord
 
 
-def concat_masked_and_pad(xs: list[torch.Tensor], masks: list[torch.Tensor], pad_extra: int = 0, pad_to: int = None, pad_value=0.0):
+def concat_masked_and_pad(
+    xs: list[torch.Tensor],
+    masks: list[torch.Tensor],
+    pad_extra: int = 0,
+    pad_to: int = None,
+    pad_value=0.0,
+):
     """
     xs:    tuple/list of tensors, each (B, N, *D)
     masks: tuple/list of masks,  each (B, N, 1) or (B, N) (bool or 0/1)

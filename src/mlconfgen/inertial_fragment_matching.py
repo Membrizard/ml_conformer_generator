@@ -1,24 +1,15 @@
 import torch
-
 from rdkit import Chem
-from .utils import (
-    split_molecule_size_constrained,
-    extract_fragment,
-    concat_masked_and_pad,
-    align_mol_to_principal_frame,
-    apply_transform,
-    inverse_coord_transform,
-    prepare_edm_input,
-    samples_to_rdkit_mol,
-    get_context_shape,
-    standardize_mol,
-    ifm_get_xh_from_fragment,
-    ifm_prepare_fragments_for_merge,
-    ifm_prepare_gen_fragment_context,
-)
+
 from .cheminformatics.pipeline import set_conformer_positions
 from .cheminformatics.shape_similarity import best_pi_rotation_by_tanimoto
 from .conformer_generator import MLConformerGenerator
+from .utils import (align_mol_to_principal_frame, apply_transform,
+                    concat_masked_and_pad, extract_fragment, get_context_shape,
+                    ifm_get_xh_from_fragment, ifm_prepare_fragments_for_merge,
+                    ifm_prepare_gen_fragment_context, inverse_coord_transform,
+                    prepare_edm_input, samples_to_rdkit_mol,
+                    split_molecule_size_constrained, standardize_mol)
 
 MIN_FRAG_SIZE = 6
 MAX_FRAG_SIZE = 20
@@ -39,9 +30,7 @@ def inertial_fragment_matching(
     predict_bonds: bool = False,
     optimize_geometry: bool = False,
 ):
-    """
-
-    """
+    """ """
 
     if merger is None:
         merger = generator
@@ -75,7 +64,9 @@ def inertial_fragment_matching(
     )
 
     if len(fragment_sets) == 0:
-        raise RuntimeError("Could not split reference molecule into fragments, aborting IFM generation.")
+        raise RuntimeError(
+            "Could not split reference molecule into fragments, aborting IFM generation."
+        )
 
     # Extract fragments as individual conformers
     extracted_frags = []
@@ -226,7 +217,9 @@ def inertial_fragment_matching(
         raw_mols = merger.predict_bonds(ifm_mols)
         ifm_mols = []
         for f_mol in raw_mols:
-            std_mol = standardize_mol(mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=True)
+            std_mol = standardize_mol(
+                mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=True
+            )
             if std_mol:
                 ifm_mols.append(std_mol)
 
@@ -235,6 +228,7 @@ def inertial_fragment_matching(
 
 # FIXED FRAGMENT GENERATION
 # ------------------------------------------------------
+
 
 def ff_inertial_fragment_matching(
     fixed_fragment: Chem.Mol | set,
@@ -284,7 +278,7 @@ def ff_inertial_fragment_matching(
             _, _, _, ref_fragment_coords = align_mol_to_principal_frame(ref_fragment)
 
             def _alignment_func(a):
-                return align_coord(ref_fragment_coords, a)
+                return align_coord(cand_coord=a, ref_coord=ref_fragment_coords)
 
         elif isinstance(fixed_fragment, Chem.Mol):
             # Apply the Reference Transformation to Fixed fragment to keep consistency
@@ -292,27 +286,37 @@ def ff_inertial_fragment_matching(
             ff_conf = fixed_fragment.GetConformer()
             ff_coord = torch.tensor(ff_conf.GetPositions(), dtype=torch.float32)
             ff_coord_ref_aligned = apply_transform(ff_coord, shift, rotation)
-            fixed_fragment = set_conformer_positions(fixed_fragment, ff_coord_ref_aligned)
+            fixed_fragment = set_conformer_positions(
+                fixed_fragment, ff_coord_ref_aligned
+            )
 
-            _alignment_func = align_mol_to_principal_frame
+            def _alignment_func(coord):
+                return align_coord(cand_coord=coord, ref_coord=None)
 
         else:
-            raise ValueError(f"Unsupported fixed fragment type - {type(fixed_fragment)}")
+            raise ValueError(
+                f"Unsupported fixed fragment type - {type(fixed_fragment)}"
+            )
 
         n_nodes = aligned_ref_coord.size(0)
         min_n_nodes = n_nodes - variance
         max_n_nodes = n_nodes + variance
 
-    elif reference_context:
-
+    elif reference_context is not None:
         if n_atoms is None:
-            raise ValueError('')
+            raise ValueError(
+                "Reference Number of Atoms should be provided, when generating samples using context."
+            )
 
         if isinstance(fixed_fragment, Chem.Mol):
             fixed_fragment = Chem.RemoveAllHs(fixed_fragment)
-            _alignment_func = align_mol_to_principal_frame
+
+            def _alignment_func(coord):
+                return align_coord(cand_coord=coord, ref_coord=None)
         else:
-            raise ValueError(f"Unsupported fixed fragment type for generation from arbitrary context - {type(fixed_fragment)}")
+            raise ValueError(
+                "'fixed_fragment' must be a Mol object when generating from a reference context."
+            )
 
         min_n_nodes = n_atoms - variance
         max_n_nodes = n_atoms + variance
@@ -366,6 +370,7 @@ def ff_inertial_fragment_matching(
 
     aligned_x = []
     frag_coord = total_x.to("cpu")
+
     for old_x in frag_coord:
         aligned_x.append(_alignment_func(old_x))
 
@@ -373,8 +378,8 @@ def ff_inertial_fragment_matching(
 
     new_x = inverse_coord_transform(
         coord=aligned_x,
-        shift=shift,
-        rotation=rotation,
+        shift=shift.to(m_device),
+        rotation=rotation.to(m_device),
     )
 
     fixed_fragment_x, fixed_fragment_h = ifm_get_xh_from_fragment(
@@ -385,17 +390,17 @@ def ff_inertial_fragment_matching(
         fixed_fragment_x=fixed_fragment_x,
         fixed_fragment_h=fixed_fragment_h,
         gen_fragments_x=new_x,
-        gen_fragments_h=total_h,
+        gen_fragments_h=total_h.to(m_device),
         device=m_device,
         max_n_nodes=max_n_nodes,
     )
 
     with torch.no_grad():
         final_x, final_h = merger.generative_model.ifm_merge_fragments_with_injection(
-            node_mask,
-            edge_mask,
+            node_mask.to(m_device),
+            edge_mask.to(m_device),
             fixed_mask,
-            context=batch_context,
+            context=batch_context.to(m_device),
             z_seed=z_known,
             diffusion_level=merging_diffusion_level,
             resample_steps=resample_steps,
@@ -413,20 +418,26 @@ def ff_inertial_fragment_matching(
         raw_mols = merger.predict_bonds(ff_ifm_mols)
         ff_ifm_mols = []
         for f_mol in raw_mols:
-            std_mol = standardize_mol(mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=True)
+            std_mol = standardize_mol(
+                mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=True
+            )
             if std_mol:
                 ff_ifm_mols.append(std_mol)
 
-    return ff_ifm_mols, fixed_fragment
+    return ff_ifm_mols
 
 
-def align_coord(ref_coord, cand_coord):
+def align_coord(cand_coord, ref_coord):
     # move coord to center
     virtual_com = torch.mean(cand_coord, dim=0)
-    ref_coord = ref_coord - virtual_com
+    cand_coord = cand_coord - virtual_com
 
     # Get Coords in Principal Frame
-    _, aligned_coord, _ = get_context_shape(cand_coord, include_rotation=True)
+    _, aligned_coord = get_context_shape(cand_coord, include_rotation=False)
 
-    best_coord, _ = best_pi_rotation_by_tanimoto(ref_coord, aligned_coord)
-    return best_coord
+    if ref_coord is not None:
+        ref_coord = ref_coord - virtual_com
+        best_coord, _ = best_pi_rotation_by_tanimoto(ref_coord, aligned_coord)
+        return best_coord
+
+    return aligned_coord

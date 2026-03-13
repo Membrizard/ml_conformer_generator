@@ -314,15 +314,78 @@ class EGNN(nn.Module):
 
         h = self.embedding(h)
 
-        h, x = self.e_block_0(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
-        h, x = self.e_block_1(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
-        h, x = self.e_block_2(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
-        h, x = self.e_block_3(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
-        h, x = self.e_block_4(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
-        h, x = self.e_block_5(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
-        h, x = self.e_block_6(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
-        h, x = self.e_block_7(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
-        h, x = self.e_block_8(h=h, x=x, edge_index=edge_index, node_mask=node_mask, edge_mask=edge_mask, edge_attr=distances)
+        h, x = self.e_block_0(
+            h=h,
+            x=x,
+            edge_index=edge_index,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+            edge_attr=distances,
+        )
+        h, x = self.e_block_1(
+            h=h,
+            x=x,
+            edge_index=edge_index,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+            edge_attr=distances,
+        )
+        h, x = self.e_block_2(
+            h=h,
+            x=x,
+            edge_index=edge_index,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+            edge_attr=distances,
+        )
+        h, x = self.e_block_3(
+            h=h,
+            x=x,
+            edge_index=edge_index,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+            edge_attr=distances,
+        )
+        h, x = self.e_block_4(
+            h=h,
+            x=x,
+            edge_index=edge_index,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+            edge_attr=distances,
+        )
+        h, x = self.e_block_5(
+            h=h,
+            x=x,
+            edge_index=edge_index,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+            edge_attr=distances,
+        )
+        h, x = self.e_block_6(
+            h=h,
+            x=x,
+            edge_index=edge_index,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+            edge_attr=distances,
+        )
+        h, x = self.e_block_7(
+            h=h,
+            x=x,
+            edge_index=edge_index,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+            edge_attr=distances,
+        )
+        h, x = self.e_block_8(
+            h=h,
+            x=x,
+            edge_index=edge_index,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+            edge_attr=distances,
+        )
 
         h = self.embedding_out(h)
         h = h * node_mask

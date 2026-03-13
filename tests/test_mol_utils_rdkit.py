@@ -140,6 +140,7 @@ def test_fragment_shapes(device):
     mol = Chem.MolFromSmiles("CCO")
     mol = Chem.AddHs(mol)
     from rdkit.Chem import AllChem
+
     AllChem.EmbedMolecule(mol, randomSeed=42)
 
     z_known, fixed_mask = prepare_fragment(
@@ -159,6 +160,7 @@ def test_fragment_too_large_raises(device):
     mol = Chem.MolFromSmiles(smi)
     mol = Chem.AddHs(mol)
     from rdkit.Chem import AllChem
+
     AllChem.EmbedMolecule(mol, randomSeed=42)
 
     with pytest.raises(ValueError):
@@ -183,7 +185,13 @@ def test_gen_fragment_context_shapes(device, context_norms):
     ref_context = torch.tensor([100.0, 400.0, 500.0])
     n_nodes = torch.tensor([20, 25])
 
-    frag_node_mask, frag_edge_mask, ctx, shift, rotation = ifm_prepare_gen_fragment_context(
+    (
+        frag_node_mask,
+        frag_edge_mask,
+        ctx,
+        shift,
+        rotation,
+    ) = ifm_prepare_gen_fragment_context(
         fixed_fragment_x=x,
         reference_context=ref_context,
         context_norms=context_norms,
@@ -225,7 +233,9 @@ def test_merge_fragments_shapes(paba_mol, device):
 
 
 def test_align_mol_to_principal_frame(paba_mol_no_hs):
-    context, shift, rotation, aligned_coord = align_mol_to_principal_frame(paba_mol_no_hs)
+    context, shift, rotation, aligned_coord = align_mol_to_principal_frame(
+        paba_mol_no_hs
+    )
     n_atoms = paba_mol_no_hs.GetNumAtoms()
 
     assert context.shape == (3,)

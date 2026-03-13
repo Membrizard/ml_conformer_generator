@@ -5,7 +5,6 @@ from rdkit import Chem
 
 from ..utils.common import bond_type_dict, canonicalise
 from ..utils.config import DIMENSION
-
 from .molgraph import MolGraphONNX
 
 
@@ -51,17 +50,13 @@ def prepare_edm_input_onnx(
 
     batch_size = nodesxsample.shape[0]
 
-    node_mask, edge_mask = prepare_masks_onnx(
-        n_nodes=nodesxsample, max_n_nodes=pad_dim
-    )
+    node_mask, edge_mask = prepare_masks_onnx(n_nodes=nodesxsample, max_n_nodes=pad_dim)
 
     normed_context = (reference_context - context_norms["mean"]) / context_norms["mad"]
 
     batch_context = np.repeat(normed_context[None, :], batch_size, axis=0)
 
-    batch_context = (
-        np.repeat(batch_context[:, None, :], pad_dim, axis=1) * node_mask
-    )
+    batch_context = np.repeat(batch_context[:, None, :], pad_dim, axis=1) * node_mask
 
     return (
         node_mask,
@@ -550,3 +545,89 @@ def get_moment_of_inertia_tensor_batched_onnx(
     moi[:, 1, 2] = moi[:, 2, 1] = i_yz
 
     return moi
+
+
+def align_mol_to_principal_frame_onnx(mol):
+    """
+    Align a molecule to its principal inertial frame.
+    :param mol: rdkit Mol with a conformer
+    :return: (context, shift, rotation, aligned_coord)
+    """
+    conf = mol.GetConformer()
+    coord = np.array(conf.GetPositions(), dtype=np.float32)
+
+    virtual_com = np.mean(coord, axis=0)
+    coord = coord - virtual_com
+
+    shift = -virtual_com
+
+    context, aligned_coord, rotation = get_context_shape_onnx(coord, include_rotation=True)
+
+    return context, shift, rotation, aligned_coord
+
+
+# TODO: Double Check
+def concat_masked_and_pad_onnx(
+    xs: list[np.ndarray],
+    masks: list[np.ndarray],
+    pad_extra: int = 0,
+    pad_to: int | None = None,
+    pad_value: float = 0.0,
+):
+    """
+    xs:    list of arrays, each (B, N, *D)
+    masks: list of masks, each (B, N, 1) or (B, N) (bool or 0/1)
+
+    Returns: (B, L, *D), where L depends on pad_extra / pad_to.
+    """
+
+    # (B, K, N, *D)
+    x = np.stack(xs, axis=1)
+
+    # (B, K, N, 1) or (B, K, N)
+    m = np.stack(masks, axis=1)
+    if m.ndim == x.ndim:  # mask has trailing singleton
+        m = np.squeeze(m, axis=-1)
+
+    m = m.astype(bool)
+
+    b, k, n = m.shape
+    feat_shape = x.shape[3:]  # (*D)
+    flat_len = k * n
+
+    # Flatten K and N -> (B, K*N, *D)
+    x_f = x.reshape(b, flat_len, *feat_shape)
+    m_f = m.reshape(b, flat_len)
+
+    # Select ragged per batch
+    selected = [x_f[i][m_f[i]] for i in range(b)]
+
+    # Ensure empty selections have correct shape
+    empty = np.zeros((0, *feat_shape), dtype=x.dtype)
+    selected = [t if t.size else empty for t in selected]
+
+    # Determine max length
+    Lmax = max(t.shape[0] for t in selected)
+
+    # Pad to max length
+    out = np.full((b, Lmax, *feat_shape), pad_value, dtype=x.dtype)
+
+    for i, t in enumerate(selected):
+        Li = t.shape[0]
+        if Li > 0:
+            out[i, :Li] = t
+
+    # Decide final length
+    if pad_to is not None:
+        L = pad_to
+    else:
+        L = out.shape[1] + pad_extra
+
+    # Pad or truncate
+    if out.shape[1] < L:
+        pad = np.full((b, L - out.shape[1], *feat_shape), pad_value, dtype=x.dtype)
+        out = np.concatenate([out, pad], axis=1)
+    else:
+        out = out[:, :L]
+
+    return out

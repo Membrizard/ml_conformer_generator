@@ -3,23 +3,16 @@ from typing import List
 import numpy as np
 from rdkit import Chem
 
-from .equivariant_diffusion import EquivariantDiffusionONNX
 from ..utils.common import apply_transform, set_conformer_positions
-from ..utils.config import ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES, MIN_N_NODES
+from ..utils.config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION,
+                            MAX_N_NODES, MIN_N_NODES)
 from ..utils.standardizer import standardize_mol
-from .utils import (
-    coord_to_pf_batched_onnx,
-    get_context_shape_onnx,
-    ifm_get_xh_from_fragment_onnx,
-    ifm_prepare_fragments_for_merge_onnx,
-    ifm_prepare_gen_fragment_context_onnx,
-    inverse_coord_transform_onnx,
-    prepare_adj_mat_seer_input_onnx,
-    prepare_edm_input_onnx,
-    prepare_fragment_onnx,
-    redefine_bonds_onnx,
-    samples_to_rdkit_mol_onnx,
-)
+from ..utils.mol_split import extract_fragment
+from .equivariant_diffusion import EquivariantDiffusionONNX
+from .utils import (align_mol_to_principal_frame_onnx,
+                    prepare_adj_mat_seer_input_onnx, prepare_edm_input_onnx,
+                    prepare_fragment_onnx, redefine_bonds_onnx,
+                    samples_to_rdkit_mol_onnx)
 
 
 class MLConformerGeneratorONNX:
@@ -124,20 +117,20 @@ class MLConformerGeneratorONNX:
             )
         else:
             z_known, fixed_mask = prepare_fragment_onnx(
-                    n_samples=n_samples,
-                    fragment=fixed_fragment,
-                    max_n_nodes=max_n_nodes,
-                    min_n_nodes=min_n_nodes,
-                )
+                n_samples=n_samples,
+                fragment=fixed_fragment,
+                max_n_nodes=max_n_nodes,
+                min_n_nodes=min_n_nodes,
+            )
             x, h = self.generative_model.inpaint(
-                    node_mask,
-                    edge_mask,
-                    batch_context,
-                    z_known,
-                    fixed_mask,
-                    resample_steps,
-                    blend_power,
-                )
+                node_mask,
+                edge_mask,
+                batch_context,
+                z_known,
+                fixed_mask,
+                resample_steps,
+                blend_power,
+            )
 
         mols = samples_to_rdkit_mol_onnx(
             positions=x, one_hot=h, node_mask=node_mask, atom_decoder=self.atom_decoder
@@ -152,7 +145,7 @@ class MLConformerGeneratorONNX:
         variance: int = 2,
         reference_context: np.ndarray = None,
         n_atoms: int = None,
-        optimise_geometry: bool = True,
+        optimize_geometry: bool = True,
         resample_steps: int = 0,
         fixed_fragment: Chem.Mol = None,
         blend_power: int = 3,
@@ -164,53 +157,35 @@ class MLConformerGeneratorONNX:
         :param variance: int - variation in number of heavy atoms for generated molecules from reference
         :param reference_context: Arbitrary Reference context if applicable, instead of reference_conformer
         :param n_atoms: Reference number of atoms when generating using arbitrary context
-        :param optimise_geometry: If true will apply constrained MMFF94 geometry optimisation to generated molecules
+        :param optimize_geometry: If true will apply constrained MMFF94 geometry optimisation to generated molecules
         :param resample_steps: number of resampling steps applied for harmonisation of generation
                                improves generation quality, while sacrificing speed
         :param fixed_fragment: Fragment to fix during generation as an RDKit Mol object
         :param blend_power: power of the polynomial blending schedule for generation with a fixed fragment
         :return: A list of valid standardised generated molecules as RDKit Mol objects.
         """
-        # if reference_conformer:
-        #     # Ensure the initial mol is stripped off Hs
-        #     reference_conformer = Chem.RemoveHs(reference_conformer)
-        #     ref_n_atoms = reference_conformer.GetNumAtoms()
-        #     conf = reference_conformer.GetConformer()
-        #     ref_coord = np.array(conf.GetPositions(), dtype=np.float32)
-        #
-        #     # move coord to center
-        #     virtual_com = np.mean(ref_coord, axis=0)
-        #     ref_coord = ref_coord - virtual_com
-        #
-        #     ref_context, _, rotation = get_context_shape_onnx(
-        #         ref_coord, include_rotation=True
-        #     )
-        #
-        #     if fixed_fragment:
-        #         # Apply the Reference Transformation to Fixed fragment to keep consistency
-        #         ff_conf = fixed_fragment.GetConformer()
-        #         ff_coord = np.array(ff_conf.GetPositions(), dtype=np.float32)
-        #         ff_coord_ref_aligned = apply_transform(ff_coord, -virtual_com, rotation)
-        #         fixed_fragment = set_conformer_positions(
-        #             fixed_fragment, ff_coord_ref_aligned
-        #         )
-
         if reference_conformer:
             # Ensure the initial mol is stripped off Hs
             reference_conformer = Chem.RemoveAllHs(reference_conformer)
             ref_n_atoms = reference_conformer.GetNumAtoms()
-            ref_context, shift, rotation, aligned_coord = align_mol_to_principal_frame(reference_conformer)
+            ref_context, shift, rotation, aligned_coord = align_mol_to_principal_frame_onnx(
+                reference_conformer
+            )
 
             if fixed_fragment:
                 if isinstance(fixed_fragment, set):
-                    aligned_ref_mol = set_conformer_positions(reference_conformer, aligned_coord)
+                    aligned_ref_mol = set_conformer_positions(
+                        reference_conformer, aligned_coord
+                    )
                     fixed_fragment = extract_fragment(aligned_ref_mol, fixed_fragment)
                 elif isinstance(fixed_fragment, Chem.Mol):
                     fixed_fragment = Chem.RemoveAllHs(fixed_fragment)
                     ff_conf = fixed_fragment.GetConformer()
-                    ff_coord = torch.tensor(ff_conf.GetPositions(), dtype=torch.float32)
+                    ff_coord = np.array(ff_conf.GetPositions(), dtype=np.float32)
                     ff_coord_ref_aligned = apply_transform(ff_coord, shift, rotation)
-                    fixed_fragment = set_conformer_positions(fixed_fragment, ff_coord_ref_aligned)
+                    fixed_fragment = set_conformer_positions(
+                        fixed_fragment, ff_coord_ref_aligned
+                    )
 
         elif reference_context is not None:
             if n_atoms:
@@ -223,7 +198,9 @@ class MLConformerGeneratorONNX:
             ref_context = reference_context
 
             if isinstance(fixed_fragment, set):
-                raise ValueError("'fixed_fragment' must be a Mol object when generating from a reference context.")
+                raise ValueError(
+                    "'fixed_fragment' must be a Mol object when generating from a reference context."
+                )
 
         else:
             raise ValueError(
@@ -260,7 +237,7 @@ class MLConformerGeneratorONNX:
 
         for i, adj_mat in enumerate(adj_mat_batch):
             f_mol = redefine_bonds_onnx(canonicalised_samples[i], adj_mat)
-            std_mol = standardize_mol(mol=f_mol, optimize_geometry=optimise_geometry)
+            std_mol = standardize_mol(mol=f_mol, optimize_geometry=optimize_geometry)
             if std_mol:
                 optimised_conformers.append(std_mol)
 
@@ -273,7 +250,7 @@ class MLConformerGeneratorONNX:
         variance: int = 2,
         reference_context: np.ndarray = None,
         n_atoms: int = None,
-        optimise_geometry: bool = True,
+        optimize_geometry: bool = True,
         resample_steps: int = 0,
         fixed_fragment: Chem.Mol = None,
         blend_power: int = 3,
@@ -284,7 +261,7 @@ class MLConformerGeneratorONNX:
             variance,
             reference_context,
             n_atoms,
-            optimise_geometry,
+            optimize_geometry,
             resample_steps,
             fixed_fragment,
             blend_power,
