@@ -8,7 +8,7 @@ from src.mlconfgen import (
     inertial_fragment_matching,
     ff_inertial_fragment_matching,
 )
-from src.mlconfgen.utils import extract_fragment, align_mol_to_principal_frame
+from src.mlconfgen.utils import extract_fragment, align_mol_to_principal_frame, set_conformer_positions
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -66,8 +66,19 @@ def ceyyag():
 
 
 @pytest.fixture(scope="module")
+def pif_aligned_ceyyag():
+    ref_mol = Chem.MolFromMolFile("./assets/demo_files/ceyyag.mol")
+    ref_mol = Chem.RemoveHs(ref_mol)
+    context, _, _, aligned_coord = align_mol_to_principal_frame(ref_mol)
+    aligned_mol = set_conformer_positions(ref_mol, aligned_coord)
+
+    return aligned_mol
+
+
+@pytest.fixture(scope="module")
 def ref_context():
     mol = Chem.MolFromMolFile("./assets/demo_files/ceyyag.mol")
+    mol = Chem.RemoveHs(mol)
     context, _, _, _ = align_mol_to_principal_frame(mol)
     return context
 
@@ -181,9 +192,10 @@ def test_basic_generation_ff_set_ref_context(generator, ref_context):
 
 
 @pytest.mark.generation
-def test_basic_generation_ff_mol_ref_context(generator, ceyyag, ref_context):
+def test_basic_generation_ff_mol_ref_context(generator, pif_aligned_ceyyag, ref_context):
     ff_idx = {3, 5, 6, 7, 8, 9, 10}
-    fixed_fragment = extract_fragment(ceyyag, ff_idx)
+
+    fixed_fragment = extract_fragment(pif_aligned_ceyyag, ff_idx)
     n_samples = 20
 
     samples = generator.generate_conformers(
@@ -300,9 +312,9 @@ def test_ifm_ff_set_ref_context(ifm_generator, generator, ref_context):
 
 
 @pytest.mark.generation
-def test_ifm_ff_mol_ref_context(ifm_generator, generator, ceyyag, ref_context):
+def test_ifm_ff_mol_ref_context(ifm_generator, generator, pif_aligned_ceyyag, ref_context):
     ff_idx = {3, 5, 6, 7, 8, 9, 10}
-    fixed_fragment = extract_fragment(ceyyag, ff_idx)
+    fixed_fragment = extract_fragment(pif_aligned_ceyyag, ff_idx)
 
     n_samples = 20
     samples = ff_inertial_fragment_matching(

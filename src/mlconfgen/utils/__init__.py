@@ -1,7 +1,7 @@
 from .common import (apply_transform, bond_type_dict, canonicalise,
                      elements_decoder, set_conformer_positions)
 from .config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
-                     MIN_N_NODES, NUM_BOND_TYPES)
+                     MIN_N_NODES, NUM_BOND_TYPES, MIN_FRAG_SIZE, MAX_FRAG_SIZE)
 from .mol_split import extract_fragment, split_molecule_size_constrained
 from .mol_utils import (align_mol_to_principal_frame, concat_masked_and_pad,
                         coord_to_pf_batched, get_context_shape,
@@ -43,4 +43,6 @@ __all__ = [
     "MAX_N_NODES",
     "CONTEXT_NORMS",
     "ATOM_DECODER",
+    "MIN_FRAG_SIZE",
+    "MAX_FRAG_SIZE",
 ]

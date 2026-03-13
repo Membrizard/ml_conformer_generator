@@ -7,15 +7,15 @@ from ..cheminformatics.pipeline import set_conformer_positions
 from ..cheminformatics.shape_similarity import best_pi_rotation_by_tanimoto
 from .conformer_generator import MLConformerGeneratorONNX
 from ..utils.common import apply_transform
+from ..utils.mol_split import extract_fragment, split_molecule_size_constrained
+from ..utils.standardizer import standardize_mol
+from ..utils.config import MIN_FRAG_SIZE, MAX_FRAG_SIZE
 from .utils import (align_mol_to_principal_frame_onnx,
-                    concat_masked_and_pad, extract_fragment, get_context_shape,
-                    ifm_get_xh_from_fragment, ifm_prepare_fragments_for_merge,
-                    ifm_prepare_gen_fragment_context, inverse_coord_transform,
-                    prepare_edm_input, samples_to_rdkit_mol,
-                    split_molecule_size_constrained, standardize_mol)
-
-MIN_FRAG_SIZE = 6
-MAX_FRAG_SIZE = 20
+                    concat_masked_and_pad_onnx, get_context_shape_onnx,
+                    ifm_get_xh_from_fragment_onnx, ifm_prepare_fragments_for_merge_onnx,
+                    ifm_prepare_gen_fragment_context_onnx, inverse_coord_transform_onnx,
+                    prepare_edm_input_onnx, samples_to_rdkit_mol
+                    )
 
 
 def inertial_fragment_matching_onnx(

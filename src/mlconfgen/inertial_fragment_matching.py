@@ -9,10 +9,7 @@ from .utils import (align_mol_to_principal_frame, apply_transform,
                     ifm_get_xh_from_fragment, ifm_prepare_fragments_for_merge,
                     ifm_prepare_gen_fragment_context, inverse_coord_transform,
                     prepare_edm_input, samples_to_rdkit_mol,
-                    split_molecule_size_constrained, standardize_mol)
-
-MIN_FRAG_SIZE = 6
-MAX_FRAG_SIZE = 20
+                    split_molecule_size_constrained, standardize_mol, MIN_FRAG_SIZE, MAX_FRAG_SIZE)
 
 
 def inertial_fragment_matching(
