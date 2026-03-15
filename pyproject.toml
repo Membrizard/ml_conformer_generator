@@ -17,7 +17,6 @@ maintainers = [
     {name = "Azamat Gafurov", email = "azamat.gafurov@gmail.com"},
 ]
 dependencies = [
-    "torch>=2.0.1",
     "rdkit>=2023.9.5",
     "numpy>=1.26.4",
 ]
@@ -37,9 +36,13 @@ keywords = ["rdkit", "chemistry", "diffusion", "conformers"]
 
 [project.optional-dependencies]
 onnx = [
-    "onnx>=1.17.0",
-    "onnxruntime>=1.19.0",
-    "onnxscript>=0.2.0"
+    "torch>=2.2.1",
+]
+
+onnx = [
+    "onnx>=1.20.1",
+    "onnxruntime>=1.21.0",
+    "onnxscript>=0.6.2"
 ]
 
 [project.urls]

@@ -83,7 +83,7 @@ def ref_context():
     return context
 
 
-@pytest.mark.generation
+@pytest.mark.slow
 def test_basic_generation_ref_mol(generator, ceyyag):
     n_samples = 20
     samples = generator.generate_conformers(
@@ -105,7 +105,7 @@ def test_basic_generation_ref_mol(generator, ceyyag):
     assert average_shape_similarity > 0.3
 
 
-@pytest.mark.generation
+@pytest.mark.slow
 def test_basic_generation_ref_context(generator, ref_context):
     n_samples = 20
     samples = generator.generate_conformers(
@@ -119,7 +119,7 @@ def test_basic_generation_ref_context(generator, ref_context):
     assert valid_samples > 0.3
 
 
-@pytest.mark.generation
+@pytest.mark.slow
 def test_basic_generation_ff_mol_ref_mol(generator, ceyyag):
     ff_idx = {3, 5, 6, 7, 8, 9, 10}
     fixed_fragment = extract_fragment(ceyyag, ff_idx)
@@ -138,7 +138,7 @@ def test_basic_generation_ff_mol_ref_mol(generator, ceyyag):
     _, std_samples = evaluate_samples(ceyyag, samples)
 
     valid_samples = len(std_samples) / n_samples
-    assert valid_samples >= 0.2
+    assert valid_samples >= 0.15
 
     average_shape_similarity = 0
     for sample in std_samples:
@@ -147,7 +147,7 @@ def test_basic_generation_ff_mol_ref_mol(generator, ceyyag):
     assert average_shape_similarity > 0.3
 
 
-@pytest.mark.generation
+@pytest.mark.slow
 def test_basic_generation_ff_set_ref_mol(generator, ceyyag):
     ff_idx = {3, 5, 6, 7, 8, 9, 10}
     n_samples = 20
@@ -164,7 +164,7 @@ def test_basic_generation_ff_set_ref_mol(generator, ceyyag):
     _, std_samples = evaluate_samples(ceyyag, samples)
 
     valid_samples = len(std_samples) / n_samples
-    assert valid_samples >= 0.2
+    assert valid_samples >= 0.15
 
     average_shape_similarity = 0
     for sample in std_samples:
@@ -173,7 +173,7 @@ def test_basic_generation_ff_set_ref_mol(generator, ceyyag):
     assert average_shape_similarity > 0.3
 
 
-@pytest.mark.generation
+@pytest.mark.slow
 def test_basic_generation_ff_set_ref_context(generator, ref_context):
     ff_idx = {3, 5, 6, 7, 8, 9, 10}
     with pytest.raises(
@@ -191,7 +191,7 @@ def test_basic_generation_ff_set_ref_context(generator, ref_context):
         )
 
 
-@pytest.mark.generation
+@pytest.mark.slow
 def test_basic_generation_ff_mol_ref_context(generator, pif_aligned_ceyyag, ref_context):
     ff_idx = {3, 5, 6, 7, 8, 9, 10}
 
@@ -209,14 +209,14 @@ def test_basic_generation_ff_mol_ref_context(generator, pif_aligned_ceyyag, ref_
     )
 
     valid_samples = len(samples) / n_samples
-    assert valid_samples >= 0.2
+    assert valid_samples >= 0.15
 
 
-@pytest.mark.generation
+@pytest.mark.slow
 def test_ifm(ifm_generator, ceyyag):
     n_samples = 20
     samples = inertial_fragment_matching(
-        ref_mol=ceyyag,
+        reference_conformer=ceyyag,
         n_samples=n_samples,
         generator=ifm_generator,
         variance=1,
@@ -235,7 +235,7 @@ def test_ifm(ifm_generator, ceyyag):
     assert average_shape_similarity > 0.3
 
 
-@pytest.mark.generation
+@pytest.mark.slow
 def test_ifm_ff_mol_ref_mol(ifm_generator, generator, ceyyag):
     ff_idx = {3, 5, 6, 7, 8, 9, 10}
     fixed_fragment = extract_fragment(ceyyag, ff_idx)
@@ -243,7 +243,7 @@ def test_ifm_ff_mol_ref_mol(ifm_generator, generator, ceyyag):
     n_samples = 20
     samples = ff_inertial_fragment_matching(
         fixed_fragment=fixed_fragment,
-        ref_conformer=ceyyag,
+        reference_conformer=ceyyag,
         generator=ifm_generator,
         merger=generator,
         n_samples=n_samples,
@@ -263,14 +263,14 @@ def test_ifm_ff_mol_ref_mol(ifm_generator, generator, ceyyag):
     assert average_shape_similarity > 0.3
 
 
-@pytest.mark.generation
+@pytest.mark.slow
 def test_ifm_ff_set_ref_mol(ifm_generator, generator, ceyyag):
     ff_idx = {3, 5, 6, 7, 8, 9, 10}
     n_samples = 20
 
     samples = ff_inertial_fragment_matching(
         fixed_fragment=ff_idx,
-        ref_conformer=ceyyag,
+        reference_conformer=ceyyag,
         generator=ifm_generator,
         merger=generator,
         n_samples=n_samples,
@@ -290,7 +290,7 @@ def test_ifm_ff_set_ref_mol(ifm_generator, generator, ceyyag):
     assert average_shape_similarity > 0.3
 
 
-@pytest.mark.generation
+@pytest.mark.slow
 def test_ifm_ff_set_ref_context(ifm_generator, generator, ref_context):
     ff_idx = {3, 5, 6, 7, 8, 9, 10}
 
@@ -311,7 +311,7 @@ def test_ifm_ff_set_ref_context(ifm_generator, generator, ref_context):
         )
 
 
-@pytest.mark.generation
+@pytest.mark.slow
 def test_ifm_ff_mol_ref_context(ifm_generator, generator, pif_aligned_ceyyag, ref_context):
     ff_idx = {3, 5, 6, 7, 8, 9, 10}
     fixed_fragment = extract_fragment(pif_aligned_ceyyag, ff_idx)

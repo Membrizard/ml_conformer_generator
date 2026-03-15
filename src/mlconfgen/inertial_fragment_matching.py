@@ -13,26 +13,53 @@ from .utils import (align_mol_to_principal_frame, apply_transform,
 
 
 def inertial_fragment_matching(
-    ref_mol: Chem.Mol,  # Reference rdkit Mol
-    n_samples: int,  # number of samples
-    generator: MLConformerGenerator,  # MLConformerGenerator object
-    merger: MLConformerGenerator = None,  # MLConformerGenerator object,
+    reference_conformer: Chem.Mol,
+    n_samples: int,
+    generator: MLConformerGenerator,
+    merger: MLConformerGenerator = None,
     variance: int = 1,
-    resample_steps: int = 0,  # resample steps
-    diffusion_steps_merging: int = 10,  # diffusion steps for merging approx 10% from model diffusion steps
-    min_frag_size: int = MIN_FRAG_SIZE,  # Minimal fragment size in number of heavy atoms
-    max_frag_size: int = MAX_FRAG_SIZE,  # Maximal fragment size in number of heavy atoms
-    max_iter: int = 200,  # Max iterations for molecule splitting
-    verbose: bool = False,  # Verbose flag
+    n_atoms: int = None,
+    resample_steps: int = 0,
+    diffusion_steps_merging: int = 10,
+    min_frag_size: int = MIN_FRAG_SIZE,
+    max_frag_size: int = MAX_FRAG_SIZE,
+    max_iter: int = 200,
+    verbose: bool = False,
     predict_bonds: bool = False,
     optimize_geometry: bool = False,
-):
-    """ """
+) -> list[Chem.Mol]:
+    """
+    Inference pipeline for Inertial Fragment Matching.
+
+    The pipeline attempts to split the reference molecule into fragments by cutting
+    single non-ring bonds. Fragments within the specified size range are selected.
+    For each selected fragment, shape-similar fragments are generated using a
+    generator model. These generated fragments replace the corresponding reference
+    fragments and are subsequently combined using a merger model to produce full
+    molecule candidates.
+
+    :param reference_conformer: Reference molecule as an RDKit Mol object.
+    :param n_samples: Number of molecules to generate.
+    :param generator: Model used to generate initial fragments
+    :param merger: Model used to merge generated fragments
+    :param variance: Allowed deviation (± heavy atoms) from the requested n_atoms in generated molecules.
+    :param n_atoms: Target median number of heavy atoms in generated molecules.
+                    If None, the number of heavy atoms in the reference molecule is used.
+    :param resample_steps: Number of harmonizing diffusion resampling steps.
+    :param diffusion_steps_merging: Number of diffusion steps used during fragment
+                                    merging. A typical value is ~10% of the total diffusion steps of the merger model.
+    :param min_frag_size: Minimum allowed fragment size when splitting the molecule.
+    :param max_frag_size: Maximum allowed fragment size when splitting the molecule.
+    :param max_iter: Maximum number of attempts to split the reference molecule.
+    :param verbose: If True, enables additional logging.
+    :param predict_bonds: If True, bonds are predicted using AdjMatSeer.
+    :param optimize_geometry: If True, performs standard geometry optimization on the generated molecules.
+    :return: List of generated molecules as RDKit Mol objects.
+    """
 
     if merger is None:
         merger = generator
 
-    # context_norms = generator.context_norms
     g_device = generator.device
     m_device = merger.device
 
@@ -40,12 +67,16 @@ def inertial_fragment_matching(
     m_context_norms = merger.context_norms
 
     # Strip of Hs and align Reference to principal Inertial Frame, saving rotation and shift
-    ref_mol = Chem.RemoveHs(ref_mol)
+    ref_mol = Chem.RemoveHs(reference_conformer)
     ref_context, shift, rotation, aligned_ref_coord = align_mol_to_principal_frame(
         ref_mol
     )
 
-    n_nodes = aligned_ref_coord.size(0)
+    if n_atoms is None:
+        n_nodes = aligned_ref_coord.size(0)
+    else:
+        n_nodes = n_atoms
+
     min_n_atoms_final = n_nodes - variance
     max_n_atoms_final = n_nodes + variance
 
@@ -231,20 +262,46 @@ def ff_inertial_fragment_matching(
     fixed_fragment: Chem.Mol | set,
     n_samples: int,
     generator: MLConformerGenerator,
-    ref_conformer: Chem.Mol = None,
+    reference_conformer: Chem.Mol = None,
     reference_context: torch.Tensor = None,
     n_atoms: int = None,
     merger: MLConformerGenerator = None,
     variance: int = 1,
     resample_steps: int = 0,
     blend_power: int = 3,
-    merging_diffusion_level: int = 10,
+    diffusion_steps_merging: int = 10,
     predict_bonds: bool = False,
     optimize_geometry: bool = False,
-):
+) -> list[Chem.Mol]:
     """
-    You can set Fixed Fragment as a mol object or as a set of indexes of atoms in ref_mol!!!
+    Inference pipeline for Inertial Fragment Matching with a fixed fragment.
 
+    The pipeline uses the moments-of-inertia (MOI) tensors of the reference
+    molecule and the fixed fragment to compute the residual tensor corresponding
+    to the fragment that needs to be generated. This residual MOI tensor is then
+    used to guide fragment generation with the generator model.
+
+    The generated fragments are subsequently merged with the fixed fragment using
+    a merger model, while preserving and injecting the fixed fragment into the
+    resulting molecule.
+
+    :param fixed_fragment: a fragment to be fixed as a RDkit Mol object or a set of indexes of atoms in the reference molecule
+    :param n_samples: Number of molecules to generate.
+    :param generator: Model used to generate initial fragments
+    :param reference_conformer: Reference molecule as an RDKit Mol object.
+    :param reference_context: Arbitrary Reference context if applicable, instead of reference_conformer
+    :param n_atoms: Target median number of heavy atoms in generated molecules.
+                    If None, the number of heavy atoms in the reference molecule is used.
+                    Required if using reference_context
+    :param merger: Model used to merge generated fragments
+    :param variance: Allowed deviation (± heavy atoms) from the requested n_atoms in generated molecules.
+    :param resample_steps: Number of harmonizing diffusion resampling steps.
+    :param blend_power: power of the polynomial blending schedule
+    :param diffusion_steps_merging: Number of diffusion steps used during fragment
+                                    merging. A typical value is ~10% of the total diffusion steps of the merger model.
+    :param predict_bonds: If True, bonds are predicted using AdjMatSeer.
+    :param optimize_geometry: If True, performs standard geometry optimization on the generated molecules.
+    :return: List of generated molecules as RDKit Mol objects.
     """
 
     if merger is None:
@@ -258,8 +315,8 @@ def ff_inertial_fragment_matching(
 
     # Strip of Hs and align Reference to principal Inertial Frame, saving rotation and shift
 
-    if ref_conformer:
-        ref_conformer = Chem.RemoveHs(ref_conformer)
+    if reference_conformer:
+        ref_conformer = Chem.RemoveHs(reference_conformer)
         ref_context, shift, rotation, aligned_ref_coord = align_mol_to_principal_frame(
             ref_conformer
         )
@@ -399,7 +456,7 @@ def ff_inertial_fragment_matching(
             fixed_mask,
             context=batch_context.to(m_device),
             z_seed=z_known,
-            diffusion_level=merging_diffusion_level,
+            diffusion_level=diffusion_steps_merging,
             resample_steps=resample_steps,
             blend_power=blend_power,
         )
@@ -424,7 +481,7 @@ def ff_inertial_fragment_matching(
     return ff_ifm_mols
 
 
-def align_coord(cand_coord, ref_coord):
+def align_coord(cand_coord: torch.Tensor, ref_coord: torch.Tensor = None) -> torch.Tensor:
     # move coord to center
     virtual_com = torch.mean(cand_coord, dim=0)
     cand_coord = cand_coord - virtual_com

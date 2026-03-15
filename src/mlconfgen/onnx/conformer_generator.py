@@ -72,6 +72,37 @@ class MLConformerGeneratorONNX:
 
         self.adj_mat_seer = onnxruntime.InferenceSession(adj_mat_seer_onnx)
 
+    def predict_bonds(self, edm_samples: list[Chem.Mol]) -> list[Chem.Mol]:
+        """
+        Predict bonds using the AdjMatSeer GCN model.
+        :param edm_samples: List of RDKit molecule objects without bonds or with incorrect bonds.
+        :return: List of RDKit molecule objects with predicted bonds.
+        """
+
+        (
+            el_batch,
+            dm_batch,
+            b_adj_mat_batch,
+            canonicalised_samples,
+        ) = prepare_adj_mat_seer_input_onnx(
+            mols=edm_samples,
+            dimension=self.dimension,
+        )
+
+        adj_mat_batch = self.adj_mat_seer.run(
+            None,
+            {"elements": el_batch, "dist_mat": dm_batch, "adj_mat": b_adj_mat_batch},
+        )[0]
+
+        # Append generated bonds and standardise existing samples
+        out_mols = []
+
+        for i, adj_mat in enumerate(adj_mat_batch):
+            f_mol = redefine_bonds_onnx(canonicalised_samples[i], adj_mat)
+            out_mols.append(f_mol)
+
+        return out_mols
+
     def edm_samples(
         self,
         reference_context: np.ndarray,
@@ -115,6 +146,7 @@ class MLConformerGeneratorONNX:
                 batch_context,
                 resample_steps,
             )
+
         else:
             z_known, fixed_mask = prepare_fragment_onnx(
                 n_samples=n_samples,
@@ -147,7 +179,7 @@ class MLConformerGeneratorONNX:
         n_atoms: int = None,
         optimize_geometry: bool = True,
         resample_steps: int = 0,
-        fixed_fragment: Chem.Mol = None,
+        fixed_fragment: Chem.Mol | set = None,
         blend_power: int = 3,
     ) -> List[Chem.Mol]:
         """
@@ -217,27 +249,14 @@ class MLConformerGeneratorONNX:
             blend_power=blend_power,
         )
 
-        (
-            el_batch,
-            dm_batch,
-            b_adj_mat_batch,
-            canonicalised_samples,
-        ) = prepare_adj_mat_seer_input_onnx(
-            mols=edm_samples,
-            dimension=self.dimension,
-        )
-
-        adj_mat_batch = self.adj_mat_seer.run(
-            None,
-            {"elements": el_batch, "dist_mat": dm_batch, "adj_mat": b_adj_mat_batch},
-        )[0]
+        raw_mols = self.predict_bonds(edm_samples)
 
         # Append generated bonds and standardise existing samples
         optimised_conformers = []
-
-        for i, adj_mat in enumerate(adj_mat_batch):
-            f_mol = redefine_bonds_onnx(canonicalised_samples[i], adj_mat)
-            std_mol = standardize_mol(mol=f_mol, optimize_geometry=optimize_geometry)
+        for f_mol in raw_mols:
+            std_mol = standardize_mol(
+                mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=False
+            )
             if std_mol:
                 optimised_conformers.append(std_mol)
 
@@ -252,7 +271,7 @@ class MLConformerGeneratorONNX:
         n_atoms: int = None,
         optimize_geometry: bool = True,
         resample_steps: int = 0,
-        fixed_fragment: Chem.Mol = None,
+        fixed_fragment: Chem.Mol | set = None,
         blend_power: int = 3,
     ) -> List[Chem.Mol]:
         out = self.generate_conformers(

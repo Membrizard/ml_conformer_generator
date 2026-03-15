@@ -139,5 +139,5 @@ def test_egnn_dynamics_forward_shape():
 def test_egnn_dynamics_adj_matrix_shape():
     B, N = 2, 4
     device = torch.device("cpu")
-    edges = EGNNDynamics._build_adj_matrix(N, B, device)
+    edges = EGNNDynamics.get_adj_matrix(N, B, device)
     assert edges.shape == (2, B * N * N)

@@ -234,8 +234,7 @@ class MLConformerGenerator(torch.nn.Module):
         n_atoms: int = None,
         optimize_geometry: bool = True,
         resample_steps: int = 0,
-        fixed_fragment: Chem.Mol
-        | set = None,  # Add fixed fragment definition as a subset of a reference conformer
+        fixed_fragment: Chem.Mol | set = None,
         blend_power: int = 3,
     ) -> List[Chem.Mol]:
         """

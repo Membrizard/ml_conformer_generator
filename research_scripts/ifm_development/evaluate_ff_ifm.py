@@ -6,7 +6,8 @@ from tqdm import tqdm
 
 
 from src.mlconfgen import evaluate_samples, MLConformerGenerator
-from src.mlconfgen.inertial_fragment_matching import inertial_fragment_matching, predict_bonds_openbabel
+from src.mlconfgen.utils.mol_split import split_molecule_size_constrained, extract_fragment
+from src.mlconfgen.inertial_fragment_matching import ff_inertial_fragment_matching
 
 
 # LOGGING
@@ -19,94 +20,94 @@ logging.basicConfig(
 
 # CONFIGURATION
 # ---------------------------------
-IFM = True
-DATASET = "./data/smoke_test_ifm_generation_5_molecules.sdf"
-N_SAMPLES = 10
+DATASET = "./data/ifm_fixed_fragment_test_6_20.sdf"
+N_SAMPLES = 100
 VARIANCE = 1
-OPTIMIZE_GEOMETRY = True
-DEVICE = "mps"
+OPTIMIZE_GEOMETRY = False
+DEVICE = "cuda"
 
 GENERATOR = MLConformerGenerator(
     edm_weights="./licensed_edm_moi_chembl_6_39_final.pt",
     adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
     device=DEVICE,
-    diffusion_steps=50,  # Light generation for debugging
+    diffusion_steps=100,  # Light generation for debugging
+)
+
+MERGER = MLConformerGenerator(
+    edm_weights="./edm_moi_chembl_15_39.pt",
+    adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+    device=DEVICE,
+    diffusion_steps=100,  # Light generation for debugging
 )
 VERBOSE = False
 MIN_FRAG_SIZE = 6
-MAX_FRAG_SIZE = 15
+MAX_FRAG_SIZE = 20
 DSTEPS_MERGING = 10
 RESAMPLE_STEPS = 0
 
 
 OUTPUT_SDF = "./data/smoke_test_ifm_out.sdf"
+FF_OUTPUT_SDF = "./data/fragments_smoke_test_ifm_out.sdf"
 # ---------------------------------
 
 
-def generate_molecules(ref_mol: Chem.Mol,
-                       ifm: bool = IFM,
+def ff_generate_molecules(
+                       ref_mol: Chem.Mol,
                        n_samples: int = N_SAMPLES,
                        variance: int = VARIANCE,
                        optimize_geometry: bool = OPTIMIZE_GEOMETRY,
                        generator: MLConformerGenerator = GENERATOR,
+                       merger: MLConformerGenerator = MERGER,
                        min_frag_size: int = MIN_FRAG_SIZE,
                        max_frag_size: int = MAX_FRAG_SIZE,
                        diffusion_steps_merging: int = DSTEPS_MERGING,
                        resample_steps: int = RESAMPLE_STEPS,
+                       blend_power: int = 3,
+                       verbose: bool = VERBOSE,
                        ):
 
-    n_atoms = ref_mol.GetNumHeavyAtoms()
+    if verbose:
+        logging.info("Inertial Fragment Matching happening...")
 
-    if ifm:
-        if VERBOSE:
-            logging.info("Inertial Fragment Matching happening...")
-        final_mols = inertial_fragment_matching(
-            ref_mol=ref_mol,
-            n_samples=n_samples,
-            generator=generator,  # MLConformerGenerator object
-            resample_steps=resample_steps,  # resample steps
-            diffusion_steps_merging=diffusion_steps_merging,  # diffusion steps for merging approx 10% from model diffusion steps
-            min_frag_size=min_frag_size,  # Minimal fragment size in number of heavy atoms
-            max_frag_size=max_frag_size,  # Maximal fragment size in number of heavy atoms
-            max_n_atoms_final=n_atoms + variance,  # Max n_atoms in the final molecule
-            min_n_atoms_final=n_atoms - variance,  # Min n_atoms in the final molecule
-            max_iter=200,  # Max iterations for molecule splitting
-            verbose=VERBOSE,  # Verbose flag
-        )
-        if VERBOSE:
-            logging.info("Inertial Fragment Matching happened!")
+    fragment_sets = split_molecule_size_constrained(
+        mol=ref_mol,
+        min_size=min_frag_size,
+        max_size=max_frag_size,
+        max_iter=200,
+        verbose=verbose,
+    )
 
-    else:
-        if VERBOSE:
-            logging.info("Conventional Generation happening...")
-        final_mols = generator.generate_conformers(
+    assert len(fragment_sets) == 2
+
+    ff_mol = extract_fragment(ref_mol, fragment_sets[0])
+
+    final_mols = ff_inertial_fragment_matching(
+            fixed_fragment=fragment_sets[0],
             reference_conformer=ref_mol,
+            generator=generator,
+            merger=merger,
             n_samples=n_samples,
             variance=variance,
             resample_steps=resample_steps,
-            optimise_geometry=False,
+            blend_power=blend_power,
+            diffusion_steps_merging=diffusion_steps_merging,
+            predict_bonds=True,
         )
-        if VERBOSE:
-            logging.info("Conventional Generation complete!")
+    if verbose:
+        logging.info("Inertial Fragment Matching happened!")
 
-    obabel_mols = []
+    _, std_samples = evaluate_samples(ref_mol, final_mols)
 
-    # Switched to deterministic bond prediction
-    for mol in final_mols:
-        f_mol = predict_bonds_openbabel(mol, optimize_geometry=optimize_geometry)
-        if f_mol:
-            obabel_mols.append(f_mol)
-
-    _, std_samples = evaluate_samples(ref_mol, obabel_mols)
-
-    return std_samples
+    return std_samples, ff_mol
 
 
 def log_samples_with_metadata(
                 generated_samples: list,
                 ref_mol: Chem.Mol,
+                fixed_fragment: Chem.Mol,
                 generation_id: str,
                 writer: Chem.SDWriter,
+                fragment_writer: Chem.SDWriter,
                 variance: int = VARIANCE,
                 requested_samples: int = N_SAMPLES,
                 ) -> None:
@@ -115,11 +116,18 @@ def log_samples_with_metadata(
     ref_n_atoms = ref_mol.GetNumHeavyAtoms()
     ref_name = ref_mol.GetProp("_Name")
 
+    fixed_fragment.SetProp("_Name", generation_id)
+
+    fragment_writer.write(fixed_fragment)
+
+    ff_smiles = Chem.MolToSmiles(fixed_fragment)
+
     for i, sample in enumerate(generated_samples):
         shape_similarity_score = sample["shape_tanimoto"]
         chemical_similarity_score = sample["chemical_tanimoto"]
         gen_mol = Chem.MolFromMolBlock(sample["mol_block"])
 
+        gen_mol.SetProp("fixed_fragment_smiles", ff_smiles)
         gen_mol.SetProp("reference_name", ref_name)
         gen_mol.SetProp("shape_similarity", str(shape_similarity_score))
         gen_mol.SetProp("chemical_similarity", str(chemical_similarity_score))
@@ -133,24 +141,28 @@ def log_samples_with_metadata(
     return None
 
 
-def collect_stats(outfile_path: str):
-    return None
-
-
 # CORE SCRIPT
 # ---------------------------------
 dataset_supplier = Chem.SDMolSupplier(DATASET)
 output_writer = Chem.SDWriter(OUTPUT_SDF)
+ff_writer = Chem.SDWriter(FF_OUTPUT_SDF)
 
 generation_start = time.time()
+counter = 0
 for r_mol in tqdm(dataset_supplier):
-    g_samples = generate_molecules(r_mol)
+    try:
+        counter += 1
+        g_samples, fixed_fragment = ff_generate_molecules(r_mol)
 
-    log_samples_with_metadata(generated_samples=g_samples,
-                              ref_mol=r_mol,
-                              generation_id="Mock",
-                              writer=output_writer,
-                              )
+        log_samples_with_metadata(generated_samples=g_samples,
+                                  ref_mol=r_mol,
+                                  fixed_fragment=fixed_fragment,
+                                  generation_id=f"generation_{counter}",
+                                  writer=output_writer,
+                                  fragment_writer=ff_writer,
+                                  )
+    except:
+        pass
 
 generation_time = round(time.time() - generation_start, 2)
 
