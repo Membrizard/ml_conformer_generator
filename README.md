@@ -24,9 +24,11 @@ that are both chemically valid and spatially similar to a reference shape.
 
     Fix specific substructures or fragments within a molecule and complete or grow the rest in a geometrically consistent manner.
 
+
 * **Inertial Fragment Matching**
 
-Generate molecules fragment by fragment by leveraging the physical properties of the shape descriptor, improving both shape similarity and chemical validity.
+    Generate molecules fragment by fragment by leveraging the physical properties of the shape descriptor, improving both shape similarity and chemical validity.
+
 
 ## Citation
 
