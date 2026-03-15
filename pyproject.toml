@@ -35,7 +35,7 @@ license-files = ["LICENSE*"]
 keywords = ["rdkit", "chemistry", "diffusion", "conformers"]
 
 [project.optional-dependencies]
-onnx = [
+torch = [
     "torch>=2.2.1",
 ]
 
@@ -43,6 +43,13 @@ onnx = [
     "onnx>=1.20.1",
     "onnxruntime>=1.21.0",
     "onnxscript>=0.6.2"
+]
+
+full = [
+    "torch>=2.0.1",
+    "onnx>=1.20.1",
+    "onnxruntime>=1.21.0",
+    "onnxscript>=0.6.2",
 ]
 
 [project.urls]
