@@ -2,6 +2,7 @@ from typing import List, Tuple
 
 import torch
 from rdkit import Chem
+from torch.nn.utils.rnn import pad_sequence
 
 from .common import (apply_transform, bond_type_dict, canonicalise,
                      set_conformer_positions)
@@ -213,7 +214,9 @@ def prepare_masks(
     """
 
     batch_size = n_nodes.size(0)
-    n_nodes = n_nodes.view(-1)  # flatten (B,1) to (B,) so unsqueeze(1) below produces 2D, not 3D
+    n_nodes = n_nodes.view(
+        -1
+    )  # flatten (B,1) to (B,) so unsqueeze(1) below produces 2D, not 3D
 
     arange = torch.arange(max_n_nodes, device=device).unsqueeze(0)
     node_mask_bool = arange < n_nodes.unsqueeze(1)
@@ -225,7 +228,9 @@ def prepare_masks(
 
     # Return float masks
     node_mask = node_mask_bool.to(torch.float32).unsqueeze(2)
-    edge_mask = edge_mask_bool.to(torch.float32).view(batch_size * max_n_nodes * max_n_nodes, 1)
+    edge_mask = edge_mask_bool.to(torch.float32).view(
+        batch_size * max_n_nodes * max_n_nodes, 1
+    )
 
     return node_mask, edge_mask
 
@@ -254,7 +259,9 @@ def prepare_edm_input(
 
     # Create a random list of sizes between min_n_nodes and max_n_nodes of length n_samples
 
-    nodesxsample = torch.randint(min_n_nodes, max_n_nodes + 1, (n_samples,), device=device)
+    nodesxsample = torch.randint(
+        min_n_nodes, max_n_nodes + 1, (n_samples,), device=device
+    )
 
     node_mask, edge_mask = prepare_masks(
         n_nodes=nodesxsample,
@@ -266,9 +273,9 @@ def prepare_edm_input(
         (reference_context - context_norms["mean"]) / context_norms["mad"]
     ).to(device)
 
-    batch_context = normed_context.unsqueeze(0).repeat(n_samples, 1)
+    batch_context = normed_context.unsqueeze(0).expand(n_samples, -1)
 
-    batch_context = batch_context.unsqueeze(1).repeat(1, pad_dim, 1) * node_mask
+    batch_context = batch_context.unsqueeze(1).expand(-1, pad_dim, -1) * node_mask
 
     return (
         node_mask,
@@ -396,8 +403,8 @@ def ifm_prepare_gen_fragment_context(
     # Reference MOI as diagonal matrix (expand to B)
     moi_ref = torch.diag(reference_context)  # (3, 3)
 
-    moi_ref_batch = moi_ref.unsqueeze(0).repeat(batch_size, 1, 1)  # (B, 3, 3)
-    moi_ff_batch = moi_ff.unsqueeze(0).repeat(batch_size, 1, 1)  # (B, 3, 3)
+    moi_ref_batch = moi_ref.unsqueeze(0).expand(batch_size, -1, -1)  # (B, 3, 3)
+    moi_ff_batch = moi_ff.unsqueeze(0).expand(batch_size, -1, -1)  # (B, 3, 3)
 
     # Gen frag MOI around origin
     moi_gen_origin = moi_ref_batch - moi_ff_batch  # (B, 3, 3)
@@ -431,7 +438,8 @@ def ifm_prepare_gen_fragment_context(
     )
 
     batched_normed_frag_context = (
-        normed_frag_context.unsqueeze(1).repeat(1, max_n_nodes_frag, 1) * frag_node_mask
+        normed_frag_context.unsqueeze(1).expand(-1, max_n_nodes_frag, -1)
+        * frag_node_mask
     )
 
     rotation = rotation.to(device)
@@ -607,3 +615,59 @@ def align_mol_to_principal_frame(mol):
     context, aligned_coord, rotation = get_context_shape(coord, include_rotation=True)
 
     return context, shift, rotation, aligned_coord
+
+
+def concat_masked_and_pad(
+    xs: list[torch.Tensor],
+    masks: list[torch.Tensor],
+    pad_extra: int = 0,
+    pad_to: int = None,
+    pad_value=0.0,
+):
+    """
+    xs:    tuple/list of tensors, each (B, N, *D)
+    masks: tuple/list of masks,  each (B, N, 1) or (B, N) (bool or 0/1)
+
+    Returns: (B, L, *D), where L depends on pad_extra / pad_to.
+    """
+    # (B, K, N, *D)
+    x = torch.stack(xs, dim=1)
+
+    # (B, K, N, 1) or (B, K, N)
+    m = torch.stack(masks, dim=1)
+    if m.dim() == x.dim():  # mask has trailing singleton like (.., 1)
+        m = m.squeeze(-1)
+    m = m.bool()  # (B, K, N)
+
+    b, k, n = m.shape
+    feat_shape = x.shape[3:]  # (*D)
+    flat_len = k * n
+
+    # Flatten K and N -> (B, K*N, *D)
+    x_f = x.reshape(b, flat_len, *feat_shape)
+    m_f = m.reshape(b, flat_len)
+
+    # Select ragged per batch: list of (Li, *D)
+    selected = [x_f[b][m_f[b]] for b in range(b)]
+
+    # If some batch has zero selected rows, ensure correct shape for padding
+    empty = x.new_zeros((0, *feat_shape))
+    selected = [t if t.numel() else empty for t in selected]
+
+    # Pad to max Li in batch -> (B, Lmax, *D)
+    out = pad_sequence(selected, batch_first=True, padding_value=pad_value)
+
+    # Decide final length
+    if pad_to is not None:
+        l_ = pad_to
+    else:
+        l_ = out.size(1) + pad_extra
+
+    # Pad/truncate to L
+    if out.size(1) < l_:
+        pad = out.new_full((b, l_ - out.size(1), *feat_shape), pad_value)
+        out = torch.cat([out, pad], dim=1)
+    else:
+        out = out[:, :l_]
+
+    return out

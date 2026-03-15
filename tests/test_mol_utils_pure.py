@@ -172,9 +172,7 @@ def test_inverse_transform_roundtrip():
     # Create random orthogonal rotation matrices
     rotation = torch.linalg.qr(torch.randn(B, 3, 3))[0]
 
-    transformed = torch.bmm(
-        coord + shift.unsqueeze(1), rotation
-    )
+    transformed = torch.bmm(coord + shift.unsqueeze(1), rotation)
     recovered = inverse_coord_transform(transformed, shift, rotation)
     assert torch.allclose(recovered, coord, atol=1e-4)
 
@@ -289,5 +287,3 @@ def test_edm_input_pad_to_node_counts(context_norms, device):
     )
     counts = node_mask.squeeze(-1).sum(dim=1)
     assert torch.allclose(counts, torch.full((n_samples,), float(n_atoms)))
-
-

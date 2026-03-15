@@ -6,7 +6,8 @@ from tqdm import tqdm
 
 
 from src.mlconfgen import evaluate_samples, MLConformerGenerator
-from src.mlconfgen.inertial_fragment_matching import ff_inertial_fragment_matching, predict_bonds_openbabel
+from src.mlconfgen.utils.mol_split import split_molecule_size_constrained, extract_fragment
+from src.mlconfgen.inertial_fragment_matching import ff_inertial_fragment_matching
 
 
 # LOGGING
@@ -68,38 +69,36 @@ def ff_generate_molecules(
     if verbose:
         logging.info("Inertial Fragment Matching happening...")
 
-    final_mols, fixed_fragment = ff_inertial_fragment_matching(
-            ref_mol=ref_mol,
+    fragment_sets = split_molecule_size_constrained(
+        mol=ref_mol,
+        min_size=min_frag_size,
+        max_size=max_frag_size,
+        max_iter=200,
+        verbose=verbose,
+    )
+
+    assert len(fragment_sets) == 2
+
+    ff_mol = extract_fragment(ref_mol, fragment_sets[0])
+
+    final_mols = ff_inertial_fragment_matching(
+            fixed_fragment=fragment_sets[0],
+            reference_conformer=ref_mol,
             generator=generator,
             merger=merger,
             n_samples=n_samples,
             variance=variance,
             resample_steps=resample_steps,
             blend_power=blend_power,
-            merging_diffusion_level=diffusion_steps_merging,
-            min_frag_size=min_frag_size,
-            max_frag_size=max_frag_size,
-            max_iter=200,
-            verbose=verbose,
+            diffusion_steps_merging=diffusion_steps_merging,
+            predict_bonds=True,
         )
     if verbose:
         logging.info("Inertial Fragment Matching happened!")
 
-    obabel_mols = []
+    _, std_samples = evaluate_samples(ref_mol, final_mols)
 
-    # Switched to deterministic bond prediction
-    for mol in final_mols:
-        f_mol = predict_bonds_openbabel(mol, optimize_geometry=optimize_geometry)
-        if f_mol:
-            obabel_mols.append(f_mol)
-
-    _, std_samples = evaluate_samples(ref_mol, obabel_mols)
-
-    return std_samples, fixed_fragment
-
-
-def inpaint_strategy():
-    return None
+    return std_samples, ff_mol
 
 
 def log_samples_with_metadata(
@@ -139,10 +138,6 @@ def log_samples_with_metadata(
         gen_mol.SetProp("requested_samples", str(requested_samples))
         gen_mol.SetProp("generation_sample_id", f"{i+1} out of {valid_samples}")
         writer.write(gen_mol)
-    return None
-
-
-def collect_stats(outfile_path: str):
     return None
 
 

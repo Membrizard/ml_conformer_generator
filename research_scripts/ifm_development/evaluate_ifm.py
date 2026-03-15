@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 
 from src.mlconfgen import evaluate_samples, MLConformerGenerator
-from src.mlconfgen.inertial_fragment_matching import inertial_fragment_matching, predict_bonds_openbabel
+from src.mlconfgen.inertial_fragment_matching import inertial_fragment_matching
 
 
 # LOGGING
@@ -27,7 +27,7 @@ OPTIMIZE_GEOMETRY = True
 DEVICE = "mps"
 
 GENERATOR = MLConformerGenerator(
-    edm_weights="./licensed_edm_moi_chembl_6_39_final.pt",
+    edm_weights="./edm_moi_chembl_6_39_fragments.pt",
     adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
     device=DEVICE,
     diffusion_steps=50,  # Light generation for debugging
@@ -55,23 +55,22 @@ def generate_molecules(ref_mol: Chem.Mol,
                        resample_steps: int = RESAMPLE_STEPS,
                        ):
 
-    n_atoms = ref_mol.GetNumHeavyAtoms()
-
     if ifm:
         if VERBOSE:
             logging.info("Inertial Fragment Matching happening...")
+
         final_mols = inertial_fragment_matching(
-            ref_mol=ref_mol,
+            reference_conformer=ref_mol,
             n_samples=n_samples,
             generator=generator,  # MLConformerGenerator object
+            variance=variance,
             resample_steps=resample_steps,  # resample steps
             diffusion_steps_merging=diffusion_steps_merging,  # diffusion steps for merging approx 10% from model diffusion steps
             min_frag_size=min_frag_size,  # Minimal fragment size in number of heavy atoms
             max_frag_size=max_frag_size,  # Maximal fragment size in number of heavy atoms
-            max_n_atoms_final=n_atoms + variance,  # Max n_atoms in the final molecule
-            min_n_atoms_final=n_atoms - variance,  # Min n_atoms in the final molecule
             max_iter=200,  # Max iterations for molecule splitting
             verbose=VERBOSE,  # Verbose flag
+            predict_bonds=True,
         )
         if VERBOSE:
             logging.info("Inertial Fragment Matching happened!")
@@ -89,15 +88,7 @@ def generate_molecules(ref_mol: Chem.Mol,
         if VERBOSE:
             logging.info("Conventional Generation complete!")
 
-    obabel_mols = []
-
-    # Switched to deterministic bond prediction
-    for mol in final_mols:
-        f_mol = predict_bonds_openbabel(mol, optimize_geometry=optimize_geometry)
-        if f_mol:
-            obabel_mols.append(f_mol)
-
-    _, std_samples = evaluate_samples(ref_mol, obabel_mols)
+    _, std_samples = evaluate_samples(ref_mol, final_mols)
 
     return std_samples
 
@@ -130,10 +121,6 @@ def log_samples_with_metadata(
         gen_mol.SetProp("requested_samples", str(requested_samples))
         gen_mol.SetProp("generation_sample_id", f"{i+1} out of {valid_samples}")
         writer.write(gen_mol)
-    return None
-
-
-def collect_stats(outfile_path: str):
     return None
 
 

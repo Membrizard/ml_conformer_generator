@@ -24,6 +24,12 @@ that are both chemically valid and spatially similar to a reference shape.
 
     Fix specific substructures or fragments within a molecule and complete or grow the rest in a geometrically consistent manner.
 
+
+* **Inertial Fragment Matching**
+
+    Generate molecules fragment by fragment by leveraging the physical properties of the shape descriptor, improving both shape similarity and chemical validity.
+
+
 ## Citation
 
 If you use **MLConfGen** in your research, please cite:
@@ -36,9 +42,12 @@ DOI: [10.1039/D5DD00318K](https://doi.org/10.1039/D5DD00318K)
 ---
 ## Installation
 
-1. Install the package:
+1. Install the package for your preferred backend:
 
-`pip install mlconfgen`
+   *  `pip install mlconfgen[torch]` — use the PyTorch-based inference pipeline
+
+   *  `pip install mlconfgen[onnx]` — use the torch-free ONNX runtime version
+
 
 2. Load the weights from Huggingface
 > https://huggingface.co/Membrizard/ml_conformer_generator
@@ -116,14 +125,14 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 
 ### General Overview
 
-- ⏱ **Avg time to generate 50 valid samples**: 11.46 sec (NVIDIA H100)
-- ⚡️ **Generation speed**: 4.18 valid molecules/sec
+- ⏱ **Avg time to generate 50 valid samples**: 11.46 sec (NVIDIA H100) (100 samples batch)
+- ⚡️ **Generation speed**: 4.18 valid molecules/sec (100 samples batch)
 - 💾 **GPU memory (per generation thread)**: Up to 14.0 GB (`float16` 39 atoms 100 samples)
-- 📐 **Avg Shape Tanimoto Similarity**: 53.32%
+- 📐 **Avg Shape Tanimoto Similarity**: 53.32% (Basic generation) - 69.97% (Inertial Fragment Matching)
 - 🎯 **Max Shape Tanimoto Similarity**: 99.69%
 - 🔬 **Avg Chemical Tanimoto Similarity (2-hop 2048-bit Morgan Fingerprints)**: 10.87%
 - 🧬 **% Chemically novel (vs. training set)**: 99.84%
-- ✔️ **% Valid molecules (post-standardization)**: 48%
+- ✔️ **% Valid molecules (post-standardization)**: 48% (ML Bond Prediction) - 93% (OpenBabel bond prediction)
 - 🔁 **% Unique molecules in generated set**: 99.94%
 - 📎 **Fréchet Fingerprint Distance (2-hop 2048-bit Morgan Fingerprints)**:  
   - To ChEMBL: 4.13  
@@ -232,6 +241,19 @@ model = MLConformerGenerator()
 export_to_onnx(model)
 ```
 This compiles and saves the ONNX files to: `./`
+
+---
+## Testing
+
+to execute all tests (including slow generation ones)
+
+`pytest -v tests`
+
+To bypass generation tests
+
+`pytest -v tests -m "not slow"`
+
+---
 
 ## Streamlit App
 

@@ -477,9 +477,9 @@ class EGNNDynamics(nn.Module):
         node_mask = node_mask.view(bs * n_nodes, 1)
         edge_mask = edge_mask.view(bs * n_nodes * n_nodes, 1)
         xh = xh.view(bs * n_nodes, -1).clone() * node_mask
-        x = xh[:, 0 : self.n_dims]
+        x = xh[:, 0 : self.n_dims].clone()
 
-        h = xh[:, self.n_dims :]
+        h = xh[:, self.n_dims :].clone()
 
         h_time = t.view(bs, 1).repeat(1, n_nodes)
         h_time = h_time.view(bs * n_nodes, 1)
@@ -496,9 +496,7 @@ class EGNNDynamics(nn.Module):
             h=h, x=x, edge_index=edges, node_mask=node_mask, edge_mask=edge_mask
         )
 
-        vel = (
-            x_final - x
-        ) * node_mask  # This masking operation is redundant but just in case
+        vel = (x_final - x) * node_mask
 
         h_final = h_final[:, : -self.context_node_nf]
 

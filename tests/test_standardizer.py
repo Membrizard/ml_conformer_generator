@@ -3,7 +3,6 @@ from rdkit import Chem
 
 from src.mlconfgen.utils.standardizer import (
     flatten_tartrate_mol,
-    ifm_standardize_mol,
     md_minimize_energy,
     standardize_mol,
 )
@@ -58,7 +57,7 @@ def test_standardize_mol_with_geometry_opt(paba_mol):
 
 def test_ifm_standardize_mol_returns_mol(paba_mol):
     mol = Chem.RWMol(paba_mol)
-    result = ifm_standardize_mol(mol, optimize_geometry=False)
+    result = standardize_mol(mol, optimize_geometry=False, ifm_mode=True)
     assert isinstance(result, Chem.Mol)
 
 
@@ -67,5 +66,5 @@ def test_ifm_standardize_mol_rejects_disconnected():
     mol = Chem.RWMol()
     mol.AddAtom(Chem.Atom(6))
     mol.AddAtom(Chem.Atom(6))  # two isolated C atoms
-    result = ifm_standardize_mol(mol.GetMol(), optimize_geometry=False)
+    result = standardize_mol(mol.GetMol(), optimize_geometry=False, ifm_mode=True)
     assert result is None

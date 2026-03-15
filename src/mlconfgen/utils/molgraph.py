@@ -5,8 +5,9 @@ import torch
 from rdkit import Chem
 from rdkit.Chem import rdmolops
 
-from .common import (allowable_features, bond_type_dict as bonds_dict,
-                     elements_decoder, elements_dict)
+from .common import allowable_features
+from .common import bond_type_dict as bonds_dict
+from .common import elements_decoder, elements_dict
 from .config import DIMENSION, NUM_BOND_TYPES
 
 
@@ -178,7 +179,7 @@ class MolGraph:
                     atom_indexes[bond_index[1][i]],
                     bonds_dict[bond_attr[i]],
                 )
-            except:
+            except Exception:
                 pass
 
         mol = rw_mol.GetMol()
@@ -190,7 +191,7 @@ class MolGraph:
         :return: [atomic_num, ...0...] size(DIMENSION, 1)
         """
         elements_vector = torch.zeros(DIMENSION, dtype=torch.long, device=self.x.device)
-        elements_vector[:len(self.x)] = self.x.to(torch.long)
+        elements_vector[: len(self.x)] = self.x.to(torch.long)
         return elements_vector
 
     def one_hot_elements_encoding(self, max_n_nodes) -> torch.Tensor:
@@ -200,15 +201,13 @@ class MolGraph:
         :return: [, ...0...] size(DIMENSION, len(PERMITTED_ELEMENTS), 1)
         """
         one_hot = torch.zeros(
-            max_n_nodes, len(elements_decoder),
-            dtype=torch.long,
-            device=self.x.device
+            max_n_nodes, len(elements_decoder), dtype=torch.long, device=self.x.device
         )
 
         atom_types = torch.tensor(
             [elements_decoder[int(a)] for a in self.x],
             dtype=torch.long,
-            device=self.x.device
+            device=self.x.device,
         )
 
         one_hot[torch.arange(len(self.x), device=self.x.device), atom_types] = 1

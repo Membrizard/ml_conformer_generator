@@ -181,7 +181,9 @@ def test_best_pi_rotation_custom_tanimoto_fn(paba_coords):
         calls.append(1)
         return 0.5
 
-    best_coord, score = best_pi_rotation_by_tanimoto(paba_coords, paba_coords, tanimoto_fn=fake_tanimoto)
+    best_coord, score = best_pi_rotation_by_tanimoto(
+        paba_coords, paba_coords, tanimoto_fn=fake_tanimoto
+    )
     # identity + 3 pi-rotations = 4 calls
     assert len(calls) == 4
     assert score == 0.5
