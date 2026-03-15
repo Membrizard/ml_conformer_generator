@@ -4,12 +4,13 @@ from rdkit import Chem
 from .cheminformatics.pipeline import set_conformer_positions
 from .cheminformatics.shape_similarity import best_pi_rotation_by_tanimoto
 from .conformer_generator import MLConformerGenerator
-from .utils import (align_mol_to_principal_frame, apply_transform,
-                    concat_masked_and_pad, extract_fragment, get_context_shape,
-                    ifm_get_xh_from_fragment, ifm_prepare_fragments_for_merge,
+from .utils import (MAX_FRAG_SIZE, MIN_FRAG_SIZE, align_mol_to_principal_frame,
+                    apply_transform, concat_masked_and_pad, extract_fragment,
+                    get_context_shape, ifm_get_xh_from_fragment,
+                    ifm_prepare_fragments_for_merge,
                     ifm_prepare_gen_fragment_context, inverse_coord_transform,
                     prepare_edm_input, samples_to_rdkit_mol,
-                    split_molecule_size_constrained, standardize_mol, MIN_FRAG_SIZE, MAX_FRAG_SIZE)
+                    split_molecule_size_constrained, standardize_mol)
 
 
 def inertial_fragment_matching(
@@ -367,6 +368,7 @@ def ff_inertial_fragment_matching(
 
             def _alignment_func(coord):
                 return align_coord(cand_coord=coord, ref_coord=None)
+
         else:
             raise ValueError(
                 "'fixed_fragment' must be a Mol object when generating from a reference context."
@@ -481,7 +483,9 @@ def ff_inertial_fragment_matching(
     return ff_ifm_mols
 
 
-def align_coord(cand_coord: torch.Tensor, ref_coord: torch.Tensor = None) -> torch.Tensor:
+def align_coord(
+    cand_coord: torch.Tensor, ref_coord: torch.Tensor = None
+) -> torch.Tensor:
     # move coord to center
     virtual_com = torch.mean(cand_coord, dim=0)
     cand_coord = cand_coord - virtual_com

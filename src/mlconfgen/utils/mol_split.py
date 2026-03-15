@@ -39,7 +39,6 @@ def _build_fragment_adjacency(mol, fragments):
 
 
 def _components_after_cut(mol, atom_set, cut_bond_idx):
-
     local_adj = {a: set() for a in atom_set}
     for b in mol.GetBonds():
         a1 = b.GetBeginAtomIdx()

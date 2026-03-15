@@ -561,7 +561,9 @@ def align_mol_to_principal_frame_onnx(mol):
 
     shift = -virtual_com
 
-    context, aligned_coord, rotation = get_context_shape_onnx(coord, include_rotation=True)
+    context, aligned_coord, rotation = get_context_shape_onnx(
+        coord, include_rotation=True
+    )
 
     return context, shift, rotation, aligned_coord
 

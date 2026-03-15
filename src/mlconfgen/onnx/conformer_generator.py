@@ -6,8 +6,8 @@ from rdkit import Chem
 from ..utils.common import apply_transform, set_conformer_positions
 from ..utils.config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION,
                             MAX_N_NODES, MIN_N_NODES)
-from ..utils.standardizer import standardize_mol
 from ..utils.mol_split import extract_fragment
+from ..utils.standardizer import standardize_mol
 from .equivariant_diffusion import EquivariantDiffusionONNX
 from .utils import (align_mol_to_principal_frame_onnx,
                     prepare_adj_mat_seer_input_onnx, prepare_edm_input_onnx,
@@ -200,9 +200,12 @@ class MLConformerGeneratorONNX:
             # Ensure the initial mol is stripped off Hs
             reference_conformer = Chem.RemoveAllHs(reference_conformer)
             ref_n_atoms = reference_conformer.GetNumAtoms()
-            ref_context, shift, rotation, aligned_coord = align_mol_to_principal_frame_onnx(
-                reference_conformer
-            )
+            (
+                ref_context,
+                shift,
+                rotation,
+                aligned_coord,
+            ) = align_mol_to_principal_frame_onnx(reference_conformer)
 
             if fixed_fragment:
                 if isinstance(fixed_fragment, set):
