@@ -4,7 +4,7 @@
 <img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/logo/mlconfgen_logo.png" width="200" style="display: block; margin: 0 10%;">
 
 **ML Conformer Generator** 
-is a tool for shape-constrained molecule generation using an Equivariant Diffusion Model (EDM)
+is a tool for shape-constrained molecule generation with an Equivariant Diffusion Model (EDM)
 and a Graph Convolutional Network (GCN). It is designed to generate 3D molecular conformations
 that are both chemically valid and spatially similar to a reference shape.
 
@@ -27,7 +27,7 @@ that are both chemically valid and spatially similar to a reference shape.
 
 * **Inertial Fragment Matching**
 
-    Generate molecules fragment by fragment by leveraging the physical properties of the shape descriptor, improving both shape similarity and chemical validity.
+    Generate molecules fragment-by-fragment by leveraging the physical properties of the shape descriptor, improving both shape similarity and chemical validity.
 
 
 ## Citation
@@ -245,7 +245,7 @@ This compiles and saves the ONNX files to: `./`
 ---
 ## Testing
 
-to execute all tests (including slow generation ones)
+To execute all tests (including slow generation ones)
 
 `pytest -v tests`
 
