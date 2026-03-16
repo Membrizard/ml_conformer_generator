@@ -124,11 +124,11 @@ def get_shape_quadrupole_for_molecule(
         )
 
     s_mom_tensor_0 = (
-        torch.tensor(
+        torch.stack(
             [
-                [ii_s_mom_0[0].item(), ij_s_mom_0[0].item(), ij_s_mom_0[1].item()],
-                [ij_s_mom_0[0].item(), ii_s_mom_0[1].item(), ij_s_mom_0[2].item()],
-                [ij_s_mom_0[1].item(), ij_s_mom_0[2].item(), ii_s_mom_0[2].item()],
+                torch.stack([ii_s_mom_0[0], ij_s_mom_0[0], ij_s_mom_0[1]]),
+                torch.stack([ij_s_mom_0[0], ii_s_mom_0[1], ij_s_mom_0[2]]),
+                torch.stack([ij_s_mom_0[1], ij_s_mom_0[2], ii_s_mom_0[2]]),
             ]
         )
         / volume
@@ -182,11 +182,11 @@ def get_shape_quadrupole_for_molecule(
         )
 
     s_mom_tensor = (
-        torch.tensor(
+        torch.stack(
             [
-                [ii_s_mom[0].item(), ij_s_mom[0].item(), ij_s_mom[1].item()],
-                [ij_s_mom[0].item(), ii_s_mom[1].item(), ij_s_mom[2].item()],
-                [ij_s_mom[1].item(), ij_s_mom[2].item(), ii_s_mom[2].item()],
+                torch.stack([ii_s_mom[0], ij_s_mom[0], ij_s_mom[1]]),
+                torch.stack([ij_s_mom[0], ii_s_mom[1], ij_s_mom[2]]),
+                torch.stack([ij_s_mom[1], ij_s_mom[2], ii_s_mom[2]]),
             ]
         )
         / volume
@@ -242,16 +242,8 @@ def get_valid_combinations(
              such as all elements within each combination are mutual neighbors
     """
 
-    n = coordinates.size(0)
-    i_mat = coordinates.unsqueeze(1).repeat(
-        1, n, 1
-    )  # Repeat coordinates tensor along new dimension
-    j_mat = i_mat.transpose(0, 1)
-
     # Create a distance matrix
-    dist_mat = torch.sqrt(
-        torch.sum(torch.pow(i_mat - j_mat, 2), 2)
-    )  # => Add self connections
+    dist_mat = torch.cdist(coordinates, coordinates)
 
     # Nullify all values which are greater than R boundary
     dist_mat[dist_mat >= neighbour_threshold] = 0
@@ -445,7 +437,7 @@ def torch_evaluate_density_on_grid(
     return density
 
 
-def rotate_coord(coord: torch.Tensor, angles: torch.Tensor):
+def rotate_coord(coord: torch.Tensor, angles: torch.Tensor) -> torch.Tensor:
     cos_a = torch.cos(angles)
     sin_a = torch.sin(angles)
 
@@ -462,6 +454,29 @@ def rotate_coord(coord: torch.Tensor, angles: torch.Tensor):
 
 
 ALPHA = get_alpha(atom_radius=ATOM_RADIUS, gaussian_amplitude=AMPLITUDE)
+
+
+def best_pi_rotation_by_tanimoto(
+    ref_coord: torch.Tensor, cand_coord: torch.Tensor, tanimoto_fn: callable = None
+) -> tuple:
+    """Try identity + pi-rotations around x/y/z, return (best_coord, best_score)."""
+    if tanimoto_fn is None:
+        tanimoto_fn = tanimoto_score
+    pi = torch.pi
+    rotations = [
+        torch.tensor([pi, 0, 0]),
+        torch.tensor([0, pi, 0]),
+        torch.tensor([0, 0, pi]),
+    ]
+    best_score = tanimoto_fn(ref_coord, cand_coord)
+    best_coord = cand_coord
+    for angles in rotations:
+        rot_coord = rotate_coord(coord=cand_coord, angles=angles)
+        score = tanimoto_fn(ref_coord, rot_coord)
+        if score > best_score:
+            best_score = score
+            best_coord = rot_coord
+    return best_coord, best_score
 
 
 # Implementation of Gaussian volumes intersection tanimoto score

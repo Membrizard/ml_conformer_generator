@@ -2,10 +2,19 @@
 
 DIMENSION = 42
 NUM_BOND_TYPES = 5
+
+# Context norms for 15-39 model
 CONTEXT_NORMS = {
     "mean": [105.0766, 473.1938, 537.4675],
     "mad": [52.0409, 219.7475, 232.9718],
 }
+
+# Context norms for 6-39 model
+CONTEXT_NORMS_6_39 = {
+    "mean": [92.1179, 413.7875, 470.5253],
+    "mad": [53.4742, 232.5775, 251.1813],
+}
+
 ATOM_DECODER = {
     0: "C",
     1: "N",
@@ -28,5 +37,8 @@ PERMITTED_ELEMENTS = (
     35,
 )
 
-MIN_N_NODES = 15
+MIN_N_NODES = 6
 MAX_N_NODES = 39
+
+MIN_FRAG_SIZE = 6
+MAX_FRAG_SIZE = 20

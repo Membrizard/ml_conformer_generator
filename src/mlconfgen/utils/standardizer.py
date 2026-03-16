@@ -9,11 +9,14 @@
 #  of the source tree.
 
 
+import logging
 from typing import Tuple
 
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem.MolStandardize import rdMolStandardize
+
+logger = logging.getLogger(__name__)
 
 # derived from the MolVS set, with ChEMBL-specific additions
 _normalization_transforms = """
@@ -85,22 +88,29 @@ def md_minimize_energy(mol: Chem.Mol) -> Tuple[Chem.Mol, bool]:
     return mol, res
 
 
-def standardize_mol(mol: Chem.Mol, optimize_geometry: bool = True) -> Chem.Mol:
+def standardize_mol(
+    mol: Chem.Mol, optimize_geometry: bool = True, ifm_mode: bool = False
+) -> Chem.Mol:
     """
     Molecule Standardization
     :param mol: input conformer
     :param optimize_geometry: if MMFF94 optimisation is required
+    :param ifm_mode: if True, reject molecules with multiple disconnected fragments
+                     instead of keeping only the largest one
     :return: standardized conformer
     """
     try:
-        # Leave only largest fragment
-        m = rdMolStandardize.FragmentParent(mol)
-        # Kekulize
-        Chem.Kekulize(m)
-        # Flatten Tartrates
-        m = flatten_tartrate_mol(m)
+        if ifm_mode:
+            frags = Chem.GetMolFrags(mol, asMols=False, sanitizeFrags=False)
+            if len(frags) > 1:
+                return None
+            m = mol
+        else:
+            # Leave only largest fragment
+            m = rdMolStandardize.FragmentParent(mol)
 
-        # Sanitise
+        Chem.Kekulize(m)
+        m = flatten_tartrate_mol(m)
         Chem.SanitizeMol(m)
 
         if optimize_geometry:
@@ -108,7 +118,8 @@ def standardize_mol(mol: Chem.Mol, optimize_geometry: bool = True) -> Chem.Mol:
         else:
             std_mol = m
 
-    except:
+    except Exception as e:
+        logger.debug("Standardization failed: %s", e)
         std_mol = None
 
     return std_mol

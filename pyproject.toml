@@ -17,7 +17,6 @@ maintainers = [
     {name = "Azamat Gafurov", email = "azamat.gafurov@gmail.com"},
 ]
 dependencies = [
-    "torch>=2.0.1",
     "rdkit>=2023.9.5",
     "numpy>=1.26.4",
 ]
@@ -36,14 +35,30 @@ license-files = ["LICENSE*"]
 keywords = ["rdkit", "chemistry", "diffusion", "conformers"]
 
 [project.optional-dependencies]
+torch = [
+    "torch>=2.2.1",
+]
+
 onnx = [
-    "onnx>=1.17.0",
-    "onnxruntime>=1.19.0",
-    "onnxscript>=0.2.0"
+    "onnx>=1.20.1",
+    "onnxruntime>=1.21.0",
+    "onnxscript>=0.6.2"
+]
+
+full = [
+    "torch>=2.0.1",
+    "onnx>=1.20.1",
+    "onnxruntime>=1.21.0",
+    "onnxscript>=0.6.2",
 ]
 
 [project.urls]
 Homepage = "https://github.com/Membrizard/ml_conformer_generator"
 Issues = "https://github.com/Membrizard/ml_conformer_generator/issues"
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
 
 [tool.setuptools_scm]

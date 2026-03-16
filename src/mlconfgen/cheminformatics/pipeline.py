@@ -5,8 +5,8 @@ from rdkit.Chem import rdFingerprintGenerator
 from rdkit.DataStructs.cDataStructs import TanimotoSimilarity
 
 from ..utils import set_conformer_positions
-from .shape_similarity import (get_shape_quadrupole_for_molecule, rotate_coord,
-                               tanimoto_score)
+from .shape_similarity import (best_pi_rotation_by_tanimoto,
+                               get_shape_quadrupole_for_molecule)
 
 FP_SIZE = 2048
 GENERATOR = rdFingerprintGenerator.GetMorganGenerator(
@@ -44,13 +44,6 @@ def evaluate_samples(
     pf_reference = set_conformer_positions(reference, sq_ref_coord)
     ref_mol_block = Chem.MolToMolBlock(pf_reference)
 
-    pi = torch.pi
-    rotations = [
-        torch.tensor([pi, 0, 0]),
-        torch.tensor([0, pi, 0]),
-        torch.tensor([0, 0, pi]),
-    ]
-
     results = []
     for sample in samples:
         # Calculate chemical similarity Tanimoto score
@@ -73,16 +66,9 @@ def evaluate_samples(
             coordinates=sample_coord
         )
 
-        shape_tanimoto = tanimoto_score(sq_ref_coord, sq_sample_coord)
-        best_coord = sq_sample_coord
-
-        # Calculate Best shape similarity Tanimoto score
-        for angles in rotations:
-            rot_coord = rotate_coord(coord=sq_sample_coord, angles=angles)
-            score = tanimoto_score(sq_ref_coord, rot_coord)
-            if score > shape_tanimoto:
-                shape_tanimoto = score
-                best_coord = rot_coord
+        best_coord, shape_tanimoto = best_pi_rotation_by_tanimoto(
+            sq_ref_coord, sq_sample_coord
+        )
 
         aligned_sample = set_conformer_positions(sample, best_coord)
 

@@ -496,9 +496,7 @@ class EGNNDynamics(nn.Module):
             h=h, x=x, edge_index=edges, node_mask=node_mask, edge_mask=edge_mask
         )
 
-        vel = (
-            x_final - x
-        ) * node_mask  # This masking operation is redundant but just in case
+        vel = (x_final - x) * node_mask
 
         h_final = h_final[:, : -self.context_node_nf]
 

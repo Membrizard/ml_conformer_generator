@@ -32,11 +32,13 @@ class GraphConv(nn.Module):
     def l_norm(self, adjacency_matrix: torch.Tensor) -> torch.Tensor:
         degree = adjacency_matrix.sum(dim=-1)
         inv_sqrt_degree = torch.rsqrt(degree.clamp(min=1e-12))
-        l_norm = (
-            inv_sqrt_degree.unsqueeze(-1)
-            * adjacency_matrix
-            * inv_sqrt_degree.unsqueeze(-2)
-        )
+        bs, n = inv_sqrt_degree.size()
+
+        # Explicit Re-shaping for compiling
+        d_row = inv_sqrt_degree.view(bs, n, 1)  # (B,N,1)
+        d_col = inv_sqrt_degree.view(bs, 1, n)  # (B,1,N)
+
+        l_norm = d_row * adjacency_matrix * d_col
 
         return l_norm.to(self.device)
 
