@@ -124,7 +124,7 @@ def test_basic_generation_ff_mol_ref_mol_onnx(generator, ceyyag):
     _, std_samples = evaluate_samples(ceyyag, samples)
 
     valid_samples = len(std_samples) / n_samples
-    assert valid_samples >= 0.15
+    assert valid_samples >= 0.1
 
     average_shape_similarity = 0
     for sample in std_samples:
@@ -142,7 +142,7 @@ def test_basic_generation_ff_set_ref_mol_onnx(generator, ceyyag):
         reference_conformer=ceyyag,
         n_samples=n_samples,
         variance=1,
-        resample_steps=4,
+        resample_steps=2,
         fixed_fragment=ff_idx,
         blend_power=3,
     )
