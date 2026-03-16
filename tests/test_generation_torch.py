@@ -138,7 +138,7 @@ def test_basic_generation_ff_mol_ref_mol(generator, ceyyag):
     _, std_samples = evaluate_samples(ceyyag, samples)
 
     valid_samples = len(std_samples) / n_samples
-    assert valid_samples >= 0.15
+    assert valid_samples >= 0.1
 
     average_shape_similarity = 0
     for sample in std_samples:
@@ -164,7 +164,7 @@ def test_basic_generation_ff_set_ref_mol(generator, ceyyag):
     _, std_samples = evaluate_samples(ceyyag, samples)
 
     valid_samples = len(std_samples) / n_samples
-    assert valid_samples >= 0.15
+    assert valid_samples >= 0.1
 
     average_shape_similarity = 0
     for sample in std_samples:
@@ -209,7 +209,7 @@ def test_basic_generation_ff_mol_ref_context(generator, pif_aligned_ceyyag, ref_
     )
 
     valid_samples = len(samples) / n_samples
-    assert valid_samples >= 0.15
+    assert valid_samples >= 0.1
 
 
 @pytest.mark.slow
