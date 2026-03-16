@@ -113,15 +113,15 @@ def inertial_fragment_matching(
     # Determine the max number of nodes
     max_n_nodes = 0
     for frag in extracted_frags:
-        n_atoms = frag.GetNumHeavyAtoms()
-        if n_atoms > max_n_nodes:
-            max_n_nodes = n_atoms
+        _n_atoms = frag.GetNumHeavyAtoms()
+        if _n_atoms > max_n_nodes:
+            max_n_nodes = _n_atoms
 
     # Align Fragments to their respective Principal Inertial Frames,
     # while remembering corresponding Shifts and Rotations
     # Prepare concatenate-able edm inputs for all fragments
     for frag in extracted_frags:
-        n_atoms = frag.GetNumHeavyAtoms()
+        f_n_atoms = frag.GetNumHeavyAtoms()
         f_context, f_shift, f_rotation, f_coord = align_mol_to_principal_frame(frag)
         fragment_contexts.append(f_context)
         fragment_shifts.append(f_shift)
@@ -132,8 +132,8 @@ def inertial_fragment_matching(
             n_samples=n_samples,
             reference_context=f_context,
             context_norms=g_context_norms,
-            min_n_nodes=n_atoms,
-            max_n_nodes=n_atoms,
+            min_n_nodes=f_n_atoms,
+            max_n_nodes=f_n_atoms,
             device=g_device,
             pad_to=max_n_nodes,
         )
@@ -194,7 +194,7 @@ def inertial_fragment_matching(
         aligned_x = []
         frag_coord = frag_coord.to("cpu")
         for old_x in frag_coord:
-            aligned_x.append(align_coord(ref_fragment_coords[i], old_x))
+            aligned_x.append(align_coord(cand_coord=old_x, ref_coord=ref_fragment_coords[i]))
 
         aligned_x = torch.stack(aligned_x, dim=0).to(m_device)
 
