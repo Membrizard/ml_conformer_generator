@@ -18,18 +18,20 @@ def evaluate_samples(
     reference: rdkit.Chem.Mol,
     samples: list[rdkit.Chem.Mol],
     generator: rdFingerprintGenerator = GENERATOR,
+    sanitize_ref: bool = True,
 ) -> tuple[str, list[dict]]:
     """
     Calculate chemical and shape similarity of the generated samples to reference, while ignoring Hs
     :param reference: reference mol
     :param samples: a list of generated mols
     :param generator: fingerprint generator
+    :param sanitize_ref: If reference molecule should be sanitized
     :return: molblock of a reference in a principal frame, a list of sample conformers molblocks, aligned with reference,
              along with chemical and shape tanimoto scores.
     """
 
     # Ensure Hs are stripped off Reference
-    reference = Chem.RemoveHs(reference)
+    reference = Chem.RemoveHs(reference, sanitize=sanitize_ref)
 
     fp_ref = generator.GetFingerprint(reference)
     conf = reference.GetConformer()

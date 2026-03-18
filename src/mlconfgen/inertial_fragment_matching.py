@@ -194,7 +194,10 @@ def inertial_fragment_matching(
         aligned_x = []
         frag_coord = frag_coord.to("cpu")
         for old_x in frag_coord:
-            aligned_x.append(align_coord(cand_coord=old_x, ref_coord=ref_fragment_coords[i]))
+            try:
+                aligned_x.append(align_coord(cand_coord=old_x, ref_coord=ref_fragment_coords[i]))
+            except RuntimeError:
+                pass
 
         aligned_x = torch.stack(aligned_x, dim=0).to(m_device)
 
@@ -428,7 +431,10 @@ def ff_inertial_fragment_matching(
     frag_coord = total_x.to("cpu")
 
     for old_x in frag_coord:
-        aligned_x.append(_alignment_func(old_x))
+        try:
+            aligned_x.append(_alignment_func(old_x))
+        except RuntimeError:
+            pass
 
     aligned_x = torch.stack(aligned_x, dim=0).to(m_device)
 
