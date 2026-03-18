@@ -33,7 +33,11 @@ def evaluate_samples(
     # Ensure Hs are stripped off Reference
     reference = Chem.RemoveHs(reference, sanitize=sanitize_ref)
 
-    fp_ref = generator.GetFingerprint(reference)
+    if sanitize_ref:
+        fp_ref = generator.GetFingerprint(reference)
+    else:
+        fp_ref = None
+
     conf = reference.GetConformer()
     ref_coord = torch.tensor(conf.GetPositions(), dtype=torch.float32)
 
@@ -56,7 +60,10 @@ def evaluate_samples(
 
         fp_sample = generator.GetFingerprint(sample)
 
-        chemical_tanimoto = TanimotoSimilarity(fp_ref, fp_sample)
+        if sanitize_ref:
+            chemical_tanimoto = TanimotoSimilarity(fp_ref, fp_sample)
+        else:
+            chemical_tanimoto = 0
 
         sample_conf = sample.GetConformer()
         sample_coord = torch.tensor(sample_conf.GetPositions(), dtype=torch.float32)
