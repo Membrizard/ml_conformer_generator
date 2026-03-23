@@ -11,7 +11,7 @@ from .molgraph import MolGraph
 
 
 def samples_to_rdkit_mol(
-    positions,
+    positions: torch.Tensor,
     one_hot: torch.Tensor,
     node_mask: torch.Tensor = None,
     atom_decoder: dict = None,
