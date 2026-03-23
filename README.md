@@ -13,8 +13,8 @@ that are both chemically valid and spatially similar to a reference shape.
 ## Model Generation in Action
 
 <p align="center">
-    <img src="./assets/animations/rotating_animation_optim_560p_db.gif" width="360" style="margin-left: 12px;" />
-    <img src="./assets/animations/closeup_optim_640p_db.gif" width="360" />
+    <img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/animations/rotating_animation_optim_560p_db.gif" width="400" style="margin-left: 12px;" />
+    <img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/animations/closeup_optim_640p_db.gif" width="400" />
 </p>
 
 ---
