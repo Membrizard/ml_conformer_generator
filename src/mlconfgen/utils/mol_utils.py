@@ -3,6 +3,8 @@ from typing import List, Tuple
 import torch
 from rdkit import Chem
 from torch.nn.utils.rnn import pad_sequence
+from torch.distributions import Categorical
+
 
 from .common import (apply_transform, bond_type_dict, canonicalise,
                      set_conformer_positions)

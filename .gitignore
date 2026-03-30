@@ -13,3 +13,4 @@ dist/
 memory_profile.csv
 .venv/
 .coverage
+/rl_checkpoints

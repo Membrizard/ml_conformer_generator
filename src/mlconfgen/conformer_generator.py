@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Callable
 
 import torch
 from rdkit import Chem
@@ -13,6 +13,8 @@ from .utils import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
                     prepare_adj_mat_seer_input, prepare_edm_input,
                     prepare_fragment, redefine_bonds, samples_to_rdkit_mol,
                     set_conformer_positions, standardize_mol)
+
+from .rl_fine_tune.rl_fine_tune import RLFineTuner
 
 
 class MLConformerGenerator(torch.nn.Module):
@@ -118,6 +120,61 @@ class MLConformerGenerator(torch.nn.Module):
 
         self.generative_model = generative_model
         self.adj_mat_seer = adj_mat_seer
+
+    @staticmethod
+    def prepare_inputs(
+                       reference_conformer: Chem.Mol = None,
+                       fixed_fragment: Chem.Mol | set = None,
+                       reference_context: torch.Tensor = None,
+                       n_atoms: int = None,
+                       ):
+        '''
+
+        '''
+        if reference_conformer:
+            # Ensure the initial mol is stripped off Hs
+            reference_conformer = Chem.RemoveAllHs(reference_conformer)
+            ref_n_atoms = reference_conformer.GetNumAtoms()
+            ref_context, shift, rotation, aligned_coord = align_mol_to_principal_frame(
+                reference_conformer
+            )
+
+            if fixed_fragment:
+                if isinstance(fixed_fragment, set):
+                    aligned_ref_mol = set_conformer_positions(
+                        reference_conformer, aligned_coord
+                    )
+                    fixed_fragment = extract_fragment(aligned_ref_mol, fixed_fragment)
+                elif isinstance(fixed_fragment, Chem.Mol):
+                    fixed_fragment = Chem.RemoveAllHs(fixed_fragment)
+                    ff_conf = fixed_fragment.GetConformer()
+                    ff_coord = torch.tensor(ff_conf.GetPositions(), dtype=torch.float32)
+                    ff_coord_ref_aligned = apply_transform(ff_coord, shift, rotation)
+                    fixed_fragment = set_conformer_positions(
+                        fixed_fragment, ff_coord_ref_aligned
+                    )
+
+        elif reference_context is not None:
+            if n_atoms:
+                ref_n_atoms = n_atoms
+            else:
+                raise ValueError(
+                    "Reference Number of Atoms should be provided, when generating samples using context."
+                )
+
+            ref_context = reference_context
+
+            if isinstance(fixed_fragment, set):
+                raise ValueError(
+                    "'fixed_fragment' must be a Mol object when generating from a reference context."
+                )
+
+        else:
+            raise ValueError(
+                "Either a reference RDkit Mol object or context as torch.Tensor should be provided for generation."
+            )
+
+        return ref_context, ref_n_atoms, fixed_fragment
 
     @torch.inference_mode()
     def predict_bonds(self, edm_samples: list[Chem.Mol]) -> list[Chem.Mol]:
@@ -253,48 +310,13 @@ class MLConformerGenerator(torch.nn.Module):
         :param blend_power: power of the polynomial blending schedule for generation with a fixed fragment
         :return: A list of valid standardised generated molecules as RDKit Mol objects
         """
-        if reference_conformer:
-            # Ensure the initial mol is stripped off Hs
-            reference_conformer = Chem.RemoveAllHs(reference_conformer)
-            ref_n_atoms = reference_conformer.GetNumAtoms()
-            ref_context, shift, rotation, aligned_coord = align_mol_to_principal_frame(
-                reference_conformer
-            )
 
-            if fixed_fragment:
-                if isinstance(fixed_fragment, set):
-                    aligned_ref_mol = set_conformer_positions(
-                        reference_conformer, aligned_coord
-                    )
-                    fixed_fragment = extract_fragment(aligned_ref_mol, fixed_fragment)
-                elif isinstance(fixed_fragment, Chem.Mol):
-                    fixed_fragment = Chem.RemoveAllHs(fixed_fragment)
-                    ff_conf = fixed_fragment.GetConformer()
-                    ff_coord = torch.tensor(ff_conf.GetPositions(), dtype=torch.float32)
-                    ff_coord_ref_aligned = apply_transform(ff_coord, shift, rotation)
-                    fixed_fragment = set_conformer_positions(
-                        fixed_fragment, ff_coord_ref_aligned
-                    )
-
-        elif reference_context is not None:
-            if n_atoms:
-                ref_n_atoms = n_atoms
-            else:
-                raise ValueError(
-                    "Reference Number of Atoms should be provided, when generating samples using context."
-                )
-
-            ref_context = reference_context
-
-            if isinstance(fixed_fragment, set):
-                raise ValueError(
-                    "'fixed_fragment' must be a Mol object when generating from a reference context."
-                )
-
-        else:
-            raise ValueError(
-                "Either a reference RDkit Mol object or context as torch.Tensor should be provided for generation."
-            )
+        ref_context, ref_n_atoms, fixed_fragment = self.prepare_inputs(
+            reference_conformer=reference_conformer,
+            fixed_fragment=fixed_fragment,
+            reference_context=reference_context,
+            n_atoms=n_atoms
+        )
 
         edm_samples = self.edm_samples(
             reference_context=ref_context,
@@ -343,3 +365,92 @@ class MLConformerGenerator(torch.nn.Module):
             fixed_fragment=fixed_fragment,
             blend_power=blend_power,
         )
+
+    def fine_tune(self,
+                  # Task definition
+                  score_function: Callable[[Chem.Mol | None], float],  # This should output normalised score from (-1, 1)
+                  reference_conformer: Chem.Mol = None,
+                  variance: int = 2,
+                  reference_context: torch.Tensor = None,
+                  n_atoms: int = None,
+                  resample_steps: int = 0,
+                  fixed_fragment: Chem.Mol | set = None,
+                  blend_power: int = 3,
+
+                  # RL Fine-tune params
+                  n_epochs: int = 100,
+                  batch_size: int = 64,
+                  learning_rate: float = 1e-5,
+                  sigma: float = 10.0,
+                  temperature: float = 1.0,
+                  n_samples_per_mol: int = 4,
+                  reward_clip: tuple = (-1.0, 1.0),
+                  eval_every: int = 1,
+                  save_dir: str = "./rl_checkpoints",
+                  ):
+        """
+        Fine-Tunes the model for the specific task using a scoring function
+        """
+
+        ref_context, ref_n_atoms, fixed_fragment = self.prepare_inputs(
+            reference_conformer=reference_conformer,
+            fixed_fragment=fixed_fragment,
+            reference_context=reference_context,
+            n_atoms=n_atoms
+        )
+
+        min_n_nodes = ref_n_atoms - variance
+        max_n_nodes = ref_n_atoms + variance
+
+        def edm_sampler_fn(_batch_size: int) -> list[Chem.Mol]:
+            """
+
+            """
+            return self.edm_samples(
+                reference_context=ref_context,
+                n_samples=_batch_size,
+                min_n_nodes=min_n_nodes,
+                max_n_nodes=max_n_nodes,
+                resample_steps=resample_steps,
+                fixed_fragment=fixed_fragment,
+                blend_power=blend_power,
+            )
+
+        # 3) Define your real score
+        def _score_fn(mol: Chem.Mol | None) -> float:
+            if mol is None:
+                return reward_clip[0]
+
+            try:
+                test_mol = Chem.Mol(mol)
+                Chem.SanitizeMol(test_mol)
+                valid_bonus = reward_clip[1]
+            except Exception:
+                return reward_clip[0]
+
+            score = valid_bonus + score_function(mol)
+            return score
+
+        # 4) Train
+
+        trainer = RLFineTuner(
+            pretrained_adj_mat_seer=self.adj_mat_seer,
+            edm_sampler_fn=edm_sampler_fn,
+            score_fn=_score_fn,
+            lr=learning_rate,
+            sigma=sigma,
+            temperature=temperature,
+            n_samples_per_mol=n_samples_per_mol,
+            reward_clip=reward_clip,
+            device=self.device,
+        )
+
+        trainer.execute(
+            edm_sampler_fn=edm_sampler_fn,
+            n_epochs=n_epochs,
+            edm_batch_size=batch_size,
+            eval_every=eval_every,
+            save_dir=save_dir,
+
+        )
+        return None
