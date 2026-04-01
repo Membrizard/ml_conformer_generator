@@ -3,8 +3,6 @@ from typing import List, Tuple
 import torch
 from rdkit import Chem
 from torch.nn.utils.rnn import pad_sequence
-from torch.distributions import Categorical
-
 
 from .common import (apply_transform, bond_type_dict, canonicalise,
                      set_conformer_positions)
@@ -187,7 +185,7 @@ def redefine_bonds(mol: Chem.Mol, adj_mat: torch.Tensor) -> Chem.Mol:
     ed_mol = Chem.EditableMol(c_mol)
 
     repr_m = torch.tril(torch.argmax(adj_mat, dim=2))
-    repr_m = repr_m * (1 - torch.eye(repr_m.size(0), repr_m.size(0)))
+    repr_m = repr_m * (1 - torch.eye(repr_m.size(0), repr_m.size(0),  device=adj_mat.device))
 
     for i in range(n):
         for j in range(n):

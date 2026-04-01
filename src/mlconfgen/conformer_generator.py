@@ -5,14 +5,25 @@ from rdkit import Chem
 
 from .adj_mat_seer import AdjMatSeer
 from .egnn import EGNNDynamics
-from .equivariant_diffusion import (EquivariantDiffusion,
-                                    PredefinedNoiseSchedule)
-from .utils import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
-                    MIN_N_NODES, NUM_BOND_TYPES, align_mol_to_principal_frame,
-                    apply_transform, extract_fragment,
-                    prepare_adj_mat_seer_input, prepare_edm_input,
-                    prepare_fragment, redefine_bonds, samples_to_rdkit_mol,
-                    set_conformer_positions, standardize_mol)
+from .equivariant_diffusion import EquivariantDiffusion, PredefinedNoiseSchedule
+from .utils import (
+    ATOM_DECODER,
+    CONTEXT_NORMS,
+    DIMENSION,
+    MAX_N_NODES,
+    MIN_N_NODES,
+    NUM_BOND_TYPES,
+    align_mol_to_principal_frame,
+    apply_transform,
+    extract_fragment,
+    prepare_adj_mat_seer_input,
+    prepare_edm_input,
+    prepare_fragment,
+    redefine_bonds,
+    samples_to_rdkit_mol,
+    set_conformer_positions,
+    standardize_mol,
+)
 
 from .rl_fine_tune.rl_fine_tune import RLFineTuner
 
@@ -35,6 +46,7 @@ class MLConformerGenerator(torch.nn.Module):
         atom_decoder: dict = ATOM_DECODER,
         edm_weights: str = "./edm_moi_chembl_15_39.pt",
         adj_mat_seer_weights: str = "./adj_mat_seer_chembl_15_39.pt",
+        fine_tune_checkpoint: str = None,
     ):
         """
         Initialise the generator.
@@ -99,6 +111,8 @@ class MLConformerGenerator(torch.nn.Module):
 
         ams_state_dict = torch.load(adj_mat_seer_weights, map_location=device)
         adj_mat_seer.load_state_dict(ams_state_dict["state_dict"])
+        # if fine_tune_checkpoint:
+        #     self.load_fine_tune_checkpoint(fine_tune_checkpoint)
 
         # Update denoising steps for the Equivarinat Diffusion
         generative_model.gamma = PredefinedNoiseSchedule(
@@ -123,14 +137,26 @@ class MLConformerGenerator(torch.nn.Module):
 
     @staticmethod
     def prepare_inputs(
-                       reference_conformer: Chem.Mol = None,
-                       fixed_fragment: Chem.Mol | set = None,
-                       reference_context: torch.Tensor = None,
-                       n_atoms: int = None,
-                       ):
-        '''
+        reference_conformer: Chem.Mol = None,
+        fixed_fragment: Chem.Mol | set = None,
+        reference_context: torch.Tensor = None,
+        n_atoms: int = None,
+    ) -> tuple[torch.Tensor, int, Chem.Mol | None]:
+        """
+        Prepare inputs for the generation forward pass.
 
-        '''
+        Applies the necessary preprocessing and business logic to the provided generation
+        inputs before they are passed to the model.
+
+        :param reference_conformer: A 3D conformer of a reference molecule as an RDKit Mol object
+        :param fixed_fragment: Fragment to fix during generation as an RDKit Mol object or
+                               a set of atom idxs of reference conformer
+        :param reference_context: Arbitrary Reference context if applicable, instead of reference_conformer
+        :param n_atoms: Reference number of atoms when generating using arbitrary context
+        :returns: A tuple containing the prepared reference context, average number of atoms,
+                  and the prepared fixed fragment if provided.
+        """
+
         if reference_conformer:
             # Ensure the initial mol is stripped off Hs
             reference_conformer = Chem.RemoveAllHs(reference_conformer)
@@ -179,7 +205,7 @@ class MLConformerGenerator(torch.nn.Module):
     @torch.inference_mode()
     def predict_bonds(self, edm_samples: list[Chem.Mol]) -> list[Chem.Mol]:
         """
-        Predict bonds using the AdjMatSeer GCN model.
+        Predict bonds using the AdjMatSeer GCN model
         :param edm_samples: List of RDKit molecule objects without bonds or with incorrect bonds.
         :return: List of RDKit molecule objects with predicted bonds.
         """
@@ -315,7 +341,7 @@ class MLConformerGenerator(torch.nn.Module):
             reference_conformer=reference_conformer,
             fixed_fragment=fixed_fragment,
             reference_context=reference_context,
-            n_atoms=n_atoms
+            n_atoms=n_atoms,
         )
 
         edm_samples = self.edm_samples(
@@ -366,46 +392,49 @@ class MLConformerGenerator(torch.nn.Module):
             blend_power=blend_power,
         )
 
-    def fine_tune(self,
-                  # Task definition
-                  score_function: Callable[[Chem.Mol | None], float],  # This should output normalised score from (-1, 1)
-                  reference_conformer: Chem.Mol = None,
-                  variance: int = 2,
-                  reference_context: torch.Tensor = None,
-                  n_atoms: int = None,
-                  resample_steps: int = 0,
-                  fixed_fragment: Chem.Mol | set = None,
-                  blend_power: int = 3,
-
-                  # RL Fine-tune params
-                  n_epochs: int = 100,
-                  batch_size: int = 64,
-                  learning_rate: float = 1e-5,
-                  sigma: float = 10.0,
-                  temperature: float = 1.0,
-                  n_samples_per_mol: int = 4,
-                  reward_clip: tuple = (-1.0, 1.0),
-                  eval_every: int = 1,
-                  save_dir: str = "./rl_checkpoints",
-                  ):
+    def fine_tune(
+        self,
+        score_function: Callable[[Chem.Mol | None], float] = None,  # This should output normalised score from (0, 1)
+        reference_conformer: Chem.Mol = None,
+        variance: int = 2,
+        reference_context: torch.Tensor = None,
+        n_atoms: int = None,
+        resample_steps: int = 0,
+        fixed_fragment: Chem.Mol | set = None,
+        blend_power: int = 3,
+        n_epochs: int = 100,
+        batch_size: int = 64,
+        learning_rate: float = 1e-5,
+        sigma: float = 10.0,
+        temperature: float = 1.0,
+        n_samples_per_mol: int = 4,
+        reward_clip: tuple[float, float] = (0.0, 1.0),
+        eval_every: int = 1,
+        save_dir: str = "./rl_fine_tuning_checkpoints",
+        best_checkpoint_name: str = "best_agent_resize.pt",
+        load_best_checkpoint: bool = False,
+    ):
         """
         Fine-Tunes the model for the specific task using a scoring function
         """
+
+        if score_function is None:
+
+            def score_function(x):
+                return reward_clip[1]
 
         ref_context, ref_n_atoms, fixed_fragment = self.prepare_inputs(
             reference_conformer=reference_conformer,
             fixed_fragment=fixed_fragment,
             reference_context=reference_context,
-            n_atoms=n_atoms
+            n_atoms=n_atoms,
         )
 
         min_n_nodes = ref_n_atoms - variance
         max_n_nodes = ref_n_atoms + variance
 
         def edm_sampler_fn(_batch_size: int) -> list[Chem.Mol]:
-            """
-
-            """
+            """ """
             return self.edm_samples(
                 reference_context=ref_context,
                 n_samples=_batch_size,
@@ -416,20 +445,20 @@ class MLConformerGenerator(torch.nn.Module):
                 blend_power=blend_power,
             )
 
-        # 3) Define your real score
         def _score_fn(mol: Chem.Mol | None) -> float:
+            """
+            A score funtion with a validity wrapper, automatically setting score of invalid molecules to lowest possible
+            """
             if mol is None:
                 return reward_clip[0]
-
             try:
                 test_mol = Chem.Mol(mol)
                 Chem.SanitizeMol(test_mol)
-                valid_bonus = reward_clip[1]
+                # valid_bonus = (reward_clip[0] + reward_clip[1]) / 2
+                score = score_function(mol)
+                return score
             except Exception:
                 return reward_clip[0]
-
-            score = valid_bonus + score_function(mol)
-            return score
 
         # 4) Train
 
@@ -451,6 +480,13 @@ class MLConformerGenerator(torch.nn.Module):
             edm_batch_size=batch_size,
             eval_every=eval_every,
             save_dir=save_dir,
-
+            best_checkpoint_name=best_checkpoint_name,
         )
+
+        # if load_best_checkpoint:
+        #     self.load_fine_tune_checkpoint(best_checkpoint_name)
         return None
+
+    # def load_fine_tune_checkpoint(self, checkpoint_path: str) -> None:
+    #     self.adj_mat_seer.resize.load_state_dict(torch.load(checkpoint_path))
+    #     return None

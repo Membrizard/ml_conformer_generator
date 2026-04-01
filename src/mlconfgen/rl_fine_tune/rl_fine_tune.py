@@ -1,24 +1,21 @@
-import copy
 from pathlib import Path
 from typing import Callable
 
-from tqdm import tqdm
-
 import torch
-import torch.nn as nn
 from torch.distributions import Categorical
 from rdkit import Chem
 
 from .shared_prior_agent import SharedPriorAgent
 from ..adj_mat_seer import AdjMatSeer
-from ..utils import bond_type_dict, prepare_adj_mat_seer_input
-
-"""
-REINVENT-Style RL finetuning of the MLConfGen
-"""
+from ..utils import bond_type_dict, prepare_adj_mat_seer_input, redefine_bonds
 
 
 class RLFineTuner:
+    """
+    Reinforcement Learning Fine Tuner for MLConformer generator.
+
+
+    """
     def __init__(
         self,
         pretrained_adj_mat_seer: AdjMatSeer,
@@ -42,10 +39,17 @@ class RLFineTuner:
         self.n_samples_per_mol = n_samples_per_mol
         self.reward_clip = reward_clip
 
-        self.optimizer = torch.optim.AdamW(self.model.agent_resize.parameters(), lr=lr)
+        trainable_params = list(self.model.agent_resize.parameters()) + list(self.model.agent_gcn4.parameters())
+        self.optimizer = torch.optim.AdamW(trainable_params, lr=lr)
 
         self.bond_type_dict = bond_type_dict
         self.prepare_input_fn = prepare_adj_mat_seer_input
+
+    def save_agent_head(self, path: str | Path) -> None:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(self.model.agent_resize.state_dict(), path)
+        return None
 
     def train_step(self, edm_samples: list[Chem.Mol]) -> dict[str, float]:
         (
@@ -110,7 +114,7 @@ class RLFineTuner:
                     )
 
                 augmented_log_prob = prior_log_prob + self.sigma * reward
-                sample_loss = (augmented_log_prob - agent_log_prob).pow(2)
+                sample_loss = (agent_log_prob - augmented_log_prob).pow(2)
 
                 losses.append(sample_loss)
                 rewards.append(reward.detach())
@@ -125,9 +129,9 @@ class RLFineTuner:
 
         loss = torch.stack(losses).mean()
 
-        self.optimizer.zero_grad(set_to_none=True)
+        self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.model.agent_resize.parameters(), max_norm=5.0)
+        # torch.nn.utils.clip_grad_norm_(self.model.agent_resize.parameters(), max_norm=5.0)
         self.optimizer.step()
 
         rewards_t = torch.stack(rewards)
@@ -168,58 +172,76 @@ class RLFineTuner:
             adj_mat=b_adj_mat_batch,
         )
 
-        rewards = []
-        valid_flags = []
+        prior_adj_mat_batch = self.model.prior_forward(
+            elements=el_batch,
+            dist_mat=dm_batch,
+            adj_mat=b_adj_mat_batch,
+        )
+
+        agent_scores = []
+        prior_scores = []
+
+        agent_valid_flags = []
+        prior_valid_flags = []
 
         for i, base_mol in enumerate(canonicalised_samples):
             agent_adj_mat = agent_adj_mat_batch[i]
+            prior_adj_mat = prior_adj_mat_batch[i]
 
-            best_reward = None
-            best_valid = 0.0
+            agent_mol = redefine_bonds(mol=base_mol, adj_mat=agent_adj_mat)
+            prior_mol = redefine_bonds(mol=base_mol, adj_mat=prior_adj_mat)
 
-            for _ in range(self.n_samples_per_mol):
-                sampled_mol, _, _ = redefine_bonds_sampled(
-                    mol=base_mol,
-                    adj_mat=agent_adj_mat,
-                    temperature=self.temperature,
-                )
+            # best_reward = None
+            # best_valid = 0.0
 
-                reward_value = float(self.score_fn(sampled_mol))
-                valid_value = 1.0 if is_valid_mol(sampled_mol) else 0.0
+            agent_score = float(self.score_fn(agent_mol))
+            prior_score = float(self.score_fn(prior_mol))
 
-                if best_reward is None or reward_value > best_reward:
-                    best_reward = reward_value
-                    best_valid = valid_value
+            agent_valid_value = 1.0 if is_valid_mol(agent_mol) else 0.0
+            prior_valid_value = 1.0 if is_valid_mol(prior_mol) else 0.0
 
-            rewards.append(best_reward if best_reward is not None else -1.0)
-            valid_flags.append(best_valid)
+            agent_scores.append(agent_score)
+            prior_scores.append(prior_score)
 
-        rewards_t = torch.tensor(rewards, dtype=torch.float32)
-        valid_t = torch.tensor(valid_flags, dtype=torch.float32)
+            agent_valid_flags.append(agent_valid_value)
+            prior_valid_flags.append(prior_valid_value)
+
+            # # for _ in range(self.n_samples_per_mol):
+            # #     sampled_mol, _, _ = redefine_bonds_sampled(
+            # #         mol=base_mol,
+            # #         adj_mat=agent_adj_mat,
+            # #         temperature=self.temperature,
+            # #     )
+            # #
+            # #     reward_value = float(self.score_fn(sampled_mol))
+            # #     valid_value = 1.0 if is_valid_mol(sampled_mol) else 0.0
+            # #
+            # #     if best_reward is None or reward_value > best_reward:
+            # #         best_reward = reward_value
+            # #         best_valid = valid_value
+            #
+            # rewards.append(best_reward if best_reward is not None else -1.0)
+            # valid_flags.append(best_valid)
+
+        agent_scores_t = torch.tensor(agent_scores, dtype=torch.float32)
+        prior_scores_t = torch.tensor(prior_scores, dtype=torch.float32)
+
+        agent_valid_t = torch.tensor(agent_valid_flags, dtype=torch.float32)
+        prior_valid_t = torch.tensor(prior_valid_flags, dtype=torch.float32)
+
+        f_agent_score = agent_scores_t.mean().item()
+        f_prior_score = prior_scores_t.mean().item()
+
+        eval_improv = f_agent_score - f_prior_score
 
         return {
-            "eval_reward_mean": float(rewards_t.mean().item()),
-            "eval_reward_std": float(rewards_t.std(unbiased=False).item()),
-            "eval_valid_rate": float(valid_t.mean().item()),
+            "eval_agent_scores_mean": float(agent_scores_t.mean().item()),
+            "eval_prior_scores_mean": float(prior_scores_t.mean().item()),
+            "eval_agent_valid_rate": float(agent_valid_t.mean().item()),
+            "eval_prior_valid_rate": float(prior_valid_t.mean().item()),
+            "eval_improve_mean": eval_improv
+            # "eval_reward_std": float(rewards_t.std(unbiased=False).item()),
         }
-
-    def save_agent_head(self, path: str | Path) -> None:
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        torch.save(self.model.agent_resize.state_dict(), path)
-
-
-    # def save_full_adj_mat_seer(self, path: str | Path) -> None:
-    #     path = Path(path)
-    #     path.parent.mkdir(parents=True, exist_ok=True)
-    #
-    #     base_state = self.base_adj_mat_seer.state_dict()
-    #     full_state = {k: v.detach().cpu().clone() for k, v in base_state.items()}
-    #
-    #     full_state["resize.weight"] = self.model.agent_resize.weight.detach().cpu().clone()
-    #     full_state["resize.bias"] = self.model.agent_resize.bias.detach().cpu().clone()
-    #
-    #     torch.save(full_state, path)
 
     def execute(
         self,
@@ -229,11 +251,15 @@ class RLFineTuner:
         eval_batch_size: int = 32,
         eval_every: int = 1,
         save_dir: str = "./checkpoints_rl",
+        best_checkpoint_name: str = "best_agent_resize.pt",
     ) -> None:
 
-        best_eval_reward = float("-inf")
+        # best_eval_improv = float("-inf")
+        best_eval_improv = 0
+        best_checkpoint_path = f"{save_dir}/{best_checkpoint_name}"
+        latest_checkpoint_path = f"{save_dir}/latest_checkpoint.pt"
 
-        for epoch in tqdm(range(1, n_epochs + 1)):
+        for epoch in range(1, n_epochs + 1):
             edm_samples = edm_sampler_fn(edm_batch_size)
             train_stats = self.train_step(edm_samples)
 
@@ -249,18 +275,26 @@ class RLFineTuner:
 
             if epoch % eval_every == 0:
                 eval_stats = self.evaluate(n_eval_edm_samples=eval_batch_size)
+
                 print(
                     f"                 "
-                    f"eval_reward_mean={eval_stats['eval_reward_mean']:.4f} "
-                    f"eval_valid_rate={eval_stats['eval_valid_rate']:.4f}"
+                    f"agent_score_mean={eval_stats['eval_agent_scores_mean']:.4f} "
+                    f"prior_score_mean={eval_stats['eval_prior_scores_mean']:.4f}\n"
+                    f"                 "
+                    f"eval_agent_valid_rate={eval_stats['eval_agent_valid_rate']:.4f} "
+                    f"eval_prior_valid_rate={eval_stats['eval_prior_valid_rate']:.4f}\n"
+                    f"                 "
+                    f"score_improv={eval_stats['eval_improve_mean']:.4f} "
+                    f"valid_rate_improv={(eval_stats['eval_agent_valid_rate'] - eval_stats['eval_prior_valid_rate']):.4f} "
+
                 )
 
-                if eval_stats["eval_reward_mean"] > best_eval_reward:
-                    best_eval_reward = eval_stats["eval_reward_mean"]
-                    self.save_agent_head(Path(save_dir) / "best_agent_resize.pt")
+                if eval_stats["eval_improve_mean"] > best_eval_improv:
+                    best_eval_improv = eval_stats["eval_improve_mean"]
+                    self.save_agent_head(best_checkpoint_path)
                     print("                 saved new best agent head")
 
-        self.save_agent_head(Path(save_dir) / "last_agent_resize.pt")
+        self.save_agent_head(latest_checkpoint_path)
         return None
 
 
@@ -299,8 +333,10 @@ def redefine_bonds_sampled(
 ) -> tuple[Chem.Mol | None, torch.Tensor, torch.Tensor]:
     """
     Sample one bond assignment from adjacency logits.
-
-    Returns:
+    :param mol:
+    :param adj_mat:
+    :param temperature:
+    :returns:
         new_mol: RDKit mol or None
         log_prob: scalar tensor
         sampled_bonds: [E] lower-triangular sampled classes
