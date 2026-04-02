@@ -1,15 +1,17 @@
-import torch
-import torch.nn as nn
-
 from typing import Tuple
 
 import torch
 import torch.nn as nn
 from torch.distributions import Normal
-from ..equivariant_diffusion import sample_center_gravity_zero_gaussian_with_mask, sample_gaussian_with_mask
+
+from ..egnn import _get_adj_matrix, coord2diff, unsorted_segment_sum
+from ..equivariant_diffusion import (
+    sample_center_gravity_zero_gaussian_with_mask,
+    sample_gaussian_with_mask,
+)
 
 
-class EDMLoRAPolicy(nn.Module):
+class EDMAdapter(nn.Module):
     def __init__(
         self,
         device,
@@ -22,6 +24,9 @@ class EDMLoRAPolicy(nn.Module):
         x_scale: float = 0.25,
         h_scale: float = 0.25,
     ):
+        """
+        Applies a small update to X (equivariant) and H (gcl) EDM outputs
+        """
         super().__init__()
 
         self.h_dim = h_dim
@@ -30,7 +35,6 @@ class EDMLoRAPolicy(nn.Module):
         self.sigma_x = sigma_x
         self.sigma_h = sigma_h
 
-        # scales limit how much the adapter can change the EDM outputs
         self.x_scale = x_scale
         self.h_scale = h_scale
 
@@ -56,18 +60,7 @@ class EDMLoRAPolicy(nn.Module):
         node_mask: torch.Tensor,
         sample: bool = True,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
-        """
-        x: [B, N, 3]
-        h: [B, N, H]
-        edge_mask: expected by your GCL / EquivariantUpdate
-        node_mask: expected by your GCL / EquivariantUpdate
-
-        Returns:
-            x_new: [B, N, 3]
-            h_new: [B, N, H]
-            log_prob: [B]
-            aux: dict with useful regularizers/statistics
-        """
+        """ """
         bs, n_nodes, _ = x.size()
 
         x_in = x
@@ -75,9 +68,9 @@ class EDMLoRAPolicy(nn.Module):
 
         x_flat = x.view(bs * n_nodes, 3)
         h_flat = h.view(bs * n_nodes, self.h_dim)
-        node_mask_flat = node_mask.view(bs * n_nodes, 1)
 
-        edge_index = get_adj_matrix(n_nodes, bs, self.device)
+        node_mask_flat = node_mask.view(bs * n_nodes, 1)
+        edge_index = _get_adj_matrix(n_nodes, bs, self.device)
 
         distances, coord_diff = coord2diff(x_flat, edge_index)
         edge_attr = torch.cat([distances, distances], dim=1)
@@ -100,7 +93,6 @@ class EDMLoRAPolicy(nn.Module):
             edge_mask=edge_mask,
         )
 
-        # Interpret outputs as small residual means, not full replacements
         dx_mean = dx_mean_flat.view(bs, n_nodes, 3)
         dh_mean = dh_mean_flat.view(bs, n_nodes, self.h_dim)
 
@@ -108,10 +100,9 @@ class EDMLoRAPolicy(nn.Module):
         dh_mean = self.h_scale * dh_mean
 
         if sample:
-            # eps_x = torch.randn_like(dx_mean)
-            # eps_h = torch.randn_like(dh_mean)
-
-            eps_x = sample_center_gravity_zero_gaussian_with_mask(dx_mean.size(), self.device, node_mask)
+            eps_x = sample_center_gravity_zero_gaussian_with_mask(
+                dx_mean.size(), self.device, node_mask
+            )
             eps_h = sample_gaussian_with_mask(dh_mean.size(), self.device, node_mask)
 
             dx = dx_mean + self.sigma_x * eps_x
@@ -123,7 +114,6 @@ class EDMLoRAPolicy(nn.Module):
         x_new = x_in + dx
         h_new = h_in + dh
 
-        # Gaussian log-prob of sampled residuals under the adapter policy
         dist_x = Normal(
             loc=dx_mean,
             scale=torch.full_like(dx_mean, self.sigma_x),
@@ -133,7 +123,6 @@ class EDMLoRAPolicy(nn.Module):
             scale=torch.full_like(dh_mean, self.sigma_h),
         )
 
-        # Sum over nodes/features -> [B]
         log_prob_x = dist_x.log_prob(dx).sum(dim=(-1, -2))
         log_prob_h = dist_h.log_prob(dh).sum(dim=(-1, -2))
         log_prob = log_prob_x + log_prob_h
@@ -150,68 +139,8 @@ class EDMLoRAPolicy(nn.Module):
         return x_new, h_new, log_prob, aux
 
 
-
-
-# class EDMLoRA(nn.Module):
-#     def __init__(self, device):
-#         super(EDMLoRA, self).__init__()
-#
-#         edges_in_d = 2
-#         nf = 100
-#         coords_range = 15
-#         n_hidden = 8
-#
-#         self.x_update = EquivariantUpdate(
-#             hidden_nf=n_hidden,
-#             normalization_factor=nf,
-#             edges_in_d=edges_in_d,
-#             coords_range=coords_range,
-#         )
-#         self.h_update = GCL(
-#             input_nf=n_hidden,
-#             output_nf=n_hidden,
-#             hidden_nf=n_hidden,
-#             normalization_factor=nf,
-#             edges_in_d=edges_in_d,
-#         )
-#         self.device = device
-#
-#     def forward(self, x, h, edge_mask, node_mask):
-#         bs, n_nodes, _ = x.size()
-#         x = x.view(bs * n_nodes, 3)
-#         h = h.view(bs * n_nodes, 8)
-#
-#         edge_index = get_adj_matrix(n_nodes, bs, self.device)
-#
-#         distances, coord_diff = coord2diff(x, edge_index)
-#         edge_attr = torch.cat([distances, distances], dim=1)
-#
-#         h = self.h_update(
-#             h=h,
-#             edge_index=edge_index,
-#             edge_attr=edge_attr,
-#             node_mask=node_mask,
-#             edge_mask=edge_mask,
-#         )
-#
-#         x = self.x_update(
-#             h=h,
-#             coord=x,
-#             edge_index=edge_index,
-#             coord_diff=coord_diff,
-#             edge_attr=edge_attr,
-#             node_mask=node_mask,
-#             edge_mask=edge_mask,
-#         )
-#
-#         x = x.view(bs, n_nodes, 3)
-#         h = h.view(bs, n_nodes, 8)
-#
-#         return x, h
-
-
 class GCL(nn.Module):
-    """Graph Convolution layer based on aggregation"""
+    """Graph Convolution layer based on aggregation. Modified for RL Fine-tuning"""
 
     def __init__(
         self,
@@ -303,6 +232,7 @@ class EquivariantUpdate(nn.Module):
         edges_in_d: int = 1,
         coords_range: float = 10.0,
     ):
+        """Equivariant update layer. Modified for RL Fine-tuning"""
         super(EquivariantUpdate, self).__init__()
 
         self.coords_range = coords_range
@@ -316,6 +246,8 @@ class EquivariantUpdate(nn.Module):
             nn.SiLU(),
             layer,
         )
+
+        # Exact residual identity at init
         nn.init.zeros_(self.coord_mlp[-1].weight)
         self.normalization_factor = normalization_factor
 
@@ -358,63 +290,3 @@ class EquivariantUpdate(nn.Module):
         coord = self.coord_model(h, coord, edge_index, coord_diff, edge_attr, edge_mask)
         coord = coord * node_mask
         return coord
-
-
-def unsorted_segment_sum(
-    data: torch.Tensor,
-    segment_ids: torch.Tensor,
-    num_segments: int,
-    normalization_factor: float,
-) -> torch.Tensor:
-    """
-    Custom PyTorch op to replicate TensorFlow's `unsorted_segment_sum`.
-    Normalization: 'sum'.
-    """
-
-    result = torch.zeros(
-        (num_segments, data.size(1)), dtype=data.dtype, device=data.device
-    )
-    segment_ids = segment_ids.unsqueeze(-1).expand_as(data)
-
-    result.scatter_add_(0, segment_ids, data)
-    result = result / normalization_factor
-
-    return result
-
-
-def get_adj_matrix(n_nodes: int, batch_size: int, device: torch.device) -> torch.Tensor:
-    # Generate batch offsets
-    batch_offsets = torch.arange(batch_size, device=device).unsqueeze(1) * n_nodes
-
-    # Generate row and column indices for a single batch
-    row_indices = torch.arange(n_nodes, device=device).repeat(n_nodes, 1).T.flatten()
-    col_indices = torch.arange(n_nodes, device=device).repeat(n_nodes)
-
-    # Expand to all batches
-    rows = (row_indices.unsqueeze(0) + batch_offsets).flatten()
-    cols = (col_indices.unsqueeze(0) + batch_offsets).flatten()
-
-    # Store the edges as LongTensor
-    edges = torch.stack(
-        [
-            rows.long(),
-            cols.long(),
-        ],
-        dim=0,
-    ).to(device)
-
-    return edges
-
-
-def coord2diff(
-    x: torch.Tensor, edge_index: torch.Tensor
-) -> Tuple[torch.Tensor, torch.Tensor]:
-    row = edge_index[0]
-    col = edge_index[1]
-
-    coord_diff = x[row] - x[col]
-    radial = torch.sum(coord_diff**2, 1).unsqueeze(1)
-    norm = torch.sqrt(radial + 1e-8)
-    coord_diff = coord_diff / norm
-
-    return radial, coord_diff

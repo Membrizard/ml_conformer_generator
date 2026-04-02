@@ -1,11 +1,15 @@
+import copy
+
 import torch
 import torch.nn as nn
-import copy
+
 from ..adj_mat_seer import AdjMatSeer
 
 
 class SharedPriorAgent(nn.Module):
-    """ """
+    """
+    Module for Reinforcement Learning Fine-Tuning of AdjMatSeer head.
+    """
 
     def __init__(self, pretrained_model: AdjMatSeer):
         super().__init__()
@@ -16,7 +20,6 @@ class SharedPriorAgent(nn.Module):
         self.device = pretrained_model.device
         self.act = pretrained_model.act
 
-        # Frozen trunk pieces
         self.gcn1 = pretrained_model.gcn1
         self.gcn2 = pretrained_model.gcn2
         self.gcn3 = pretrained_model.gcn3
@@ -31,16 +34,12 @@ class SharedPriorAgent(nn.Module):
         self.dm_resize = pretrained_model.dm_resize
         self.dm_nodes_embedding = pretrained_model.dm_nodes_embedding
 
-        # Heads
         self.prior_resize = pretrained_model.resize
-
         self.agent_resize = copy.deepcopy(pretrained_model.resize)
 
-        # Freeze everything first
         for p in self.parameters():
             p.requires_grad_(False)
 
-        # Unfreeze only agent head
         for p in self.agent_resize.parameters():
             p.requires_grad_(True)
 

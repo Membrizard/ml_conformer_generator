@@ -1,21 +1,35 @@
+import logging
 from pathlib import Path
 from typing import Callable
 
 import torch
-from torch.distributions import Categorical
 from rdkit import Chem
+from torch.distributions import Categorical
 
-from .shared_prior_agent import SharedPriorAgent
 from ..adj_mat_seer import AdjMatSeer
-from ..utils import bond_type_dict, prepare_adj_mat_seer_input, redefine_bonds, samples_to_rdkit_mol, ATOM_DECODER
-from .edm_lora import EDMLoRAPolicy
+from ..utils import (
+    ATOM_DECODER,
+    bond_type_dict,
+    prepare_adj_mat_seer_input,
+    redefine_bonds,
+    samples_to_rdkit_mol,
+)
+from .edm_adapter import EDMAdapter
+from .shared_prior_agent import SharedPriorAgent
+
+logger = logging.getLogger(__name__)
+
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 
 class RLFineTuner:
     """
-    Reinforcement Learning Fine Tuner for MLConformer generator.
-
-
+    Reinforcement Learning Fine Tuner for MLConformerGenerator.
     """
 
     def __init__(
@@ -24,60 +38,84 @@ class RLFineTuner:
         edm_sampler_fn: Callable[[int], list[Chem.Mol]],
         score_fn: Callable[[Chem.Mol | None], float],
         lr: float = 1e-5,
+        lambda_adapter: float = 0.5,
+        lambda_reg: float = 0.01,
         sigma: float = 10.0,
         temperature: float = 1.0,
         n_samples_per_mol: int = 4,
         reward_clip: tuple[float, float] = (-1.0, 1.0),
         device: torch.device | str = torch.device("cpu"),
+        atom_decoder: dict = ATOM_DECODER,
+        bond_dict: dict = bond_type_dict,
     ):
         self.device = device
-        self.model = SharedPriorAgent(pretrained_adj_mat_seer).to(device)
-        self.edm_adapter = EDMLoRAPolicy(device).to(device)
 
-        self.lambda_adapter = 0.5
-        self.lambda_reg = 0.01
+        self.model = SharedPriorAgent(pretrained_adj_mat_seer).to(device)
+        self.edm_adapter = EDMAdapter(device).to(device)
 
         self.edm_sampler_fn = edm_sampler_fn
         self.score_fn = score_fn
 
         self.sigma = sigma
         self.temperature = temperature
+        self.lambda_adapter = lambda_adapter
+        self.lambda_reg = lambda_reg
+
         self.n_samples_per_mol = n_samples_per_mol
         self.reward_clip = reward_clip
 
-        trainable_params = (
-            list(self.model.agent_resize.parameters())
-            # + list(self.model.agent_gcn4.parameters())
-            + list(self.edm_adapter.parameters())
+        trainable_params = list(self.model.agent_resize.parameters()) + list(
+            self.edm_adapter.parameters()
         )
         self.optimizer = torch.optim.AdamW(trainable_params, lr=lr)
 
-        self.bond_type_dict = bond_type_dict
+        self.bond_type_dict = bond_dict
+        self.atom_decoder = atom_decoder
         self.prepare_input_fn = prepare_adj_mat_seer_input
 
-    def save_agent_head(self, path: str | Path) -> None:
+    def save_checkpoint(self, path: str | Path) -> None:
+        edm_adapter = self.edm_adapter.state_dict()
+        gcn_head = self.model.agent_resize.state_dict()
+
+        checkpoint = {
+            "edm_adapter": edm_adapter,
+            "adj_mat_seer_head": gcn_head,
+        }
+
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        torch.save(self.model.agent_resize.state_dict(), path)
+        torch.save(checkpoint, path)
+        return None
+
+    def load_checkpoint(self, path: str | Path):
+        checkpoint = torch.load(path, map_location=self.device)
+
+        self.edm_adapter.load_state_dict(checkpoint["edm_adapter"])
+        self.model.agent_resize.load_state_dict(checkpoint["adj_mat_seer_head"])
         return None
 
     def train_step(self, x, h, node_mask, edge_mask) -> dict[str, float]:
-
-        # Duplicate tensor from inference mode
         x = x.clone()
         h = h.clone()
         node_mask = node_mask.clone()
         edge_mask = edge_mask.clone()
 
         _x, _h, edm_adapter_log_probs, edm_aux = self.edm_adapter(
-            x=x, h=h, node_mask=node_mask, edge_mask=edge_mask, sample=True,
+            x=x,
+            h=h,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+            sample=True,
         )
 
         x_safe = _x.clone().detach()
         h_safe = _h.clone().detach()
 
         edm_samples = samples_to_rdkit_mol(
-            positions=x_safe, one_hot=h_safe, node_mask=node_mask, atom_decoder=ATOM_DECODER
+            positions=x_safe,
+            one_hot=h_safe,
+            node_mask=node_mask,
+            atom_decoder=ATOM_DECODER,
         )
 
         (
@@ -159,16 +197,17 @@ class RLFineTuner:
 
         rewards_t = torch.stack(rewards)
 
-        rewards_per_edm = rewards_t.view(batch_size, self.n_samples_per_mol).mean(dim=1)  # [B]
+        rewards_per_edm = rewards_t.view(batch_size, self.n_samples_per_mol).mean(dim=1)
         advantages_edm = rewards_per_edm - rewards_per_edm.mean()
 
         loss_edm_adapter = -(advantages_edm.detach() * edm_adapter_log_probs).mean()
-        loss_reg = (
-                edm_aux["dx_mean_l2"]
-                + edm_aux["dh_mean_l2"]
-        )
+        loss_reg = edm_aux["dx_mean_l2"] + edm_aux["dh_mean_l2"]
 
-        loss = loss_bond + self.lambda_adapter * loss_edm_adapter + self.lambda_reg * loss_reg
+        loss = (
+            loss_bond
+            + self.lambda_adapter * loss_edm_adapter
+            + self.lambda_reg * loss_reg
+        )
 
         self.optimizer.zero_grad()
         loss.backward()
@@ -194,15 +233,17 @@ class RLFineTuner:
         n_eval_edm_samples: int = 32,
     ) -> dict[str, float]:
         x, h, node_mask, edge_mask = self.edm_sampler_fn(n_eval_edm_samples)
-
-        # Duplicate tensor from inference mode
         x = x.clone()
         h = h.clone()
         node_mask = node_mask.clone()
         edge_mask = edge_mask.clone()
 
         _x, _h, edm_adapter_log_probs, edm_aux = self.edm_adapter(
-            x=x, h=h, node_mask=node_mask, edge_mask=edge_mask, sample=False,
+            x=x,
+            h=h,
+            node_mask=node_mask,
+            edge_mask=edge_mask,
+            sample=False,
         )
 
         edm_samples = samples_to_rdkit_mol(
@@ -241,12 +282,6 @@ class RLFineTuner:
             adj_mat=b_adj_mat_batch,
         )
 
-        prior_adj_mat_batch = self.model.prior_forward(
-            elements=el_batch,
-            dist_mat=dm_batch,
-            adj_mat=b_adj_mat_batch,
-        )
-
         baseline_adj_mat_batch = self.model.prior_forward(
             elements=bl_el_batch,
             dist_mat=bl_dm_batch,
@@ -254,82 +289,49 @@ class RLFineTuner:
         )
 
         agent_scores = []
-        prior_scores = []
         baseline_scores = []
 
         agent_valid_flags = []
-        prior_valid_flags = []
         baseline_valid_flags = []
 
         for i, base_mol in enumerate(canonicalised_samples):
             agent_adj_mat = agent_adj_mat_batch[i]
-            prior_adj_mat = prior_adj_mat_batch[i]
             baseline_adj_mat = baseline_adj_mat_batch[i]
             _baseline_mol = bl_canonicalised_samples[i]
 
             agent_mol = redefine_bonds(mol=base_mol, adj_mat=agent_adj_mat)
-            prior_mol = redefine_bonds(mol=base_mol, adj_mat=prior_adj_mat)
             baseline_mol = redefine_bonds(mol=_baseline_mol, adj_mat=baseline_adj_mat)
 
-            # best_reward = None
-            # best_valid = 0.0
-
-            agent_score = float(self.score_fn(agent_mol))
-            prior_score = float(self.score_fn(prior_mol))
-            baseline_score = float(self.score_fn(baseline_mol))
-
-            agent_valid_value = 1.0 if is_valid_mol(agent_mol) else 0.0
-            prior_valid_value = 1.0 if is_valid_mol(prior_mol) else 0.0
-            baseline_valid_value = 1.0 if is_valid_mol(baseline_mol) else 0.0
+            agent_score, agent_valid_value = _eval_op(
+                agent_mol, agent_adj_mat, self.score_fn
+            )
+            baseline_score, baseline_valid_value = _eval_op(
+                baseline_mol, baseline_adj_mat, self.score_fn
+            )
 
             agent_scores.append(agent_score)
-            prior_scores.append(prior_score)
             baseline_scores.append(baseline_score)
 
             agent_valid_flags.append(agent_valid_value)
-            prior_valid_flags.append(prior_valid_value)
             baseline_valid_flags.append(baseline_valid_value)
 
-            # # for _ in range(self.n_samples_per_mol):
-            # #     sampled_mol, _, _ = redefine_bonds_sampled(
-            # #         mol=base_mol,
-            # #         adj_mat=agent_adj_mat,
-            # #         temperature=self.temperature,
-            # #     )
-            # #
-            # #     reward_value = float(self.score_fn(sampled_mol))
-            # #     valid_value = 1.0 if is_valid_mol(sampled_mol) else 0.0
-            # #
-            # #     if best_reward is None or reward_value > best_reward:
-            # #         best_reward = reward_value
-            # #         best_valid = valid_value
-            #
-            # rewards.append(best_reward if best_reward is not None else -1.0)
-            # valid_flags.append(best_valid)
-
         agent_scores_t = torch.tensor(agent_scores, dtype=torch.float32)
-        prior_scores_t = torch.tensor(prior_scores, dtype=torch.float32)
         baseline_scores_t = torch.tensor(baseline_scores, dtype=torch.float32)
 
         agent_valid_t = torch.tensor(agent_valid_flags, dtype=torch.float32)
-        prior_valid_t = torch.tensor(prior_valid_flags, dtype=torch.float32)
         baseline_valid_t = torch.tensor(baseline_valid_flags, dtype=torch.float32)
 
         f_agent_score = agent_scores_t.mean().item()
-        f_prior_score = prior_scores_t.mean().item()
         f_baseline_score = baseline_scores_t.mean().item()
 
-        # eval_improv = f_agent_score - f_prior_score
         baseline_imporv = f_agent_score - f_baseline_score
-
 
         return {
             "eval_agent_scores_mean": float(agent_scores_t.mean().item()),
             "eval_baseline_scores_mean": float(baseline_scores_t.mean().item()),
             "eval_agent_valid_rate": float(agent_valid_t.mean().item()),
             "eval_baseline_valid_rate": float(baseline_valid_t.mean().item()),
-            "eval_improve_mean": baseline_imporv
-            # "eval_reward_std": float(rewards_t.std(unbiased=False).item()),
+            "eval_improve_mean": baseline_imporv,
         }
 
     def execute(
@@ -341,8 +343,8 @@ class RLFineTuner:
         eval_every: int = 1,
         save_dir: str = "./checkpoints_rl",
         best_checkpoint_name: str = "best_agent_resize.pt",
+        verbose: bool = True,
     ) -> None:
-        # best_eval_improv = float("-inf")
         best_eval_improv = 0
         best_checkpoint_path = f"{save_dir}/{best_checkpoint_name}"
         latest_checkpoint_path = f"{save_dir}/latest_checkpoint.pt"
@@ -354,34 +356,38 @@ class RLFineTuner:
             msg = (
                 f"[Epoch {epoch:04d}/{n_epochs:04d}] "
                 f"loss={train_stats['loss']:.4f} "
-                f"reward_mean={train_stats['reward_mean']:.4f} "
+                f"mean_score={train_stats['reward_mean']:.4f} "
                 f"valid_rate={train_stats['valid_rate']:.4f} "
                 f"agent_ll={train_stats['agent_ll_mean']:.4f} "
                 f"prior_ll={train_stats['prior_ll_mean']:.4f}"
             )
-            print(msg)
+            if verbose:
+                logger.info(msg)
 
             if epoch % eval_every == 0:
                 eval_stats = self.evaluate(n_eval_edm_samples=eval_batch_size)
 
-                print(
-                    f"                 "
-                    f"agent_score_mean={eval_stats['eval_agent_scores_mean']:.4f} "
-                    f"baseline_score_mean={eval_stats['eval_baseline_scores_mean']:.4f}\n"
-                    f"                 "
-                    f"eval_agent_valid_rate={eval_stats['eval_agent_valid_rate']:.4f} "
-                    f"eval_baseline_valid_rate={eval_stats['eval_baseline_valid_rate']:.4f}\n"
-                    f"                 "
-                    f"score_improv={eval_stats['eval_improve_mean']:.4f} "
-                    f"valid_rate_improv={(eval_stats['eval_agent_valid_rate'] - eval_stats['eval_baseline_valid_rate']):.4f} "
-                )
+                if verbose:
+                    logger.info(
+                        f"Evaluation:\n"
+                        f"                                "
+                        f" agent_score_mean={eval_stats['eval_agent_scores_mean']:.4f} "
+                        f" baseline_score_mean={eval_stats['eval_baseline_scores_mean']:.4f}\n"
+                        f"                                "
+                        f" eval_agent_valid_rate={eval_stats['eval_agent_valid_rate']:.4f} "
+                        f" eval_baseline_valid_rate={eval_stats['eval_baseline_valid_rate']:.4f}\n"
+                        f"                                "
+                        f" score_improv={eval_stats['eval_improve_mean']:.4f} "
+                        f" valid_rate_improv={(eval_stats['eval_agent_valid_rate'] - eval_stats['eval_baseline_valid_rate']):.4f} "
+                    )
 
                 if eval_stats["eval_improve_mean"] > best_eval_improv:
                     best_eval_improv = eval_stats["eval_improve_mean"]
-                    self.save_agent_head(best_checkpoint_path)
-                    print("                 saved new best agent head")
+                    self.save_checkpoint(best_checkpoint_path)
+                    if verbose:
+                        logger.info("Saved new best checkpoint")
 
-        self.save_agent_head(latest_checkpoint_path)
+        self.save_checkpoint(latest_checkpoint_path)
         return None
 
 
@@ -473,3 +479,11 @@ def redefine_bonds_sampled(
         )
 
 
+def _eval_op(base_mol: Chem.Mol, adj_mat: torch.Tensor, score_fn: Callable) -> tuple:
+    mol = redefine_bonds(mol=base_mol, adj_mat=adj_mat)
+    valid_value = 1.0 if is_valid_mol(mol) else 0.0
+    score = 0
+    if valid_value == 1:
+        score = score_fn(mol)
+
+    return score, valid_value

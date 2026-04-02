@@ -2,8 +2,12 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem import rdmolops
 
-from ..utils.common import (allowable_features, bond_type_dict,
-                            elements_decoder, elements_dict)
+from ..utils.common import (
+    allowable_features,
+    bond_type_dict,
+    elements_decoder,
+    elements_dict,
+)
 from ..utils.config import DIMENSION, NUM_BOND_TYPES
 
 
