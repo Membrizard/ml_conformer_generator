@@ -341,11 +341,11 @@ class MLConformerGenerator(torch.nn.Module):
         :param reference_context: Arbitrary Reference context if applicable, instead of reference_conformer
         :param n_atoms: Reference number of atoms when generating using arbitrary context
         :param optimize_geometry: If true will apply constrained MMFF94 geometry optimisation to generated molecules
-        :param resample_steps: number of resampling steps applied for harmonisation of generation
+        :param resample_steps: Number of resampling steps applied for harmonisation of generation
                                improves generation quality, while sacrificing speed
         :param fixed_fragment: Fragment to fix during generation as an RDKit Mol object or
                                a set of atom idxs of reference conformer
-        :param blend_power: power of the polynomial blending schedule for generation with a fixed fragment
+        :param blend_power: Power of the polynomial blending schedule for generation with a fixed fragment
         :return: A list of valid standardised generated molecules as RDKit Mol objects
         """
 
@@ -422,56 +422,64 @@ class MLConformerGenerator(torch.nn.Module):
         lambda_edm_adapter: float = 0.5,
         lambda_edm_reg: float = 0.01,
         temperature: float = 1.0,
-        n_samples_per_mol: int = 4,
+        n_samples_per_mol: int = 16,
         reward_clip: tuple[float, float] = (-1.0, 1.0),
-        eval_every: int = 1,
+        eval_every: int = 5,
         save_dir: str = "./fine_tuning_checkpoints",
         best_checkpoint_name: str = "best_checkpoint.pt",
         load_best_checkpoint: bool = False,
+        verbose: bool = True,
     ):
         """
-        Objective-driven fine tuning For MLConformerGenerator.
+        Objective-driven fine-tuning for ``MLConformerGenerator``.
 
-        Allows to steer the generation towards a set objective score function defined by the user.
-        The FineTuning is performed for a single specific task using Reinforcement learning training of the EDM adapter
-        and AdjMatSeer head.
+        This method steers molecular generation toward a user-defined objective by
+        fine-tuning the EDM adapter and AdjMatSeer head with reinforcement learning.
 
-        Task Definition parameters
+        Task definition parameters
+        --------------------------
+        :param reference_conformer: A 3D conformer of a reference molecule as an RDKit Mol object
+        :param variance: int - variation in number of heavy atoms for generated molecules from reference
+        :param reference_context: Arbitrary Reference context if applicable, instead of reference_conformer
+        :param n_atoms: Reference number of atoms when generating using arbitrary context
+        :param resample_steps: Number of resampling steps applied for harmonisation of generation
+                               improves generation quality, while sacrificing speed
+        :param fixed_fragment: Fragment to fix during generation as an RDKit Mol object or
+                               a set of atom idxs of reference conformer
+        :param blend_power: Power of the polynomial blending schedule for generation with a fixed fragment
 
-        :param reference_conformer:
-        :param variance:
-        :param reference_context:
-        :param n_atoms:
-        :param resample_steps:
-        :param fixed_fragment:
-        :param blend_power:
+        Fine-tuning parameters
+        ----------------------
+        :param score_function: Scoring function used to evaluate generated molecules. It should accept
+                               an RDKit Mol and return a float in the range [0, 1], where
+                               0 represents an undesirable molecule and 1 represents an ideal
+                               molecule. If set to None, a default scoring function that encourages validity is used.
+        :param n_epochs: Number of fine-tuning epochs.
+        :param train_batch_size: Batch size used during training.
+        :param eval_batch_size: Batch size used during evaluation.
+        :param learning_rate: Optimizer learning rate.
+        :param sigma: Reward weight in the reinforcement learning loss.
+        :param lambda_edm_adapter: Weight of the EDM adapter term in the reinforcement learning loss.
+        :param lambda_edm_reg: Weight of the EDM adapter regularization term in the reinforcement
+                               learning loss.
+        :param temperature: Sampling temperature. Values in the range ``1.0`` to ``1.5`` are
+                            typically recommended.
+        :param n_samples_per_mol: Number of samples drawn per molecule from the GCN based on the
+                                  AdjMatSeer output logits.
+        :param reward_clip: Tuple defining lower and upper clipping bounds for the reward.
+        :param eval_every: Evaluate the model every ``n`` epochs.
+        :param save_dir: Directory in which checkpoints are saved.
+        :param best_checkpoint_name: Filename to use for the best checkpoint.
+        :param load_best_checkpoint: If True, load the best checkpoint into the current model at the end of training.
+        :param verbose: If True, print training logs.
 
-        Fine-Tuning Parameters
-
-        :param score_function:
-        :param n_epochs:
-        :param train_batch_size:
-        :param eval_batch_size:
-        :param learning_rate:
-        :param sigma:
-        :param lambda_edm_adapter:
-        :param lambda_edm_reg:
-        :param temperature:
-        :param n_samples_per_mol:
-        :param reward_clip:
-        :param eval_every:
-        :param save_dir:
-        :param best_checkpoint_name:
-        :param load_best_checkpoint:
-
-        :return: Creates loadable best fine-tune checkpoint
-
-
+        :return: Creates a loadable fine-tuned checkpoint with improved performance on the specified objective.
         """
 
         if score_function is None:
-            def score_function(x):
+            def default_score_function(x) -> float:
                 return reward_clip[1]
+            score_function = default_score_function
 
         ref_context, ref_n_atoms, fixed_fragment = self.prepare_inputs(
             reference_conformer=reference_conformer,
@@ -532,6 +540,7 @@ class MLConformerGenerator(torch.nn.Module):
             eval_every=eval_every,
             save_dir=save_dir,
             best_checkpoint_name=best_checkpoint_name,
+            verbose=verbose,
         )
 
         if load_best_checkpoint:
@@ -541,8 +550,11 @@ class MLConformerGenerator(torch.nn.Module):
 
     def load_fine_tune_checkpoint(self, path: str | Path) -> None:
         checkpoint = torch.load(path, map_location=self.device)
+
         if self.edm_adapter is None:
-            self.edm_adapter = EDMAdapter(device=self.device)
+            edm_adapter = EDMAdapter(device=self.device).to(self.device)
+            edm_adapter.eval()
+            self.edm_adapter = edm_adapter
 
         self.edm_adapter.load_state_dict(checkpoint["edm_adapter"])
         self.adj_mat_seer.resize.load_state_dict(checkpoint["adj_mat_seer_head"])

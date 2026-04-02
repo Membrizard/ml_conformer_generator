@@ -31,7 +31,6 @@ class RLFineTuner:
     """
     Reinforcement Learning Fine Tuner for MLConformerGenerator.
     """
-
     def __init__(
         self,
         pretrained_adj_mat_seer: AdjMatSeer,
@@ -211,7 +210,6 @@ class RLFineTuner:
 
         self.optimizer.zero_grad()
         loss.backward()
-        # torch.nn.utils.clip_grad_norm_(self.model.agent_resize.parameters(), max_norm=5.0)
         self.optimizer.step()
 
         valid_t = torch.stack(valid_flags)
@@ -219,12 +217,12 @@ class RLFineTuner:
         prior_lls_t = torch.stack(prior_lls)
 
         return {
-            "loss": float(loss.detach().cpu()),
-            "reward_mean": float(rewards_t.mean().cpu()),
-            "reward_std": float(rewards_t.std(unbiased=False).cpu()),
-            "valid_rate": float(valid_t.mean().cpu()),
-            "agent_ll_mean": float(agent_lls_t.mean().cpu()),
-            "prior_ll_mean": float(prior_lls_t.mean().cpu()),
+            "loss": loss.detach().item(),
+            "reward_mean": rewards_t.mean().item(),
+            "reward_std": rewards_t.std(unbiased=False).item(),
+            "valid_rate": valid_t.mean().item(),
+            "agent_ll_mean": agent_lls_t.mean().item(),
+            "prior_ll_mean": prior_lls_t.mean().item(),
         }
 
     @torch.no_grad()
@@ -327,10 +325,10 @@ class RLFineTuner:
         baseline_imporv = f_agent_score - f_baseline_score
 
         return {
-            "eval_agent_scores_mean": float(agent_scores_t.mean().item()),
-            "eval_baseline_scores_mean": float(baseline_scores_t.mean().item()),
-            "eval_agent_valid_rate": float(agent_valid_t.mean().item()),
-            "eval_baseline_valid_rate": float(baseline_valid_t.mean().item()),
+            "eval_agent_scores_mean": agent_scores_t.mean().item(),
+            "eval_baseline_scores_mean": baseline_scores_t.mean().item(),
+            "eval_agent_valid_rate": agent_valid_t.mean().item(),
+            "eval_baseline_valid_rate": baseline_valid_t.mean().item(),
             "eval_improve_mean": baseline_imporv,
         }
 
@@ -370,13 +368,13 @@ class RLFineTuner:
                 if verbose:
                     logger.info(
                         f"Evaluation:\n"
-                        f"                                "
+                        f"                            "
                         f" agent_score_mean={eval_stats['eval_agent_scores_mean']:.4f} "
                         f" baseline_score_mean={eval_stats['eval_baseline_scores_mean']:.4f}\n"
-                        f"                                "
+                        f"                            "
                         f" eval_agent_valid_rate={eval_stats['eval_agent_valid_rate']:.4f} "
                         f" eval_baseline_valid_rate={eval_stats['eval_baseline_valid_rate']:.4f}\n"
-                        f"                                "
+                        f"                            "
                         f" score_improv={eval_stats['eval_improve_mean']:.4f} "
                         f" valid_rate_improv={(eval_stats['eval_agent_valid_rate'] - eval_stats['eval_baseline_valid_rate']):.4f} "
                     )
