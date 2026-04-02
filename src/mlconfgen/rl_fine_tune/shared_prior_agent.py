@@ -5,9 +5,7 @@ from ..adj_mat_seer import AdjMatSeer
 
 
 class SharedPriorAgent(nn.Module):
-    """
-
-    """
+    """ """
 
     def __init__(self, pretrained_model: AdjMatSeer):
         super().__init__()
@@ -22,7 +20,7 @@ class SharedPriorAgent(nn.Module):
         self.gcn1 = pretrained_model.gcn1
         self.gcn2 = pretrained_model.gcn2
         self.gcn3 = pretrained_model.gcn3
-        # self.gcn4 = pretrained_model.gcn4
+        self.gcn4 = pretrained_model.gcn4
 
         self.nodes_embedding = pretrained_model.nodes_embedding
         self.nodes_coord_fc = pretrained_model.nodes_coord_fc
@@ -34,11 +32,9 @@ class SharedPriorAgent(nn.Module):
         self.dm_nodes_embedding = pretrained_model.dm_nodes_embedding
 
         # Heads
-        self.prior_gcn4 = pretrained_model.gcn4
         self.prior_resize = pretrained_model.resize
 
         self.agent_resize = copy.deepcopy(pretrained_model.resize)
-        self.agent_gcn4 = copy.deepcopy(pretrained_model.gcn4)
 
         # Freeze everything first
         for p in self.parameters():
@@ -46,9 +42,6 @@ class SharedPriorAgent(nn.Module):
 
         # Unfreeze only agent head
         for p in self.agent_resize.parameters():
-            p.requires_grad_(True)
-
-        for p in self.agent_gcn4.parameters():
             p.requires_grad_(True)
 
     def _compute_hidden(
@@ -78,8 +71,8 @@ class SharedPriorAgent(nn.Module):
         conv1 = self.act(self.gcn1(x=nodes_merged, l_norm=l_norm))
         conv2 = self.act(self.gcn2(x=conv1, l_norm=l_norm))
         conv3 = self.act(self.gcn3(x=conv2, l_norm=l_norm))
-        # conv4 = self.act(self.gcn4(x=conv3, l_norm=l_norm))
-        return conv3, l_norm
+        conv4 = self.act(self.gcn4(x=conv3, l_norm=l_norm))
+        return conv4
 
     def convert_to_adj_mat(self, scaled_res: torch.Tensor) -> torch.Tensor:
         adjacency_matrix = torch.reshape(
@@ -91,23 +84,21 @@ class SharedPriorAgent(nn.Module):
 
     @torch.no_grad()
     def prior_forward(
-            self,
-            elements: torch.Tensor,
-            dist_mat: torch.Tensor,
-            adj_mat: torch.Tensor,
+        self,
+        elements: torch.Tensor,
+        dist_mat: torch.Tensor,
+        adj_mat: torch.Tensor,
     ) -> torch.Tensor:
-        conv, l_norm = self._compute_hidden(elements, dist_mat, adj_mat)
-        hidden = self.act(self.prior_gcn4(x=conv, l_norm=l_norm))
+        hidden = self._compute_hidden(elements, dist_mat, adj_mat)
         scaled_res = self.prior_resize(hidden)
         return self.convert_to_adj_mat(scaled_res)
 
     def agent_forward(
-            self,
-            elements: torch.Tensor,
-            dist_mat: torch.Tensor,
-            adj_mat: torch.Tensor,
+        self,
+        elements: torch.Tensor,
+        dist_mat: torch.Tensor,
+        adj_mat: torch.Tensor,
     ) -> torch.Tensor:
-        conv, l_norm = self._compute_hidden(elements, dist_mat, adj_mat)
-        hidden = self.act(self.agent_gcn4(x=conv, l_norm=l_norm))
+        hidden = self._compute_hidden(elements, dist_mat, adj_mat)
         scaled_res = self.agent_resize(hidden)
         return self.convert_to_adj_mat(scaled_res)

@@ -301,11 +301,13 @@ class MLConformerGenerator(torch.nn.Module):
                 blend_power,
             )
 
-        mols = samples_to_rdkit_mol(
-            positions=x, one_hot=h, node_mask=node_mask, atom_decoder=self.atom_decoder
-        )
+        return x, h, node_mask, edge_mask
 
-        return mols
+        # mols = samples_to_rdkit_mol(
+        #     positions=x, one_hot=h, node_mask=node_mask, atom_decoder=self.atom_decoder
+        # )
+        #
+        # return mols
 
     @torch.inference_mode()
     def generate_conformers(
@@ -450,7 +452,7 @@ class MLConformerGenerator(torch.nn.Module):
             A score funtion with a validity wrapper, automatically setting score of invalid molecules to lowest possible
             """
             if mol is None:
-                return reward_clip[0]
+                return -1
             try:
                 test_mol = Chem.Mol(mol)
                 Chem.SanitizeMol(test_mol)
@@ -458,7 +460,7 @@ class MLConformerGenerator(torch.nn.Module):
                 score = score_function(mol)
                 return score
             except Exception:
-                return reward_clip[0]
+                return -1
 
         # 4) Train
 
