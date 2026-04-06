@@ -148,6 +148,10 @@ class RLFineTuner:
 
         batch_size = len(canonicalised_samples)
 
+        # Move to CPU for more efficient cycle compute?
+        agent_adj_mat_batch.to('cpu')
+        prior_adj_mat_batch.to('cpu')
+
         for i in range(batch_size):
             base_mol = canonicalised_samples[i]
             n_atoms = base_mol.GetNumAtoms()
@@ -192,9 +196,8 @@ class RLFineTuner:
                 agent_lls.append(agent_log_prob.detach())
                 prior_lls.append(prior_log_prob.detach())
 
-        loss_bond = torch.stack(losses).mean()
-
-        rewards_t = torch.stack(rewards)
+        loss_bond = torch.stack(losses).mean().to(self.device)
+        rewards_t = torch.stack(rewards).to(self.device)
 
         rewards_per_edm = rewards_t.view(batch_size, self.n_samples_per_mol).mean(dim=1)
         advantages_edm = rewards_per_edm - rewards_per_edm.mean()
