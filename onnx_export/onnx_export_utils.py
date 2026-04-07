@@ -4,6 +4,7 @@ from typing import List
 
 import torch
 from torch.export import Dim
+from torch import nn
 from rdkit import Chem
 
 from mlconfgen.utils.config import CONTEXT_NORMS
@@ -14,8 +15,18 @@ from mlconfgen.equivariant_diffusion import (
 )
 
 
+class ExportableAdaptor(nn.Module):
+    def __init__(self, model: nn.Module, sample: bool):
+        super().__init__()
+        self.model = model
+        self.sample = sample
+
+    def forward(self, x, h, node_mask, edge_mask):
+        return self.model(x, h, node_mask, edge_mask, self.sample)
+
+
 def egnn_onnx_export(
-    generative_model: torch.nn.Module,
+    generative_model: nn.Module,
     save_path: str | Path,
     dummy_ref_context: torch.Tensor = torch.tensor(
         [53.6424, 108.3042, 151.4399], dtype=torch.float32
@@ -65,7 +76,7 @@ def egnn_onnx_export(
 
 
 def prepare_egnn_dummy_input(
-    generative_model: torch.nn.Module,
+    generative_model: nn.Module,
     reference_context: torch.Tensor,
     context_norms: dict,
     n_samples: int = 2,
@@ -115,7 +126,7 @@ def prepare_egnn_dummy_input(
 
 
 def adj_mat_seer_onnx_export(
-    adj_mat_seer: torch.nn.Module,
+    adj_mat_seer: nn.Module,
     save_path: str | Path,
     mock_molecules: List[str],
 ) -> None:
@@ -158,18 +169,19 @@ def adj_mat_seer_onnx_export(
     return None
 
 
-def edm_adapter_onnx_export(edm_adapter: torch.nn.Module, save_path: str | Path):
+def edm_adapter_onnx_export(edm_adapter: nn.Module, save_path: str | Path):
     batch_size = Dim("batch_size")
     num_nodes = Dim("num_nodes")
     num_edges = Dim("num_edges")
 
     adapter_inputs = prepare_edm_adapter_dummy_inputs(device=edm_adapter.device)
+    wrapped = ExportableAdaptor(edm_adapter, sample=False).eval()
 
     try:
         onnx_model = torch.onnx.export(
-            edm_adapter,
+            wrapped,
             adapter_inputs,
-            input_names=["x", "h", "node_mask", "edge_mask", "sample"],
+            input_names=["x", "h", "node_mask", "edge_mask"],
             output_names=["x", "h", "log_prob", "aux"],
             export_params=True,
             dynamic_shapes={
@@ -225,4 +237,4 @@ def prepare_edm_adapter_dummy_inputs(
     )
     h = sample_gaussian_with_mask((batch_size, max_n_nodes, 8), device, node_mask)
 
-    return x, h, node_mask, edge_mask, False
+    return x, h, node_mask, edge_mask

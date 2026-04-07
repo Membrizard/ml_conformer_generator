@@ -58,7 +58,7 @@ class EDMAdapter(nn.Module):
         h: torch.Tensor,
         edge_mask: torch.Tensor,
         node_mask: torch.Tensor,
-        sample: bool = True,
+        sample: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
         """ """
         bs, n_nodes, _ = x.size()
@@ -70,6 +70,7 @@ class EDMAdapter(nn.Module):
         h_flat = h.view(bs * n_nodes, self.h_dim)
 
         node_mask_flat = node_mask.view(bs * n_nodes, 1)
+        edge_mask_flat = edge_mask.view(bs * n_nodes * n_nodes, 1)
         edge_index = _get_adj_matrix(n_nodes, bs, self.device)
 
         distances, coord_diff = coord2diff(x_flat, edge_index)
@@ -80,7 +81,7 @@ class EDMAdapter(nn.Module):
             edge_index=edge_index,
             edge_attr=edge_attr,
             node_mask=node_mask_flat,
-            edge_mask=edge_mask,
+            edge_mask=edge_mask_flat,
         )
 
         dx_mean_flat = self.x_update(
@@ -90,7 +91,7 @@ class EDMAdapter(nn.Module):
             coord_diff=coord_diff,
             edge_attr=edge_attr,
             node_mask=node_mask_flat,
-            edge_mask=edge_mask,
+            edge_mask=edge_mask_flat,
         )
 
         dx_mean = dx_mean_flat.view(bs, n_nodes, 3)
@@ -292,3 +293,26 @@ class EquivariantUpdate(nn.Module):
         coord = self.coord_model(h, coord, edge_index, coord_diff, edge_attr, edge_mask)
         coord = coord * node_mask
         return coord
+
+
+# def _unsorted_segment_sum(
+#     data: torch.Tensor,
+#     segment_ids: torch.Tensor,
+#     num_segments: int,
+#     normalization_factor: float,
+# ) -> torch.Tensor:
+#     out_shape = (num_segments,) + tuple(data.shape[1:])
+#     result = torch.zeros(out_shape, dtype=data.dtype, device=data.device)
+#
+#     index = segment_ids.view(-1, *([1] * (data.ndim - 1))).expand_as(data)
+#     result.scatter_add_(0, index, data)
+#
+#     print("data.shape", data.shape, "data.ndim", data.ndim, "dtype", data.dtype)
+#     print("segment_ids.shape", segment_ids.shape, "segment_ids.ndim", segment_ids.ndim, "dtype", segment_ids.dtype)
+#     print("num_segments", num_segments)
+#
+#     index = segment_ids.unsqueeze(-1).expand_as(data)
+#     print("index.shape", index.shape)
+#     print("result.shape", result.shape)
+#
+#     return result / normalization_factor
