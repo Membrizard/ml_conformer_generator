@@ -112,7 +112,7 @@ class EDMAdapter(nn.Module):
             dh = dh_mean
 
         x_new = x_in + dx
-        x_new = remove_mean_with_mask(x_new, node_mask)  # Keep equivariance
+        x_new = remove_mean_with_mask(x_new, node_mask)  # Keep Equivariance
 
         h_new = h_in + dh
 

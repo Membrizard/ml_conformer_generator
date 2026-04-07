@@ -237,10 +237,10 @@ class RLFineTuner:
         n_eval_edm_samples: int = 32,
     ) -> dict[str, float]:
         x, h, node_mask, edge_mask = self.edm_sampler_fn(n_eval_edm_samples)
-        x = x.clone()
-        h = h.clone()
-        node_mask = node_mask.clone()
-        edge_mask = edge_mask.clone()
+        # x = x.clone()
+        # h = h.clone()
+        # node_mask = node_mask.clone()
+        # edge_mask = edge_mask.clone()
 
         _x, _h, edm_adapter_log_probs, edm_aux = self.edm_adapter(
             x=x,
@@ -414,8 +414,11 @@ def bond_assignment_log_prob(
 ) -> torch.Tensor:
     """
     Log-probability of a fixed sampled lower-triangular bond assignment.
-    adj_mat: [N, N, T] logits
-    sampled_bonds: [E]
+    :param adj_mat: [N, N, T] logits
+    :param sampled_bonds: [E]
+    :param n_atoms:
+    :param temperature:
+    :returns:
     """
     edge_i, edge_j = torch.tril_indices(
         n_atoms, n_atoms, offset=-1, device=adj_mat.device
@@ -432,8 +435,8 @@ def redefine_bonds_sampled(
 ) -> tuple[Chem.Mol | None, torch.Tensor, torch.Tensor]:
     """
     Sample one bond assignment from adjacency logits.
-    :param mol:
-    :param adj_mat:
+    :param mol: RDkit Mol Object to write bonds to
+    :param adj_mat: Adjacency matrix tensor with initial logits
     :param temperature:
     :returns:
         new_mol: RDKit mol or None
