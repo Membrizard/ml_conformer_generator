@@ -11,18 +11,23 @@ from mlconfgen.utils.config import CONTEXT_NORMS
 from mlconfgen.utils.mol_utils import prepare_adj_mat_seer_input
 from mlconfgen.equivariant_diffusion import (
     sample_center_gravity_zero_gaussian_with_mask,
-    sample_gaussian_with_mask,
+    sample_gaussian_with_mask, remove_mean_with_mask
 )
 
 
 class ExportableAdaptor(nn.Module):
-    def __init__(self, model: nn.Module, sample: bool):
+    def __init__(self, model: nn.Module):
         super().__init__()
         self.model = model
-        self.sample = sample
 
     def forward(self, x, h, node_mask, edge_mask):
-        return self.model(x, h, node_mask, edge_mask, self.sample)
+        x_in = x
+        h_in = h
+        dx, dh = self.model._equvariant_update(x, h, edge_mask, node_mask)
+        x_new = x_in + dx
+        x_new = remove_mean_with_mask(x_new, node_mask)
+        h_new = h_in + dh
+        return x_new, h_new
 
 
 def egnn_onnx_export(
@@ -100,7 +105,6 @@ def prepare_egnn_dummy_input(
         node_mask[i, 0 : nodesxsample[i]] = 1
 
     # Compute edge_mask
-
     edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
     diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
     edge_mask *= diag_mask
@@ -175,14 +179,14 @@ def edm_adapter_onnx_export(edm_adapter: nn.Module, save_path: str | Path):
     num_edges = Dim("num_edges")
 
     adapter_inputs = prepare_edm_adapter_dummy_inputs(device=edm_adapter.device)
-    wrapped = ExportableAdaptor(edm_adapter, sample=False).eval()
+    wrapped = ExportableAdaptor(edm_adapter).eval()
 
     try:
         onnx_model = torch.onnx.export(
             wrapped,
             adapter_inputs,
             input_names=["x", "h", "node_mask", "edge_mask"],
-            output_names=["x", "h", "log_prob", "aux"],
+            output_names=["x", "h"],
             export_params=True,
             dynamic_shapes={
                 "x": {0: batch_size, 1: num_nodes},
@@ -194,7 +198,7 @@ def edm_adapter_onnx_export(edm_adapter: nn.Module, save_path: str | Path):
             verbose=True,
             dynamo=True,
             verify=True,
-            # optimize=False,
+            optimize=False,
         )
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError(
