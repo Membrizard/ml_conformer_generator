@@ -14,6 +14,7 @@ from mlconfgen.equivariant_diffusion import (
     sample_gaussian_with_mask, remove_mean_with_mask
 )
 
+ARTIFACTS_DIR = "./onnx_export_reports"
 
 class ExportableAdaptor(nn.Module):
     def __init__(self, model: nn.Module):
@@ -33,6 +34,7 @@ class ExportableAdaptor(nn.Module):
 def egnn_onnx_export(
     generative_model: nn.Module,
     save_path: str | Path,
+    report: bool = False,
     dummy_ref_context: torch.Tensor = torch.tensor(
         [53.6424, 108.3042, 151.4399], dtype=torch.float32
     ),
@@ -69,6 +71,8 @@ def egnn_onnx_export(
             dynamo=True,
             verify=True,
             optimize=False,
+            report=report,
+            artifacts_dir=ARTIFACTS_DIR,
         )
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError(
@@ -133,6 +137,7 @@ def adj_mat_seer_onnx_export(
     adj_mat_seer: nn.Module,
     save_path: str | Path,
     mock_molecules: List[str],
+    report: bool = False
 ) -> None:
     mols = [Chem.MolFromXYZFile(x) for x in mock_molecules]
 
@@ -162,6 +167,10 @@ def adj_mat_seer_onnx_export(
             opset_version=18,
             verbose=True,
             dynamo=True,
+            verify=True,
+            optimize=True,
+            report=report,
+            artifacts_dir=ARTIFACTS_DIR,
         )
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError(
@@ -173,7 +182,7 @@ def adj_mat_seer_onnx_export(
     return None
 
 
-def edm_adapter_onnx_export(edm_adapter: nn.Module, save_path: str | Path):
+def edm_adapter_onnx_export(edm_adapter: nn.Module, save_path: str | Path, report: bool = False) -> None:
     batch_size = Dim("batch_size")
     num_nodes = Dim("num_nodes")
     num_edges = Dim("num_edges")
@@ -186,7 +195,7 @@ def edm_adapter_onnx_export(edm_adapter: nn.Module, save_path: str | Path):
             wrapped,
             adapter_inputs,
             input_names=["x", "h", "node_mask", "edge_mask"],
-            output_names=["x", "h"],
+            output_names=["x_new", "h_new"],
             export_params=True,
             dynamic_shapes={
                 "x": {0: batch_size, 1: num_nodes},
@@ -199,6 +208,8 @@ def edm_adapter_onnx_export(edm_adapter: nn.Module, save_path: str | Path):
             dynamo=True,
             verify=True,
             optimize=False,
+            report=report,
+            artifacts_dir=ARTIFACTS_DIR,
         )
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError(

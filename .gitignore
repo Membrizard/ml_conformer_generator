@@ -14,3 +14,4 @@ memory_profile.csv
 .venv/
 .coverage
 /rl_checkpoints
+/onnx_export_reports

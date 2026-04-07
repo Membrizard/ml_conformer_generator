@@ -13,6 +13,7 @@ def export_to_onnx(
     adj_mat_seer_save_path: str = "./adj_mat_seer_chembl_15_39.onnx",
     edm_adapter_save_path: str = "./finetune_checkpoint.onnx",
     mock_molecules: Tuple[str] = MOCK_MOLECULES,
+    report: bool = False,
 ) -> None:
     """
     Exports the model to ONNX format.
@@ -24,6 +25,7 @@ def export_to_onnx(
     :param adj_mat_seer_save_path: save path for AdjMatSeer model in ONNX format
     :param edm_adapter_save_path: save path for EDM Adapter model in ONNX format
     :param mock_molecules: a list of paths to mock molecules to use as dummy pass for AdjMatSeer conversion
+    :param report: if set to True creates Markdown reports for the export in  ./onnx_export_reports
     :return: Exports Denoising EGNN and AdjMatSeer to ONNX to make them compatible with ONNX runtime.
     To Load ONNX model use MLConformerGeneratorONNX a PyTorch - free ONNX-based implementation.
     """
@@ -35,11 +37,12 @@ def export_to_onnx(
 
     m = [str(base_path / x) for x in mock_molecules]
 
-    egnn_onnx_export(generative_model=model.generative_model, save_path=egnn_save_path)
+    egnn_onnx_export(generative_model=model.generative_model, save_path=egnn_save_path, report=report)
     adj_mat_seer_onnx_export(
         adj_mat_seer=model.adj_mat_seer,
         save_path=adj_mat_seer_save_path,
         mock_molecules=m,
+        report=report,
     )
 
     if model.edm_adapter is not None:
@@ -47,6 +50,7 @@ def export_to_onnx(
         edm_adapter_onnx_export(
             edm_adapter=model.edm_adapter,
             save_path=edm_adapter_save_path,
+            report=report,
         )
 
     return None
