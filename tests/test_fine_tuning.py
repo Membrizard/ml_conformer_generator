@@ -68,7 +68,9 @@ def ceyyag():
 
 @pytest.fixture(scope="module")
 def artifacts_dir():
-    return "./test_rl_fine_tuning"
+    dir_path = "./test_rl_fine_tuning"
+    yield dir_path
+    shutil.rmtree(dir_path)
 
 
 @pytest.fixture(scope="module")
@@ -184,29 +186,3 @@ def test_finetuned_generation_onnx(generator_onnx, ceyyag):
         average_shape_similarity += round(sample["shape_tanimoto"], 2)
     average_shape_similarity = average_shape_similarity / len(std_samples)
     assert average_shape_similarity > 0.1
-
-
-@pytest.mark.slow
-def cleanup(artifacts_dir):
-    shutil.rmtree(artifacts_dir)
-    assert True
-
-
-
-#
-# @pytest.fixture(scope="module")
-# def pif_aligned_ceyyag():
-#     ref_mol = Chem.MolFromMolFile("./assets/demo_files/ceyyag.mol")
-#     ref_mol = Chem.RemoveHs(ref_mol)
-#     context, _, _, aligned_coord = align_mol_to_principal_frame(ref_mol)
-#     aligned_mol = set_conformer_positions(ref_mol, aligned_coord)
-#
-#     return aligned_mol
-#
-#
-# @pytest.fixture(scope="module")
-# def ref_context():
-#     mol = Chem.MolFromMolFile("./assets/demo_files/ceyyag.mol")
-#     mol = Chem.RemoveHs(mol)
-#     context, _, _, _ = align_mol_to_principal_frame(mol)
-#     return context
