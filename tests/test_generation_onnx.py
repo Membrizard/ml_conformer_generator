@@ -7,7 +7,11 @@ from src.mlconfgen import (
     MLConformerGeneratorONNX,
     evaluate_samples,
 )
-from src.mlconfgen.utils import extract_fragment, align_mol_to_principal_frame, set_conformer_positions
+from src.mlconfgen.utils import (
+    extract_fragment,
+    align_mol_to_principal_frame,
+    set_conformer_positions,
+)
 from onnx_export import export_to_onnx
 
 RDLogger.DisableLog("rdApp.*")
@@ -178,7 +182,9 @@ def test_basic_generation_ff_set_ref_context_onnx(generator, ref_context):
 
 
 @pytest.mark.slow
-def test_basic_generation_ff_mol_ref_context_onnx(generator, pif_aligned_ceyyag, ref_context):
+def test_basic_generation_ff_mol_ref_context_onnx(
+    generator, pif_aligned_ceyyag, ref_context
+):
     ff_idx = {3, 5, 6, 7, 8, 9, 10}
 
     fixed_fragment = extract_fragment(pif_aligned_ceyyag, ff_idx)

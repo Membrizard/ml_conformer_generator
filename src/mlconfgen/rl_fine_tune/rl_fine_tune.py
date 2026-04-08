@@ -237,10 +237,6 @@ class RLFineTuner:
         n_eval_edm_samples: int = 32,
     ) -> dict[str, float]:
         x, h, node_mask, edge_mask = self.edm_sampler_fn(n_eval_edm_samples)
-        # x = x.clone()
-        # h = h.clone()
-        # node_mask = node_mask.clone()
-        # edge_mask = edge_mask.clone()
 
         _x, _h, edm_adapter_log_probs, edm_aux = self.edm_adapter(
             x=x,

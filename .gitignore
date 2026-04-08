@@ -15,3 +15,4 @@ memory_profile.csv
 .coverage
 /rl_checkpoints
 /onnx_export_reports
+/test_rl_fine_tuning

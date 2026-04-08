@@ -9,9 +9,9 @@ MOCK_MOLECULES = ("./mol_examples/ceyyag.xyz", "./mol_examples/cpromz.xyz")
 
 def export_to_onnx(
     model: MLConformerGenerator,
-    egnn_save_path: str = "./egnn_chembl_15_39.onnx",
-    adj_mat_seer_save_path: str = "./adj_mat_seer_chembl_15_39.onnx",
-    edm_adapter_save_path: str = "./finetune_checkpoint.onnx",
+    egnn_save_path: str | Path = "./egnn_chembl_15_39.onnx",
+    adj_mat_seer_save_path: str | Path = "./adj_mat_seer_chembl_15_39.onnx",
+    edm_adapter_save_path: str | Path = "./finetune_checkpoint.onnx",
     mock_molecules: Tuple[str] = MOCK_MOLECULES,
     report: bool = False,
 ) -> None:

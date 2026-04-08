@@ -549,7 +549,7 @@ class MLConformerGenerator(torch.nn.Module):
 
         return None
 
-    def load_fine_tune_checkpoint(self, path: str | Path) -> None:
+    def load_finetune_checkpoint(self, path: str | Path) -> None:
         checkpoint = torch.load(path, map_location=self.device)
 
         if self.edm_adapter is None:

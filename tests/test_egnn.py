@@ -2,7 +2,6 @@ import torch
 
 from src.mlconfgen.egnn import (
     GCL,
-    EGNN,
     EGNNDynamics,
     EquivariantBlock,
     coord2diff,

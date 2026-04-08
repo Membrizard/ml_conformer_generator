@@ -14,7 +14,7 @@ from ..equivariant_diffusion import (
 class EDMAdapter(nn.Module):
     def __init__(
         self,
-        device,
+        device: torch.device | str = torch.device("cpu"),
         h_dim: int = 8,
         normalization_factor: int = 100,
         coords_range: float = 15.0,
@@ -25,6 +25,7 @@ class EDMAdapter(nn.Module):
         h_scale: float = 0.25,
     ):
         """
+        EDM Adaptor for Reinforcement Learning Fine-Tuning
         Applies a small update to X (equivariant) and H (gcl) EDM outputs
         """
         super().__init__()
@@ -104,47 +105,11 @@ class EDMAdapter(nn.Module):
         node_mask: torch.Tensor,
         sample: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
-        """ """
-        # bs, n_nodes, _ = x.size()
 
         x_in = x
         h_in = h
 
         dx_mean, dh_mean = self._equvariant_update(x, h, edge_mask, node_mask)
-
-        # x_flat = x.view(bs * n_nodes, 3)
-        # h_flat = h.view(bs * n_nodes, self.h_dim)
-        #
-        # node_mask_flat = node_mask.view(bs * n_nodes, 1)
-        # edge_mask_flat = edge_mask.view(bs * n_nodes * n_nodes, 1)
-        # edge_index = _get_adj_matrix(n_nodes, bs, self.device)
-        #
-        # distances, coord_diff = coord2diff(x_flat, edge_index)
-        # edge_attr = torch.cat([distances, distances], dim=1)
-        #
-        # dh_mean_flat = self.h_update(
-        #     h=h_flat,
-        #     edge_index=edge_index,
-        #     edge_attr=edge_attr,
-        #     node_mask=node_mask_flat,
-        #     edge_mask=edge_mask_flat,
-        # )
-        #
-        # dx_mean_flat = self.x_update(
-        #     h=dh_mean_flat,
-        #     coord=x_flat,
-        #     edge_index=edge_index,
-        #     coord_diff=coord_diff,
-        #     edge_attr=edge_attr,
-        #     node_mask=node_mask_flat,
-        #     edge_mask=edge_mask_flat,
-        # )
-        #
-        # dx_mean = dx_mean_flat.view(bs, n_nodes, 3)
-        # dh_mean = dh_mean_flat.view(bs, n_nodes, self.h_dim)
-        #
-        # dx_mean = self.x_scale * dx_mean
-        # dh_mean = self.h_scale * dh_mean
 
         if sample:
             eps_x = sample_center_gravity_zero_gaussian_with_mask(
@@ -339,26 +304,3 @@ class EquivariantUpdate(nn.Module):
         coord = self.coord_model(h, coord, edge_index, coord_diff, edge_attr, edge_mask)
         coord = coord * node_mask
         return coord
-
-
-# def _unsorted_segment_sum(
-#     data: torch.Tensor,
-#     segment_ids: torch.Tensor,
-#     num_segments: int,
-#     normalization_factor: float,
-# ) -> torch.Tensor:
-#     out_shape = (num_segments,) + tuple(data.shape[1:])
-#     result = torch.zeros(out_shape, dtype=data.dtype, device=data.device)
-#
-#     index = segment_ids.view(-1, *([1] * (data.ndim - 1))).expand_as(data)
-#     result.scatter_add_(0, index, data)
-#
-#     print("data.shape", data.shape, "data.ndim", data.ndim, "dtype", data.dtype)
-#     print("segment_ids.shape", segment_ids.shape, "segment_ids.ndim", segment_ids.ndim, "dtype", segment_ids.dtype)
-#     print("num_segments", num_segments)
-#
-#     index = segment_ids.unsqueeze(-1).expand_as(data)
-#     print("index.shape", index.shape)
-#     print("result.shape", result.shape)
-#
-#     return result / normalization_factor
