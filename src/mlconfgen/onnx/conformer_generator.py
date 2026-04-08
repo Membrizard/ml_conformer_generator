@@ -90,12 +90,11 @@ class MLConformerGeneratorONNX:
 
     @staticmethod
     def prepare_inputs(
-            reference_conformer: Chem.Mol = None,
-            fixed_fragment: Chem.Mol | set = None,
-            reference_context: np.ndarray = None,
-            n_atoms: int = None,
+        reference_conformer: Chem.Mol = None,
+        fixed_fragment: Chem.Mol | set = None,
+        reference_context: np.ndarray = None,
+        n_atoms: int = None,
     ) -> tuple[np.ndarray, int, Chem.Mol | None]:
-
         """
         Prepare inputs for the generation forward pass.
 
@@ -254,8 +253,13 @@ class MLConformerGeneratorONNX:
         if self.edm_adapter is not None:
             x, h = self.edm_adapter.run(
                 None,
-                {"x": x, "h": h, "node_mask": node_mask, "edge_mask": edge_mask},
-                )[0]
+                {
+                    "x": x.astype(np.float32),
+                    "h": h.astype(np.float32),
+                    "node_mask": node_mask.astype(np.float32),
+                    "edge_mask": edge_mask.astype(np.float32),
+                },
+            )
 
         mols = samples_to_rdkit_mol_onnx(
             positions=x, one_hot=h, node_mask=node_mask, atom_decoder=self.atom_decoder
