@@ -16,6 +16,7 @@ from mlconfgen.equivariant_diffusion import (
 
 ARTIFACTS_DIR = "./onnx_export_reports"
 
+
 class ExportableAdaptor(nn.Module):
     def __init__(self, model: nn.Module):
         super().__init__()

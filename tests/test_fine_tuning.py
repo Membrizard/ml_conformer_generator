@@ -81,7 +81,7 @@ def onnx_paths(artifacts_dir):
     return (
             Path(f"{artifacts_dir}/egnn_chembl_15_39.onnx"),
             Path(f"{artifacts_dir}/adj_mat_seer_chembl_15_39.onnx"),
-            Path(f"{artifacts_dir}/adj_mat_seer_chembl_15_39.onnx"),
+            Path(f"{artifacts_dir}/finetune_checkpoint.onnx"),
             )
 
 
@@ -148,7 +148,7 @@ def test_finetuned_generation_torch(generator, ceyyag, latest_checkpoint):
 
 
 @pytest.mark.slow
-def test_finetuned_onnx_export(generator, ceyyag, latest_checkpoint, onnx_paths):
+def test_finetuned_onnx_export(generator, latest_checkpoint, onnx_paths):
     generator.load_finetune_checkpoint(latest_checkpoint)
     edm_path, adj_path, edm_adapter_checkpoint = onnx_paths
 
