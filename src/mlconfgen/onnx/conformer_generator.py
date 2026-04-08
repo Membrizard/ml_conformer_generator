@@ -1,4 +1,5 @@
 from typing import List
+from pathlib import Path
 
 import numpy as np
 from rdkit import Chem
@@ -39,8 +40,9 @@ class MLConformerGeneratorONNX:
         max_n_nodes: int = MAX_N_NODES,
         context_norms: dict = CONTEXT_NORMS,
         atom_decoder: dict = ATOM_DECODER,
-        egnn_onnx: str = "./egnn_chembl_15_39.onnx",
-        adj_mat_seer_onnx: str = "./adj_mat_seer_chembl_15_39.onnx",
+        egnn_onnx: str | Path = "./egnn_chembl_15_39.onnx",
+        adj_mat_seer_onnx: str | Path = "./adj_mat_seer_chembl_15_39.onnx",
+        finetune_checkpoint_onnx: str | Path = None,
     ):
         """
         Initialise the generator.
@@ -51,6 +53,7 @@ class MLConformerGeneratorONNX:
         :param atom_decoder: decoder dict matching int atom encodings to string representations
         :param egnn_onnx: path to EGNN model in the ONNX format
         :param adj_mat_seer_onnx: path to AdjMatSeer model in the ONNX format
+        :param finetune_checkpoint_onnx: path to a Fine Tune Checkpoint in the ONNX format
         """
         try:
             import onnxruntime
@@ -80,6 +83,81 @@ class MLConformerGeneratorONNX:
         )
 
         self.adj_mat_seer = onnxruntime.InferenceSession(adj_mat_seer_onnx)
+
+        self.edm_adapter = None
+        if finetune_checkpoint_onnx:
+            self.edm_adapter = onnxruntime.InferenceSession(finetune_checkpoint_onnx)
+
+    @staticmethod
+    def prepare_inputs(
+            reference_conformer: Chem.Mol = None,
+            fixed_fragment: Chem.Mol | set = None,
+            reference_context: np.ndarray = None,
+            n_atoms: int = None,
+    ) -> tuple[np.ndarray, int, Chem.Mol | None]:
+
+        """
+        Prepare inputs for the generation forward pass.
+
+        Applies the necessary preprocessing and business logic to the provided generation
+        inputs before they are passed to the model.
+
+        :param reference_conformer: A 3D conformer of a reference molecule as an RDKit Mol object
+        :param fixed_fragment: Fragment to fix during generation as an RDKit Mol object or
+                               a set of atom idxs of reference conformer
+        :param reference_context: Arbitrary Reference context if applicable, instead of reference_conformer
+        :param n_atoms: Reference number of atoms when generating using arbitrary context
+        :returns: A tuple containing the prepared reference context, average number of atoms,
+                  and the prepared fixed fragment if provided.
+        """
+
+        if reference_conformer:
+            # Ensure the initial mol is stripped off Hs
+            reference_conformer = Chem.RemoveAllHs(reference_conformer)
+            ref_n_atoms = reference_conformer.GetNumAtoms()
+            (
+                ref_context,
+                shift,
+                rotation,
+                aligned_coord,
+            ) = align_mol_to_principal_frame_onnx(reference_conformer)
+
+            if fixed_fragment:
+                if isinstance(fixed_fragment, set):
+                    aligned_ref_mol = set_conformer_positions(
+                        reference_conformer, aligned_coord
+                    )
+                    fixed_fragment = extract_fragment(aligned_ref_mol, fixed_fragment)
+                elif isinstance(fixed_fragment, Chem.Mol):
+                    fixed_fragment = Chem.RemoveAllHs(fixed_fragment)
+                    ff_conf = fixed_fragment.GetConformer()
+                    ff_coord = np.array(ff_conf.GetPositions(), dtype=np.float32)
+                    ff_coord_ref_aligned = apply_transform(ff_coord, shift, rotation)
+                    fixed_fragment = set_conformer_positions(
+                        fixed_fragment, ff_coord_ref_aligned
+                    )
+
+        elif reference_context is not None:
+            if n_atoms:
+                ref_n_atoms = n_atoms
+            else:
+                raise ValueError(
+                    "Reference Number of Atoms should be provided, when generating samples using context."
+                )
+
+            ref_context = reference_context
+
+            if isinstance(fixed_fragment, set):
+                raise ValueError(
+                    "'fixed_fragment' must be a Mol object when generating from a reference context."
+                )
+
+        else:
+            raise ValueError(
+                "Either a reference RDkit Mol object or context as numpy.ndarray should be provided for generation."
+            )
+
+        return ref_context, ref_n_atoms, fixed_fragment
 
     def predict_bonds(self, edm_samples: list[Chem.Mol]) -> list[Chem.Mol]:
         """
@@ -173,6 +251,9 @@ class MLConformerGeneratorONNX:
                 blend_power,
             )
 
+        if self.edm_adapter is not None:
+            x, h = self.edm_adapter(x=x, h=h, node_mask=node_mask, edge_mask=edge_mask)
+
         mols = samples_to_rdkit_mol_onnx(
             positions=x, one_hot=h, node_mask=node_mask, atom_decoder=self.atom_decoder
         )
@@ -205,51 +286,58 @@ class MLConformerGeneratorONNX:
         :param blend_power: power of the polynomial blending schedule for generation with a fixed fragment
         :return: A list of valid standardised generated molecules as RDKit Mol objects.
         """
-        if reference_conformer:
-            # Ensure the initial mol is stripped off Hs
-            reference_conformer = Chem.RemoveAllHs(reference_conformer)
-            ref_n_atoms = reference_conformer.GetNumAtoms()
-            (
-                ref_context,
-                shift,
-                rotation,
-                aligned_coord,
-            ) = align_mol_to_principal_frame_onnx(reference_conformer)
+        # if reference_conformer:
+        #     # Ensure the initial mol is stripped off Hs
+        #     reference_conformer = Chem.RemoveAllHs(reference_conformer)
+        #     ref_n_atoms = reference_conformer.GetNumAtoms()
+        #     (
+        #         ref_context,
+        #         shift,
+        #         rotation,
+        #         aligned_coord,
+        #     ) = align_mol_to_principal_frame_onnx(reference_conformer)
+        #
+        #     if fixed_fragment:
+        #         if isinstance(fixed_fragment, set):
+        #             aligned_ref_mol = set_conformer_positions(
+        #                 reference_conformer, aligned_coord
+        #             )
+        #             fixed_fragment = extract_fragment(aligned_ref_mol, fixed_fragment)
+        #         elif isinstance(fixed_fragment, Chem.Mol):
+        #             fixed_fragment = Chem.RemoveAllHs(fixed_fragment)
+        #             ff_conf = fixed_fragment.GetConformer()
+        #             ff_coord = np.array(ff_conf.GetPositions(), dtype=np.float32)
+        #             ff_coord_ref_aligned = apply_transform(ff_coord, shift, rotation)
+        #             fixed_fragment = set_conformer_positions(
+        #                 fixed_fragment, ff_coord_ref_aligned
+        #             )
+        #
+        # elif reference_context is not None:
+        #     if n_atoms:
+        #         ref_n_atoms = n_atoms
+        #     else:
+        #         raise ValueError(
+        #             "Reference Number of Atoms should be provided, when generating samples using context."
+        #         )
+        #
+        #     ref_context = reference_context
+        #
+        #     if isinstance(fixed_fragment, set):
+        #         raise ValueError(
+        #             "'fixed_fragment' must be a Mol object when generating from a reference context."
+        #         )
+        #
+        # else:
+        #     raise ValueError(
+        #         "Either a reference RDkit Mol object or context as numpy.ndarray should be provided for generation."
+        #     )
 
-            if fixed_fragment:
-                if isinstance(fixed_fragment, set):
-                    aligned_ref_mol = set_conformer_positions(
-                        reference_conformer, aligned_coord
-                    )
-                    fixed_fragment = extract_fragment(aligned_ref_mol, fixed_fragment)
-                elif isinstance(fixed_fragment, Chem.Mol):
-                    fixed_fragment = Chem.RemoveAllHs(fixed_fragment)
-                    ff_conf = fixed_fragment.GetConformer()
-                    ff_coord = np.array(ff_conf.GetPositions(), dtype=np.float32)
-                    ff_coord_ref_aligned = apply_transform(ff_coord, shift, rotation)
-                    fixed_fragment = set_conformer_positions(
-                        fixed_fragment, ff_coord_ref_aligned
-                    )
-
-        elif reference_context is not None:
-            if n_atoms:
-                ref_n_atoms = n_atoms
-            else:
-                raise ValueError(
-                    "Reference Number of Atoms should be provided, when generating samples using context."
-                )
-
-            ref_context = reference_context
-
-            if isinstance(fixed_fragment, set):
-                raise ValueError(
-                    "'fixed_fragment' must be a Mol object when generating from a reference context."
-                )
-
-        else:
-            raise ValueError(
-                "Either a reference RDkit Mol object or context as numpy.ndarray should be provided for generation."
-            )
+        ref_context, ref_n_atoms, fixed_fragment = self.prepare_inputs(
+            reference_conformer=reference_conformer,
+            fixed_fragment=fixed_fragment,
+            reference_context=reference_context,
+            n_atoms=n_atoms,
+        )
 
         edm_samples = self.edm_samples(
             reference_context=ref_context,

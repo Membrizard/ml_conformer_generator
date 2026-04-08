@@ -47,7 +47,7 @@ class MLConformerGenerator(torch.nn.Module):
         atom_decoder: dict = ATOM_DECODER,
         edm_weights: str | Path = "./edm_moi_chembl_15_39.pt",
         adj_mat_seer_weights: str | Path = "./adj_mat_seer_chembl_15_39.pt",
-        finetune_checkpoint_path: str | Path = None,
+        finetune_checkpoint: str | Path = None,
     ):
         """
         Initialise the Generator.
@@ -62,6 +62,7 @@ class MLConformerGenerator(torch.nn.Module):
         :param atom_decoder: decoder dict matching int atom encodings to string representations
         :param edm_weights: path to Equivariant Diffusion model state dict
         :param adj_mat_seer_weights: path to AdjMatSeer model state dict
+        :param finetune_checkpoint: path to a Fine Tune Checkpoint
         """
         super().__init__()
 
@@ -135,8 +136,8 @@ class MLConformerGenerator(torch.nn.Module):
         self.adj_mat_seer = adj_mat_seer
 
         self.edm_adapter = None
-        if finetune_checkpoint_path:
-            self.load_fine_tune_checkpoint(finetune_checkpoint_path)
+        if finetune_checkpoint:
+            self.load_fine_tune_checkpoint(finetune_checkpoint)
 
     @staticmethod
     def prepare_inputs(

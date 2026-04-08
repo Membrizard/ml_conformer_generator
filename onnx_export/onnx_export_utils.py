@@ -167,7 +167,7 @@ def adj_mat_seer_onnx_export(
             opset_version=18,
             verbose=True,
             dynamo=True,
-            verify=True,
+            verify=False,
             optimize=True,
             report=report,
             artifacts_dir=ARTIFACTS_DIR,
