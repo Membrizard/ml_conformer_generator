@@ -186,6 +186,85 @@ def reinvent_score(mols: list[Chem.Mol | None]) -> list[float]:
 
 # Aim 20-50k samples per fine-tune
 
+#REINVENT Score Config:
+# scoring_config = """
+# [scoring]
+# type = "geometric_mean"
+#
+# [[scoring.component]]
+# [scoring.component.custom_alerts]
+#
+# [[scoring.component.custom_alerts.endpoint]]
+# name = "Alerts"
+#
+# params.smarts = [
+#     "[*;r8]",
+#     "[*;r9]",
+#     "[*;r10]",
+#     "[*;r11]",
+#     "[*;r12]",
+#     "[*;r13]",
+#     "[*;r14]",
+#     "[*;r15]",
+#     "[*;r16]",
+#     "[*;r17]",
+#     "[#8][#8]",
+#     "[#6;+]",
+#     "[#16][#16]",
+#     "[#7;!n][S;!$(S(=O)=O)]",
+#     "[#7;!n][#7;!n]",
+#     "C#C",
+#     "C(=[O,S])[O,S]",
+#     "[#7;!n][C;!$(C(=[O,N])[N,O])][#16;!s]",
+#     "[#7;!n][C;!$(C(=[O,N])[N,O])][#7;!n]",
+#     "[#7;!n][C;!$(C(=[O,N])[N,O])][#8;!o]",
+#     "[#8;!o][C;!$(C(=[O,N])[N,O])][#16;!s]",
+#     "[#8;!o][C;!$(C(=[O,N])[N,O])][#8;!o]",
+#     "[#16;!s][C;!$(C(=[O,N])[N,O])][#16;!s]"
+# ]
+#
+# [[scoring.component]]
+# [scoring.component.QED]
+#
+# [[scoring.component.QED.endpoint]]
+# name = "QED"
+# weight = 0.6
+#
+#
+# [[scoring.component]]
+# [stage.scoring.component.NumAtomStereoCenters]
+#
+# [[scoring.component.NumAtomStereoCenters.endpoint]]
+# name = "Stereo"
+# weight = 0.4
+#
+# transform.type = "left_step"
+# transform.low = 0
+# """
+
+# Fine-Tune Params (for 10-20 diffusion steps):
+# generator.fine_tune(
+#                       scoring_function=scoring_function,  # This should output normalised score from (0, 1)
+#                       reference_conformer=ref_mol,
+#                       variance=1,
+#                       # RL Fine-tune params
+#                       n_epochs=50,
+#                       train_batch_size=128,
+#                       eval_batch_size=128,
+#                       learning_rate= 8e-5,
+#                       sigma=128.0,
+#                       lambda_edm_adapter=1.5,
+#                       lambda_edm_reg=0.02,
+#                       temperature=1.5,
+#                       n_samples_per_mol=16,
+#                       eval_every=5,
+#                       save_dir=f"./{ref_name}_d_steps_{diffusion_steps}_rl_checkpoints_reinvent",
+#
+#     )
+
+# Fine-Tune Params (for 100 diffusion steps):
+#
+
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
 elif torch.backends.mps.is_available():

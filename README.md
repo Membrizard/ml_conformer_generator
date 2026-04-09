@@ -26,6 +26,11 @@ that are both chemically valid and spatially similar to a reference shape.
     Generate novel molecules that conform to arbitrary 3D shapes—such as protein binding pockets or custom-defined spatial regions.
 
 
+* **Objective-guided Generation**
+    
+    Use reinforcement learning (RL) to steer molecular generation toward higher-scoring candidates, with support for custom scoring functions.
+
+
 * **Reference-based conformer similarity**
 
     Create molecules conformations of which closely resemble a reference structure, supporting scaffold-hopping and ligand-based design workflows.
@@ -39,11 +44,6 @@ that are both chemically valid and spatially similar to a reference shape.
 * **Inertial Fragment Matching**
 
     Generate molecules fragment-by-fragment by leveraging the physical properties of the shape descriptor, improving both shape similarity and chemical validity.
-
-
-* **Objective-guided Generation**
-    
-    Use reinforcement learning (RL) to steer molecular generation toward higher-scoring candidates, with support for custom scoring functions.
 
 
 ## Citation
@@ -202,6 +202,9 @@ def scoring_function(mols: list[Chem.Mol | None]) -> list[float]:
 ```
 ### Example: RL fine-tuning
 
+> [!NOTE]
+> If `scoring_function` is None, a default scoring function enforcing validity is applied for RL.
+
 ```python
 from rdkit import Chem
 from mlconfgen import MLConformerGenerator
@@ -266,18 +269,6 @@ model = MLConformerGenerator(
 
 reference = Chem.MolFromMolFile('./assets/demo_files/ceyyag.mol')
 scoring_function = ReinventScoreWrapper("./scoring_config.toml")
-
-model.fine_tune(
-                  reference_conformer=reference,
-                  variance=1,
-                  n_epochs=20,
-                  sigma=128.0,
-                  lambda_edm_adapter=1.5,
-                  temperature=1.5,
-                  n_samples_per_mol=16,
-                  eval_every=5,
-                  save_dir="./rl_checkpoints"
-)
 
 model.fine_tune(
                   scoring_function=scoring_function, 
