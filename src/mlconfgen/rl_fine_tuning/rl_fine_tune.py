@@ -365,7 +365,7 @@ class RLFineTuner:
                     if verbose:
                         logger.info("Saved new best checkpoint")
 
-        self.save_checkpoint(latest_checkpoint_path)
+            self.save_checkpoint(latest_checkpoint_path)
         return None
 
 
