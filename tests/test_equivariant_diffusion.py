@@ -2,13 +2,8 @@ import torch
 
 from src.mlconfgen.egnn import EGNNDynamics
 from src.mlconfgen.equivariant_diffusion import (
-    EquivariantDiffusion,
-    PredefinedNoiseSchedule,
-    align_fragment_com_to_generated,
-    clip_noise_schedule,
-    polynomial_schedule,
-)
-
+    EquivariantDiffusion, PredefinedNoiseSchedule,
+    align_fragment_com_to_generated, clip_noise_schedule, polynomial_schedule)
 
 # --- Free functions ---
 

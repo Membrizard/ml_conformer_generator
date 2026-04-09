@@ -7,13 +7,9 @@ from rdkit import Chem
 from torch.distributions import Categorical
 
 from ..adj_mat_seer import AdjMatSeer
-from ..utils import (
-    ATOM_DECODER,
-    bond_type_dict,
-    prepare_adj_mat_seer_input,
-    redefine_bonds,
-    samples_to_rdkit_mol,
-)
+from ..utils import (ATOM_DECODER, bond_type_dict, is_valid_mol,
+                     prepare_adj_mat_seer_input, redefine_bonds,
+                     samples_to_rdkit_mol)
 from .edm_adapter import EDMAdapter
 from .shared_prior_agent import SharedPriorAgent
 
@@ -35,14 +31,14 @@ class RLFineTuner:
         self,
         pretrained_adj_mat_seer: AdjMatSeer,
         edm_sampler_fn: Callable[[int], list[Chem.Mol]],
-        score_fn: Callable[[Chem.Mol | None], float],
+        score_fn: Callable[[list[Chem.Mol | None]], list[float]],
         lr: float = 1e-5,
         lambda_adapter: float = 0.5,
         lambda_reg: float = 0.01,
         sigma: float = 10.0,
         temperature: float = 1.0,
         n_samples_per_mol: int = 4,
-        reward_clip: tuple[float, float] = (-1.0, 1.0),
+        reward_clip: tuple[float, float] = (0, 1.0),
         device: torch.device | str = torch.device("cpu"),
         atom_decoder: dict = ATOM_DECODER,
         bond_dict: dict = bond_type_dict,
@@ -140,13 +136,15 @@ class RLFineTuner:
             adj_mat=b_adj_mat_batch,
         )
 
-        losses = []
-        rewards = []
+        # losses = []
+        # rewards = []
         valid_flags = []
         agent_lls = []
         prior_lls = []
 
         batch_size = len(canonicalised_samples)
+
+        _mols = []
 
         # Move to CPU for more efficient cycle compute?
         # agent_adj_mat_batch.to('cpu')
@@ -166,14 +164,6 @@ class RLFineTuner:
                     temperature=self.temperature,
                 )
 
-                reward_value = self.score_fn(sampled_mol)
-                reward = torch.tensor(
-                    reward_value,
-                    dtype=torch.float32,
-                    device=agent_log_prob.device,
-                )
-                reward = reward.clamp(self.reward_clip[0], self.reward_clip[1])
-
                 with torch.no_grad():
                     prior_log_prob = bond_assignment_log_prob(
                         adj_mat=prior_adj_mat,
@@ -182,25 +172,56 @@ class RLFineTuner:
                         temperature=self.temperature,
                     )
 
-                augmented_log_prob = prior_log_prob + self.sigma * reward
-                sample_loss = (agent_log_prob - augmented_log_prob).pow(2)
+                _mols.append(sampled_mol)
+                agent_lls.append(agent_log_prob)
+                prior_lls.append(prior_log_prob)
 
-                losses.append(sample_loss)
-                rewards.append(reward.detach())
                 valid_flags.append(
-                    torch.tensor(
-                        1.0 if is_valid_mol(sampled_mol) else 0.0,
-                        device=agent_log_prob.device,
-                    )
+                    torch.tensor(is_valid_mol(sampled_mol), device=self.device)
                 )
-                agent_lls.append(agent_log_prob.detach())
-                prior_lls.append(prior_log_prob.detach())
+
+                # reward_value = self.score_fn(sampled_mol)
+                # reward = torch.tensor(
+                #     reward_value,
+                #     dtype=torch.float32,
+                #     device=agent_log_prob.device,
+                # )
+                # reward = reward.clamp(self.reward_clip[0], self.reward_clip[1])
+
+                # with torch.no_grad():
+                #     prior_log_prob = bond_assignment_log_prob(
+                #         adj_mat=prior_adj_mat,
+                #         sampled_bonds=sampled_bonds,
+                #         n_atoms=n_atoms,
+                #         temperature=self.temperature,
+                #     )
+
+                # augmented_log_prob = prior_log_prob + self.sigma * reward
+                # sample_loss = (agent_log_prob - augmented_log_prob).pow(2)
+
+                # losses.append(sample_loss)
+                # rewards.append(reward.detach())
+                # valid_flags.append(
+                #     torch.tensor(
+                #         1.0 if is_valid_mol(sampled_mol) else 0.0,
+                #         device=agent_log_prob.device,
+                #     )
+                #  )
+                # agent_lls.append(agent_log_prob.detach())
+                # prior_lls.append(prior_log_prob.detach())
 
         # loss_bond = torch.stack(losses).mean().to(self.device)
         # rewards_t = torch.stack(rewards).to(self.device)
+        rewards = torch.tensor(self.score_fn(_mols), dtype=torch.float32, device=self.device)
+        agent_lls_t = torch.stack(agent_lls)
+        prior_lls_t = torch.stack(agent_lls)
 
-        loss_bond = torch.stack(losses).mean()
-        rewards_t = torch.stack(rewards)
+        rewards_t = rewards.clamp(self.reward_clip[0], self.reward_clip[1])
+        augmented_log_prob = prior_lls_t + self.sigma * rewards
+        # losses = (agent_lls_t - augmented_log_prob).pow(2)
+
+        loss_bond =(agent_lls_t - augmented_log_prob).pow(2).mean()
+        # rewards_t = torch.stack(rewards)
 
         rewards_per_edm = rewards_t.view(batch_size, self.n_samples_per_mol).mean(dim=1)
         advantages_edm = rewards_per_edm - rewards_per_edm.mean()
@@ -288,35 +309,37 @@ class RLFineTuner:
             adj_mat=bl_b_adj_mat_batch,
         )
 
-        agent_scores = []
-        baseline_scores = []
+        # agent_scores = []
+        # baseline_scores = []
 
         agent_valid_flags = []
         baseline_valid_flags = []
+
+        agent_mols = []
+        baseline_mols = []
 
         for i, base_mol in enumerate(canonicalised_samples):
             agent_adj_mat = agent_adj_mat_batch[i]
             baseline_adj_mat = baseline_adj_mat_batch[i]
             _baseline_mol = bl_canonicalised_samples[i]
 
-            agent_mol = redefine_bonds(mol=base_mol, adj_mat=agent_adj_mat)
-            baseline_mol = redefine_bonds(mol=_baseline_mol, adj_mat=baseline_adj_mat)
+            # agent_mol = redefine_bonds(mol=base_mol, adj_mat=agent_adj_mat)
+            # baseline_mol = redefine_bonds(mol=_baseline_mol, adj_mat=baseline_adj_mat)
 
-            agent_score, agent_valid_value = _eval_op(
-                agent_mol, agent_adj_mat, self.score_fn
-            )
-            baseline_score, baseline_valid_value = _eval_op(
-                baseline_mol, baseline_adj_mat, self.score_fn
-            )
+            agent_mol, agent_valid_value = _eval_op(base_mol, agent_adj_mat)
+            baseline_mol, baseline_valid_value = _eval_op(_baseline_mol, baseline_adj_mat)
 
-            agent_scores.append(agent_score)
-            baseline_scores.append(baseline_score)
+            agent_mols.append(agent_mol)
+            baseline_mols.append(baseline_mol)
+
+            # agent_scores.append(agent_score)
+            # baseline_scores.append(baseline_score)
 
             agent_valid_flags.append(agent_valid_value)
             baseline_valid_flags.append(baseline_valid_value)
 
-        agent_scores_t = torch.tensor(agent_scores, dtype=torch.float32)
-        baseline_scores_t = torch.tensor(baseline_scores, dtype=torch.float32)
+        agent_scores_t = torch.tensor(self.score_fn(agent_mols), dtype=torch.float32)
+        baseline_scores_t = torch.tensor(self.score_fn(baseline_mols), dtype=torch.float32)
 
         agent_valid_t = torch.tensor(agent_valid_flags, dtype=torch.float32)
         baseline_valid_t = torch.tensor(baseline_valid_flags, dtype=torch.float32)
@@ -391,15 +414,15 @@ class RLFineTuner:
         return None
 
 
-def is_valid_mol(mol: Chem.Mol | None) -> bool:
-    if mol is None:
-        return False
-    try:
-        test_mol = Chem.Mol(mol)
-        Chem.SanitizeMol(test_mol)
-        return True
-    except Exception:
-        return False
+# def is_valid_mol(mol: Chem.Mol | None) -> bool:
+#     if mol is None:
+#         return False
+#     try:
+#         test_mol = Chem.Mol(mol)
+#         Chem.SanitizeMol(test_mol)
+#         return True
+#     except Exception:
+#         return False
 
 
 def bond_assignment_log_prob(
@@ -482,11 +505,8 @@ def redefine_bonds_sampled(
         )
 
 
-def _eval_op(base_mol: Chem.Mol, adj_mat: torch.Tensor, score_fn: Callable) -> tuple:
+def _eval_op(base_mol: Chem.Mol, adj_mat: torch.Tensor) -> tuple:
     mol = redefine_bonds(mol=base_mol, adj_mat=adj_mat)
-    valid_value = 1.0 if is_valid_mol(mol) else 0.0
-    score = 0
-    if valid_value == 1:
-        score = score_fn(mol)
+    valid_value = is_valid_mol(mol)
 
-    return score, valid_value
+    return mol, valid_value

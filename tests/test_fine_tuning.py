@@ -1,26 +1,15 @@
 import os.path
-
-import pytest
-import torch
 import shutil
 from pathlib import Path
 
+import pytest
+import torch
 from rdkit import Chem, RDLogger
-from src.mlconfgen import (
-    MLConformerGenerator,
-    MLConformerGeneratorONNX,
-    evaluate_samples,
-    inertial_fragment_matching,
-    ff_inertial_fragment_matching,
-)
-from src.mlconfgen.utils import (
-    extract_fragment,
-    align_mol_to_principal_frame,
-    set_conformer_positions,
-)
-from src.mlconfgen.rl_fine_tune.edm_adapter import EDMAdapter
-from onnx_export import export_to_onnx
 
+from onnx_export import export_to_onnx
+from src.mlconfgen import (MLConformerGenerator, MLConformerGeneratorONNX,
+                           evaluate_samples)
+from src.mlconfgen.rl_fine_tuning.edm_adapter import EDMAdapter
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -102,7 +91,7 @@ def generator_onnx(device, diffusion_steps, onnx_paths):
 @pytest.mark.slow
 def test_basic_fine_tuning(generator, ceyyag, artifacts_dir, latest_checkpoint):
     generator.fine_tune(
-        score_function=None,
+        scoring_function=None,
         reference_conformer=ceyyag,
         variance=1,
         n_epochs=2,

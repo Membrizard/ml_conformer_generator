@@ -1,11 +1,9 @@
 import pytest
 from rdkit import Chem
 
-from src.mlconfgen.utils.standardizer import (
-    flatten_tartrate_mol,
-    md_minimize_energy,
-    standardize_mol,
-)
+from src.mlconfgen.utils.standardizer import (flatten_tartrate_mol,
+                                              md_minimize_energy,
+                                              standardize_mol)
 
 
 def test_flatten_tartrate_no_tartrate(paba_mol):

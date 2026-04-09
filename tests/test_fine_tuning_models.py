@@ -1,7 +1,8 @@
 import torch
+
 from src.mlconfgen.adj_mat_seer import AdjMatSeer
-from src.mlconfgen.rl_fine_tune.edm_adapter import EDMAdapter
-from src.mlconfgen.rl_fine_tune.shared_prior_agent import SharedPriorAgent
+from src.mlconfgen.rl_fine_tuning.edm_adapter import EDMAdapter
+from src.mlconfgen.rl_fine_tuning.shared_prior_agent import SharedPriorAgent
 
 
 # --- EDMAdaptor ---

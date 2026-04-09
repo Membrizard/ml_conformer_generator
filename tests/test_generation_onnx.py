@@ -1,18 +1,13 @@
-import pytest
 from pathlib import Path
 
+import pytest
 from rdkit import Chem, RDLogger
-from src.mlconfgen import (
-    MLConformerGenerator,
-    MLConformerGeneratorONNX,
-    evaluate_samples,
-)
-from src.mlconfgen.utils import (
-    extract_fragment,
-    align_mol_to_principal_frame,
-    set_conformer_positions,
-)
+
 from onnx_export import export_to_onnx
+from src.mlconfgen import (MLConformerGenerator, MLConformerGeneratorONNX,
+                           evaluate_samples)
+from src.mlconfgen.utils import (align_mol_to_principal_frame,
+                                 extract_fragment, set_conformer_positions)
 
 RDLogger.DisableLog("rdApp.*")
 

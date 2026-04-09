@@ -1,9 +1,9 @@
 import pytest
 import torch
 
-from src.mlconfgen.utils.config import DIMENSION, NUM_BOND_TYPES, PERMITTED_ELEMENTS
+from src.mlconfgen.utils.config import (DIMENSION, NUM_BOND_TYPES,
+                                        PERMITTED_ELEMENTS)
 from src.mlconfgen.utils.molgraph import MolGraph, vector_graph_sort
-
 
 # --- MolGraph.from_mol ---
 

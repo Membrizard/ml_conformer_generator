@@ -677,3 +677,14 @@ def concat_masked_and_pad(
         out = out[:, :l_]
 
     return out
+
+
+def is_valid_mol(mol: Chem.Mol | None) -> float:
+    if mol is None:
+        return 0.0
+    try:
+        test_mol = Chem.Mol(mol)
+        Chem.SanitizeMol(test_mol)
+        return 1.0
+    except Exception:
+        return 0.0

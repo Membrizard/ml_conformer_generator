@@ -1,18 +1,12 @@
 import pytest
 import torch
-
 from rdkit import Chem, RDLogger
-from src.mlconfgen import (
-    MLConformerGenerator,
-    evaluate_samples,
-    inertial_fragment_matching,
-    ff_inertial_fragment_matching,
-)
-from src.mlconfgen.utils import (
-    extract_fragment,
-    align_mol_to_principal_frame,
-    set_conformer_positions,
-)
+
+from src.mlconfgen import (MLConformerGenerator, evaluate_samples,
+                           ff_inertial_fragment_matching,
+                           inertial_fragment_matching)
+from src.mlconfgen.utils import (align_mol_to_principal_frame,
+                                 extract_fragment, set_conformer_positions)
 
 RDLogger.DisableLog("rdApp.*")
 

@@ -6,9 +6,8 @@ from torch.distributions import Normal
 
 from ..egnn import _get_adj_matrix, coord2diff, unsorted_segment_sum
 from ..equivariant_diffusion import (
-    sample_center_gravity_zero_gaussian_with_mask,
-    sample_gaussian_with_mask, remove_mean_with_mask,
-)
+    remove_mean_with_mask, sample_center_gravity_zero_gaussian_with_mask,
+    sample_gaussian_with_mask)
 
 
 class EDMAdapter(nn.Module):

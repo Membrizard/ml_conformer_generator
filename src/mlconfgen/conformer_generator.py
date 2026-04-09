@@ -24,9 +24,10 @@ from .utils import (
     samples_to_rdkit_mol,
     set_conformer_positions,
     standardize_mol,
+    is_valid_mol,
 )
 
-from .rl_fine_tune import RLFineTuner, EDMAdapter
+from .rl_fine_tuning import RLFineTuner, EDMAdapter
 
 
 class MLConformerGenerator(torch.nn.Module):
@@ -407,7 +408,7 @@ class MLConformerGenerator(torch.nn.Module):
 
     def fine_tune(
         self,
-        score_function: Callable[[Chem.Mol | None], float] = None,
+        scoring_function: Callable[[Chem.Mol | None], float] = None,
         reference_conformer: Chem.Mol = None,
         variance: int = 2,
         reference_context: torch.Tensor = None,
@@ -451,8 +452,8 @@ class MLConformerGenerator(torch.nn.Module):
 
         Fine-tuning parameters
         ----------------------
-        :param score_function: Scoring function used to evaluate generated molecules. It should accept
-                               an RDKit Mol and return a float in the range [0, 1], where
+        :param scoring_function: Scoring function used to evaluate generated molecules. It should accept
+                               a list of RDKit Mol objects and return a flist of floats in the range [0, 1], where
                                0 represents an undesirable molecule and 1 represents an ideal
                                molecule. If set to None, a default scoring function that encourages validity is used.
         :param n_epochs: Number of fine-tuning epochs.
@@ -477,10 +478,13 @@ class MLConformerGenerator(torch.nn.Module):
         :return: Creates a loadable fine-tuned checkpoint with improved performance on the specified objective.
         """
 
-        if score_function is None:
-            def default_score_function(x) -> float:
-                return reward_clip[1]
-            score_function = default_score_function
+        if scoring_function is None:
+            def default_score_function(mols: list[Chem.Mol | None]) -> list[float]:
+                scores = []
+                for item in mols:
+                    scores.append(is_valid_mol(item))
+                return scores
+            scoring_function = default_score_function
 
         ref_context, ref_n_atoms, fixed_fragment = self.prepare_inputs(
             reference_conformer=reference_conformer,
@@ -504,25 +508,25 @@ class MLConformerGenerator(torch.nn.Module):
                 raw_output=True,
             )
 
-        def _score_fn(mol: Chem.Mol | None) -> float:
-            """
-            A score function with a validity wrapper, automatically sets the score of invalid molecules
-            to the lowest possible
-            """
-            if mol is None:
-                return reward_clip[0]
-            try:
-                test_mol = Chem.Mol(mol)
-                Chem.SanitizeMol(test_mol)
-                score = score_function(mol)
-                return score
-            except Exception:
-                return reward_clip[0]
+        # def _score_fn(mol: Chem.Mol | None) -> float:
+        #     """
+        #     A score function with a validity wrapper, automatically sets the score of invalid molecules
+        #     to the lowest possible
+        #     """
+        #     if mol is None:
+        #         return reward_clip[0]
+        #     try:
+        #         test_mol = Chem.Mol(mol)
+        #         Chem.SanitizeMol(test_mol)
+        #         score = score_function(mol)
+        #         return score
+        #     except Exception:
+        #         return reward_clip[0]
 
         trainer = RLFineTuner(
             pretrained_adj_mat_seer=self.adj_mat_seer,
             edm_sampler_fn=edm_sampler_fn,
-            score_fn=_score_fn,
+            score_fn=scoring_function,
             lr=learning_rate,
             sigma=sigma,
             lambda_adapter=lambda_edm_adapter,
