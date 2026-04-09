@@ -1,39 +1,17 @@
-from .common import (
-    apply_transform,
-    bond_type_dict,
-    canonicalise,
-    elements_decoder,
-    set_conformer_positions,
-)
-from .config import (
-    ATOM_DECODER,
-    CONTEXT_NORMS,
-    DIMENSION,
-    MAX_FRAG_SIZE,
-    MAX_N_NODES,
-    MIN_FRAG_SIZE,
-    MIN_N_NODES,
-    NUM_BOND_TYPES,
-)
+from .common import (apply_transform, bond_type_dict, canonicalise,
+                     elements_decoder, set_conformer_positions)
+from .config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_FRAG_SIZE,
+                     MAX_N_NODES, MIN_FRAG_SIZE, MIN_N_NODES, NUM_BOND_TYPES)
 from .mol_split import extract_fragment, split_molecule_size_constrained
-from .mol_utils import (
-    align_mol_to_principal_frame,
-    concat_masked_and_pad,
-    coord_to_pf_batched,
-    get_context_shape,
-    get_moment_of_inertia_tensor,
-    ifm_get_xh_from_fragment,
-    ifm_prepare_fragments_for_merge,
-    ifm_prepare_gen_fragment_context,
-    inverse_coord_transform,
-    is_valid_mol,
-    prepare_adj_mat_seer_input,
-    prepare_edm_input,
-    prepare_fragment,
-    prepare_masks,
-    redefine_bonds,
-    samples_to_rdkit_mol,
-)
+from .mol_utils import (align_mol_to_principal_frame, concat_masked_and_pad,
+                        coord_to_pf_batched, get_context_shape,
+                        get_moment_of_inertia_tensor, ifm_get_xh_from_fragment,
+                        ifm_prepare_fragments_for_merge,
+                        ifm_prepare_gen_fragment_context,
+                        inverse_coord_transform, is_valid_mol,
+                        prepare_adj_mat_seer_input, prepare_edm_input,
+                        prepare_fragment, prepare_masks, redefine_bonds,
+                        samples_to_rdkit_mol)
 from .standardizer import standardize_mol
 
 __all__ = [

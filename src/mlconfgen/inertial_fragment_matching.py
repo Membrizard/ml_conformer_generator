@@ -4,23 +4,13 @@ from rdkit import Chem
 from .cheminformatics.pipeline import set_conformer_positions
 from .cheminformatics.shape_similarity import best_pi_rotation_by_tanimoto
 from .conformer_generator import MLConformerGenerator
-from .utils import (
-    MAX_FRAG_SIZE,
-    MIN_FRAG_SIZE,
-    align_mol_to_principal_frame,
-    apply_transform,
-    concat_masked_and_pad,
-    extract_fragment,
-    get_context_shape,
-    ifm_get_xh_from_fragment,
-    ifm_prepare_fragments_for_merge,
-    ifm_prepare_gen_fragment_context,
-    inverse_coord_transform,
-    prepare_edm_input,
-    samples_to_rdkit_mol,
-    split_molecule_size_constrained,
-    standardize_mol,
-)
+from .utils import (MAX_FRAG_SIZE, MIN_FRAG_SIZE, align_mol_to_principal_frame,
+                    apply_transform, concat_masked_and_pad, extract_fragment,
+                    get_context_shape, ifm_get_xh_from_fragment,
+                    ifm_prepare_fragments_for_merge,
+                    ifm_prepare_gen_fragment_context, inverse_coord_transform,
+                    prepare_edm_input, samples_to_rdkit_mol,
+                    split_molecule_size_constrained, standardize_mol)
 
 
 def inertial_fragment_matching(
