@@ -136,8 +136,6 @@ class RLFineTuner:
             adj_mat=b_adj_mat_batch,
         )
 
-        # losses = []
-        # rewards = []
         valid_flags = []
         agent_lls = []
         prior_lls = []
@@ -146,9 +144,9 @@ class RLFineTuner:
 
         _mols = []
 
-        # Move to CPU for more efficient cycle compute?
-        # agent_adj_mat_batch.to('cpu')
-        # prior_adj_mat_batch.to('cpu')
+        # Move to CPU for more efficient cycle compute
+        agent_adj_mat_batch.to('cpu')
+        prior_adj_mat_batch.to('cpu')
 
         for i in range(batch_size):
             base_mol = canonicalised_samples[i]
@@ -180,48 +178,14 @@ class RLFineTuner:
                     torch.tensor(is_valid_mol(sampled_mol), device=self.device)
                 )
 
-                # reward_value = self.score_fn(sampled_mol)
-                # reward = torch.tensor(
-                #     reward_value,
-                #     dtype=torch.float32,
-                #     device=agent_log_prob.device,
-                # )
-                # reward = reward.clamp(self.reward_clip[0], self.reward_clip[1])
-
-                # with torch.no_grad():
-                #     prior_log_prob = bond_assignment_log_prob(
-                #         adj_mat=prior_adj_mat,
-                #         sampled_bonds=sampled_bonds,
-                #         n_atoms=n_atoms,
-                #         temperature=self.temperature,
-                #     )
-
-                # augmented_log_prob = prior_log_prob + self.sigma * reward
-                # sample_loss = (agent_log_prob - augmented_log_prob).pow(2)
-
-                # losses.append(sample_loss)
-                # rewards.append(reward.detach())
-                # valid_flags.append(
-                #     torch.tensor(
-                #         1.0 if is_valid_mol(sampled_mol) else 0.0,
-                #         device=agent_log_prob.device,
-                #     )
-                #  )
-                # agent_lls.append(agent_log_prob.detach())
-                # prior_lls.append(prior_log_prob.detach())
-
-        # loss_bond = torch.stack(losses).mean().to(self.device)
-        # rewards_t = torch.stack(rewards).to(self.device)
         rewards = torch.tensor(self.score_fn(_mols), dtype=torch.float32, device=self.device)
-        agent_lls_t = torch.stack(agent_lls)
-        prior_lls_t = torch.stack(agent_lls)
+        agent_lls_t = torch.stack(agent_lls).to(self.device)
+        prior_lls_t = torch.stack(prior_lls).to(self.device)
 
         rewards_t = rewards.clamp(self.reward_clip[0], self.reward_clip[1])
         augmented_log_prob = prior_lls_t + self.sigma * rewards
-        # losses = (agent_lls_t - augmented_log_prob).pow(2)
 
-        loss_bond =(agent_lls_t - augmented_log_prob).pow(2).mean()
-        # rewards_t = torch.stack(rewards)
+        loss_bond = (agent_lls_t - augmented_log_prob).pow(2).mean()
 
         rewards_per_edm = rewards_t.view(batch_size, self.n_samples_per_mol).mean(dim=1)
         advantages_edm = rewards_per_edm - rewards_per_edm.mean()
@@ -309,9 +273,6 @@ class RLFineTuner:
             adj_mat=bl_b_adj_mat_batch,
         )
 
-        # agent_scores = []
-        # baseline_scores = []
-
         agent_valid_flags = []
         baseline_valid_flags = []
 
@@ -323,17 +284,11 @@ class RLFineTuner:
             baseline_adj_mat = baseline_adj_mat_batch[i]
             _baseline_mol = bl_canonicalised_samples[i]
 
-            # agent_mol = redefine_bonds(mol=base_mol, adj_mat=agent_adj_mat)
-            # baseline_mol = redefine_bonds(mol=_baseline_mol, adj_mat=baseline_adj_mat)
-
             agent_mol, agent_valid_value = _eval_op(base_mol, agent_adj_mat)
             baseline_mol, baseline_valid_value = _eval_op(_baseline_mol, baseline_adj_mat)
 
             agent_mols.append(agent_mol)
             baseline_mols.append(baseline_mol)
-
-            # agent_scores.append(agent_score)
-            # baseline_scores.append(baseline_score)
 
             agent_valid_flags.append(agent_valid_value)
             baseline_valid_flags.append(baseline_valid_value)
@@ -412,17 +367,6 @@ class RLFineTuner:
 
         self.save_checkpoint(latest_checkpoint_path)
         return None
-
-
-# def is_valid_mol(mol: Chem.Mol | None) -> bool:
-#     if mol is None:
-#         return False
-#     try:
-#         test_mol = Chem.Mol(mol)
-#         Chem.SanitizeMol(test_mol)
-#         return True
-#     except Exception:
-#         return False
 
 
 def bond_assignment_log_prob(

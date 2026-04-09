@@ -177,10 +177,8 @@ def is_valid_mol(mol: Chem.Mol | None) -> bool:
         return False
 
 
-
 def reinvent_score(mols: list[Chem.Mol | None]) -> list[float]:
-
-
+    return None
 
 # -------------------------------------------
 
@@ -202,14 +200,14 @@ N_TASKS = 10
 VARIANCE = 1
 
 REF_MOLS = Chem.SDMolSupplier("")
-DIFFUSION_STEPS = [20, 50, 100]
+DIFFUSION_STEPS = 100
 # SCORES = [
 #           {"name": "validity", "function": validity_score},
 #           {"name": "shape", "function": shape_score},
 #           {"name": "shape_and_color", "function": shape_and_color_score},
 #           ]
 
-SCORE_NAMES = ["validity",  "shape",  "shape_and_color"]
+SCORE_NAMES = ["validity",  "reinvent"]
 
 FT_SAMPLES_WRITER = Chem.SDWriter("")
 BL_SAMPLES_WRITER = Chem.SDWriter("")
@@ -229,10 +227,10 @@ for r_mol in REF_MOLS:
         "n_samples": N_SAMPLES,
     }
     ref_name = r_mol.GetProp("_Name")
-    for d_steps in DIFFUSION_STEPS:
-        for score_name in SCORE_NAMES:
+
+    for score_name in SCORE_NAMES:
             print("Running Fine Tuning with {diffusion steps} {score fn name}")
-            ft_checkpoints_dir = f"./{ref_name}_{d_steps}_{score_fn['name']}"
+            ft_checkpoints_dir = f"./{ref_name}_{DIFFUSION_STEPS}_{score_fn['name']}"
             ft_samples_writer = Chem.SDWriter(f"{ft_checkpoints_dir}/fine_tuned_samples.sdf")
             bl_samples_writer = Chem.SDWriter(f"{ft_checkpoints_dir}/baseline_samples.sdf")
             logfile = f"{ft_checkpoints_dir}/evaluation_report.log"
@@ -264,7 +262,7 @@ for r_mol in REF_MOLS:
                 edm_weights="./edm_moi_chembl_15_39.pt",
                 adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
                 device=device,
-                diffusion_steps=d_steps,
+                diffusion_steps=DIFFUSION_STEPS,
             )
 
             # Fine tuning:
@@ -306,3 +304,19 @@ for r_mol in REF_MOLS:
                      agent_writer=FT_SAMPLES_WRITER,
                      baseline_writer=BL_SAMPLES_WRITER,
                     )
+
+
+def scoring_function(mols) -> list[float]:
+    smilies = []
+    invalid_mask = []
+    duplicate_mask = []
+
+    for mol in mols:
+
+
+    score_results = reinvent_scoring_function
+
+    scores = score_results.total_scores
+
+    return None
+

@@ -425,7 +425,7 @@ class MLConformerGenerator(torch.nn.Module):
         lambda_edm_reg: float = 0.01,
         temperature: float = 1.0,
         n_samples_per_mol: int = 16,
-        reward_clip: tuple[float, float] = (-1.0, 1.0),
+        reward_clip: tuple[float, float] = (0, 1.0),
         eval_every: int = 5,
         save_dir: str = "./fine_tuning_checkpoints",
         best_checkpoint_name: str = "best_checkpoint.pt",
@@ -507,21 +507,6 @@ class MLConformerGenerator(torch.nn.Module):
                 blend_power=blend_power,
                 raw_output=True,
             )
-
-        # def _score_fn(mol: Chem.Mol | None) -> float:
-        #     """
-        #     A score function with a validity wrapper, automatically sets the score of invalid molecules
-        #     to the lowest possible
-        #     """
-        #     if mol is None:
-        #         return reward_clip[0]
-        #     try:
-        #         test_mol = Chem.Mol(mol)
-        #         Chem.SanitizeMol(test_mol)
-        #         score = score_function(mol)
-        #         return score
-        #     except Exception:
-        #         return reward_clip[0]
 
         trainer = RLFineTuner(
             pretrained_adj_mat_seer=self.adj_mat_seer,
