@@ -241,7 +241,7 @@ from mlconfgen import MLConformerGenerator
 model = MLConformerGenerator(
                              edm_weights="./edm_moi_chembl_15_39.pt",
                              adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
-                             finetune_checjpoint = "./finetune_checkpoint.pt",
+                             finetune_checkpoint = "./finetune_checkpoint.pt",
                              diffusion_steps=20,
                             )
 

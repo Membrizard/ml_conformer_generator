@@ -125,7 +125,7 @@ class MLConformerGenerator(torch.nn.Module):
 
         self.edm_adapter = None
         if finetune_checkpoint:
-            self.load_fine_tune_checkpoint(finetune_checkpoint)
+            self.load_finetune_checkpoint(finetune_checkpoint)
 
     @staticmethod
     def prepare_inputs(
@@ -449,8 +449,9 @@ class MLConformerGenerator(torch.nn.Module):
         :param learning_rate: Optimizer learning rate.
         :param sigma: Reward weight in the reinforcement learning loss.
         :param lambda_edm_adapter: Weight of the EDM adapter term in the reinforcement learning loss.
+                                   Sensible values are 1.5 for 10 diffusion steps and 0.5-1 for 100 diffusion steps.
         :param lambda_edm_reg: Weight of the EDM adapter regularization term in the reinforcement
-                               learning loss.
+                               learning loss. Sensible values are 0.01 - 0.1
         :param temperature: Sampling temperature. Values in the range ``1.0`` to ``1.5`` are
                             typically recommended.
         :param n_samples_per_mol: Number of samples drawn per molecule from the GCN based on the
