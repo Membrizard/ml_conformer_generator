@@ -54,8 +54,8 @@ class ReinventScoreWrapper:
                 invalid_mask.append(0)
                 duplicate_mask.append(0)
 
-        invalid_mask = np.array(invalid_mask, dtype=np.int)
-        duplicate_mask = np.array(invalid_mask, dtype=np.int)
+        invalid_mask = np.array(invalid_mask, dtype=np.int8)
+        duplicate_mask = np.array(invalid_mask, dtype=np.int8)
 
         score_results = self.reinvent_scorer(smilies, invalid_mask, duplicate_mask)
         scores = score_results.total_scores
