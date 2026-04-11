@@ -531,7 +531,7 @@ class MLConformerGenerator(torch.nn.Module):
         )
 
         if load_best_checkpoint:
-            self.load_fine_tune_checkpoint(best_checkpoint_name)
+            self.load_finetune_checkpoint(best_checkpoint_name)
 
         return None
 
