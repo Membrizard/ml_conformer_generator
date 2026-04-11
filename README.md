@@ -245,6 +245,8 @@ model = MLConformerGenerator(
                              diffusion_steps=10,
                             )
 
+# Or
+
 model.load_finetune_checkpoint("./finetune_checkpoint.pt")
 
 ```
@@ -254,7 +256,7 @@ model.load_finetune_checkpoint("./finetune_checkpoint.pt")
 The RL fine-tuning pipeline is compatible with scoring functions from [REINVENT4](https://github.com/MolecularAI/REINVENT4/tree/main).
 If REINVENT4 is installed, you can use `ReinventScoreWrapper` to load a REINVENT4 scoring configuration and use MLConfGen as a spatially-aware molecule generator.
 
-For more examples, see `rl_fine_tuning_demo.ipynb.`
+For working examples, see `rl_fine_tuning_demo.ipynb.`
 
 ```python
 from rdkit import Chem
