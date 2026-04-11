@@ -24,7 +24,7 @@ class Format(str, Enum):
 
 class ReinventScoreWrapper:
     """
-        Wrapper around REINVENT Scorer object to simplify its usage in fine tuning
+        Wrapper around REINVENT Scorer object to simplify its usage in fine-tuning
     """
     def __init__(self, config_path: str | Path, fmt: Format = Format.TOML):
         """

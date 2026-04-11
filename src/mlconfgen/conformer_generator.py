@@ -320,6 +320,7 @@ class MLConformerGenerator(torch.nn.Module):
         resample_steps: int = 0,
         fixed_fragment: Chem.Mol | set = None,
         blend_power: int = 3,
+        keep_largest_fragment: bool = True,
     ) -> List[Chem.Mol]:
         """
         Main method to generate samples from either reference molecule or an arbitrary context.
@@ -335,6 +336,8 @@ class MLConformerGenerator(torch.nn.Module):
         :param fixed_fragment: Fragment to fix during generation as an RDKit Mol object or
                                a set of atom idxs of reference conformer
         :param blend_power: Power of the polynomial blending schedule for generation with a fixed fragment
+        :param keep_largest_fragment: If set to True a largest connected fragment is picked
+                                      during molecule standardisation, if False disconnected molecules are discarded.
         :return: A list of valid standardised generated molecules as RDKit Mol objects
         """
 
@@ -361,7 +364,7 @@ class MLConformerGenerator(torch.nn.Module):
         optimised_conformers = []
         for f_mol in raw_mols:
             std_mol = standardize_mol(
-                mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=False
+                mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=not keep_largest_fragment
             )
             if std_mol:
                 optimised_conformers.append(std_mol)
