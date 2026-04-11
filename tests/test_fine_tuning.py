@@ -90,6 +90,7 @@ def generator_onnx(device, diffusion_steps, onnx_paths):
 
 @pytest.mark.slow
 def test_basic_fine_tuning(generator, ceyyag, artifacts_dir, latest_checkpoint):
+    torch.manual_seed(8)
     generator.fine_tune(
         scoring_function=None,
         reference_conformer=ceyyag,
@@ -103,9 +104,10 @@ def test_basic_fine_tuning(generator, ceyyag, artifacts_dir, latest_checkpoint):
         sigma=60.0,
         temperature=1.5,
         n_samples_per_mol=8,
-        reward_clip=(-1.0, 1.0),
+        reward_clip=(0, 1.0),
         eval_every=2,
         save_dir=artifacts_dir,
+        load_best_checkpoint=True,
     )
 
     # Make sure checkpoints are saved
