@@ -298,7 +298,9 @@ class MLConformerGenerator(torch.nn.Module):
             )
 
         if self.edm_adapter is not None:
-            x, h, _, _ = self.edm_adapter(x=x, h=h, node_mask=node_mask, edge_mask=edge_mask, sample=False)
+            x, h, _, _ = self.edm_adapter(
+                x=x, h=h, node_mask=node_mask, edge_mask=edge_mask, sample=False
+            )
 
         if raw_output:
             return x, h, node_mask, edge_mask
@@ -364,7 +366,9 @@ class MLConformerGenerator(torch.nn.Module):
         optimised_conformers = []
         for f_mol in raw_mols:
             std_mol = standardize_mol(
-                mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=not keep_largest_fragment
+                mol=f_mol,
+                optimize_geometry=optimize_geometry,
+                ifm_mode=not keep_largest_fragment,
             )
             if std_mol:
                 optimised_conformers.append(std_mol)
@@ -470,11 +474,13 @@ class MLConformerGenerator(torch.nn.Module):
         """
 
         if scoring_function is None:
+
             def default_score_function(mols: list[Chem.Mol | None]) -> list[float]:
                 scores = []
                 for item in mols:
                     scores.append(is_valid_mol(item))
                 return scores
+
             scoring_function = default_score_function
 
         ref_context, ref_n_atoms, fixed_fragment = self.prepare_inputs(

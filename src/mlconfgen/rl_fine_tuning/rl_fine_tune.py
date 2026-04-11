@@ -27,6 +27,7 @@ class RLFineTuner:
     """
     Reinforcement Learning Fine Tuner for MLConformerGenerator.
     """
+
     def __init__(
         self,
         pretrained_adj_mat_seer: AdjMatSeer,
@@ -145,8 +146,8 @@ class RLFineTuner:
         _mols = []
 
         # Move to CPU for more efficient cycle compute
-        agent_adj_mat_batch.to('cpu')
-        prior_adj_mat_batch.to('cpu')
+        agent_adj_mat_batch.to("cpu")
+        prior_adj_mat_batch.to("cpu")
 
         for i in range(batch_size):
             base_mol = canonicalised_samples[i]
@@ -178,7 +179,9 @@ class RLFineTuner:
                     torch.tensor(is_valid_mol(sampled_mol), device=self.device)
                 )
 
-        rewards = torch.tensor(self.score_fn(_mols), dtype=torch.float32, device=self.device)
+        rewards = torch.tensor(
+            self.score_fn(_mols), dtype=torch.float32, device=self.device
+        )
         agent_lls_t = torch.stack(agent_lls).to(self.device)
         prior_lls_t = torch.stack(prior_lls).to(self.device)
 
@@ -285,7 +288,9 @@ class RLFineTuner:
             _baseline_mol = bl_canonicalised_samples[i]
 
             agent_mol, agent_valid_value = _eval_op(base_mol, agent_adj_mat)
-            baseline_mol, baseline_valid_value = _eval_op(_baseline_mol, baseline_adj_mat)
+            baseline_mol, baseline_valid_value = _eval_op(
+                _baseline_mol, baseline_adj_mat
+            )
 
             agent_mols.append(agent_mol)
             baseline_mols.append(baseline_mol)
@@ -294,7 +299,9 @@ class RLFineTuner:
             baseline_valid_flags.append(baseline_valid_value)
 
         agent_scores_t = torch.tensor(self.score_fn(agent_mols), dtype=torch.float32)
-        baseline_scores_t = torch.tensor(self.score_fn(baseline_mols), dtype=torch.float32)
+        baseline_scores_t = torch.tensor(
+            self.score_fn(baseline_mols), dtype=torch.float32
+        )
 
         agent_valid_t = torch.tensor(agent_valid_flags, dtype=torch.float32)
         baseline_valid_t = torch.tensor(baseline_valid_flags, dtype=torch.float32)

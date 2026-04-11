@@ -212,7 +212,7 @@ from mlconfgen import MLConformerGenerator
 model = MLConformerGenerator(
                              edm_weights="./edm_moi_chembl_15_39.pt",
                              adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
-                             diffusion_steps=20,
+                             diffusion_steps=10,
                             )
 
 reference = Chem.MolFromMolFile('./assets/demo_files/ceyyag.mol')
@@ -242,7 +242,7 @@ model = MLConformerGenerator(
                              edm_weights="./edm_moi_chembl_15_39.pt",
                              adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
                              finetune_checkpoint = "./finetune_checkpoint.pt",
-                             diffusion_steps=20,
+                             diffusion_steps=10,
                             )
 
 model.load_finetune_checkpoint("./finetune_checkpoint.pt")
@@ -265,7 +265,7 @@ model = MLConformerGenerator(
                              edm_weights="./edm_moi_chembl_15_39.pt",
                              adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
                              finetune_checjpoint = "./finetune_checkpoint.pt",
-                             diffusion_steps=20,
+                             diffusion_steps=10,
                             )
 
 reference = Chem.MolFromMolFile('./assets/demo_files/ceyyag.mol')

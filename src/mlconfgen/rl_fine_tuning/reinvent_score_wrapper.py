@@ -12,7 +12,7 @@ try:
     from reinvent.utils.config_parse import read_config
 except ImportError as e:
     raise ImportError(
-        'Failed to import reinvent. To resolve install REINVENT4: https://github.com/MolecularAI/REINVENT4/tree/main`\n'
+        "Failed to import reinvent. To resolve install REINVENT4: https://github.com/MolecularAI/REINVENT4/tree/main`\n"
     ) from e
 
 
@@ -24,8 +24,9 @@ class Format(str, Enum):
 
 class ReinventScoreWrapper:
     """
-        Wrapper around REINVENT Scorer object to simplify its usage in fine-tuning
+    Wrapper around REINVENT Scorer object to simplify its usage in fine-tuning
     """
+
     def __init__(self, config_path: str | Path, fmt: Format = Format.TOML):
         """
         :param config_path: Path to a REINVENT configuration file with scoring section specified
@@ -61,4 +62,3 @@ class ReinventScoreWrapper:
         scores = score_results.total_scores
 
         return scores.tolist()
-

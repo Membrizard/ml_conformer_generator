@@ -311,7 +311,9 @@ class MLConformerGeneratorONNX:
         optimised_conformers = []
         for f_mol in raw_mols:
             std_mol = standardize_mol(
-                mol=f_mol, optimize_geometry=optimize_geometry, ifm_mode=not keep_largest_fragment
+                mol=f_mol,
+                optimize_geometry=optimize_geometry,
+                ifm_mode=not keep_largest_fragment,
             )
             if std_mol:
                 optimised_conformers.append(std_mol)

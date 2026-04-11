@@ -52,12 +52,13 @@ class EDMAdapter(nn.Module):
             edges_in_d=edges_in_d,
         )
 
-    def _equvariant_update(self,
-                           x: torch.Tensor,
-                           h: torch.Tensor,
-                           edge_mask: torch.Tensor,
-                           node_mask: torch.Tensor,
-                           ):
+    def _equvariant_update(
+        self,
+        x: torch.Tensor,
+        h: torch.Tensor,
+        edge_mask: torch.Tensor,
+        node_mask: torch.Tensor,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         bs, n_nodes, _ = x.size()
 
         x_flat = x.view(bs * n_nodes, 3)
@@ -104,7 +105,6 @@ class EDMAdapter(nn.Module):
         node_mask: torch.Tensor,
         sample: bool = False,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
-
         x_in = x
         h_in = h
 
