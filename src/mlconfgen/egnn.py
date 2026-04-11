@@ -514,26 +514,31 @@ class EGNNDynamics(nn.Module):
     def get_adj_matrix(
         n_nodes: int, batch_size: int, device: torch.device
     ) -> torch.Tensor:
-        # Generate batch offsets
-        batch_offsets = torch.arange(batch_size, device=device).unsqueeze(1) * n_nodes
-
-        # Generate row and column indices for a single batch
-        row_indices = (
-            torch.arange(n_nodes, device=device).repeat(n_nodes, 1).T.flatten()
-        )
-        col_indices = torch.arange(n_nodes, device=device).repeat(n_nodes)
-
-        # Expand to all batches
-        rows = (row_indices.unsqueeze(0) + batch_offsets).flatten()
-        cols = (col_indices.unsqueeze(0) + batch_offsets).flatten()
-
-        # Store the edges as LongTensor
-        edges = torch.stack(
-            [
-                rows.long(),
-                cols.long(),
-            ],
-            dim=0,
-        ).to(device)
-
+        edges = _get_adj_matrix(n_nodes, batch_size, device)
         return edges
+
+
+def _get_adj_matrix(
+    n_nodes: int, batch_size: int, device: torch.device
+) -> torch.Tensor:
+    # Generate batch offsets
+    batch_offsets = torch.arange(batch_size, device=device).unsqueeze(1) * n_nodes
+
+    # Generate row and column indices for a single batch
+    row_indices = torch.arange(n_nodes, device=device).repeat(n_nodes, 1).T.flatten()
+    col_indices = torch.arange(n_nodes, device=device).repeat(n_nodes)
+
+    # Expand to all batches
+    rows = (row_indices.unsqueeze(0) + batch_offsets).flatten()
+    cols = (col_indices.unsqueeze(0) + batch_offsets).flatten()
+
+    # Store the edges as LongTensor
+    edges = torch.stack(
+        [
+            rows.long(),
+            cols.long(),
+        ],
+        dim=0,
+    ).to(device)
+
+    return edges

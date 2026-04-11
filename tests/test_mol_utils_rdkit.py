@@ -3,21 +3,18 @@ import torch
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from src.mlconfgen.utils.config import DIMENSION, MIN_N_NODES, PERMITTED_ELEMENTS
-from src.mlconfgen.utils.mol_utils import (
-    align_mol_to_principal_frame,
-    canonicalise,
-    ifm_get_xh_from_fragment,
-    ifm_prepare_fragments_for_merge,
-    ifm_prepare_gen_fragment_context,
-    prepare_adj_mat_seer_input,
-    prepare_fragment,
-    redefine_bonds,
-    samples_to_rdkit_mol,
-    set_conformer_positions,
-)
 from mlconfgen.utils.molgraph import MolGraph
-
+from src.mlconfgen.utils.config import (DIMENSION, MIN_N_NODES,
+                                        PERMITTED_ELEMENTS)
+from src.mlconfgen.utils.mol_utils import (align_mol_to_principal_frame,
+                                           canonicalise,
+                                           ifm_get_xh_from_fragment,
+                                           ifm_prepare_fragments_for_merge,
+                                           ifm_prepare_gen_fragment_context,
+                                           prepare_adj_mat_seer_input,
+                                           prepare_fragment, redefine_bonds,
+                                           samples_to_rdkit_mol,
+                                           set_conformer_positions)
 
 # --- samples_to_rdkit_mol ---
 

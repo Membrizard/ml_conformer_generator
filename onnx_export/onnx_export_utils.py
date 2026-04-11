@@ -4,15 +4,38 @@ from typing import List
 
 import torch
 from torch.export import Dim
+from torch import nn
 from rdkit import Chem
 
 from mlconfgen.utils.config import CONTEXT_NORMS
 from mlconfgen.utils.mol_utils import prepare_adj_mat_seer_input
+from mlconfgen.equivariant_diffusion import (
+    sample_center_gravity_zero_gaussian_with_mask,
+    sample_gaussian_with_mask, remove_mean_with_mask
+)
+
+ARTIFACTS_DIR = "./onnx_export_reports"
+
+
+class ExportableAdaptor(nn.Module):
+    def __init__(self, model: nn.Module):
+        super().__init__()
+        self.model = model
+
+    def forward(self, x, h, node_mask, edge_mask):
+        x_in = x
+        h_in = h
+        dx, dh = self.model._equvariant_update(x, h, edge_mask, node_mask)
+        x_new = x_in + dx
+        x_new = remove_mean_with_mask(x_new, node_mask)
+        h_new = h_in + dh
+        return x_new, h_new
 
 
 def egnn_onnx_export(
-    generative_model: torch.nn.Module,
-    save_path: Path,
+    generative_model: nn.Module,
+    save_path: str | Path,
+    report: bool = False,
     dummy_ref_context: torch.Tensor = torch.tensor(
         [53.6424, 108.3042, 151.4399], dtype=torch.float32
     ),
@@ -49,6 +72,8 @@ def egnn_onnx_export(
             dynamo=True,
             verify=True,
             optimize=False,
+            report=report,
+            artifacts_dir=ARTIFACTS_DIR,
         )
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError(
@@ -61,7 +86,7 @@ def egnn_onnx_export(
 
 
 def prepare_egnn_dummy_input(
-    generative_model: torch.nn.Module,
+    generative_model: nn.Module,
     reference_context: torch.Tensor,
     context_norms: dict,
     n_samples: int = 2,
@@ -85,7 +110,6 @@ def prepare_egnn_dummy_input(
         node_mask[i, 0 : nodesxsample[i]] = 1
 
     # Compute edge_mask
-
     edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
     diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
     edge_mask *= diag_mask
@@ -111,9 +135,10 @@ def prepare_egnn_dummy_input(
 
 
 def adj_mat_seer_onnx_export(
-    adj_mat_seer: torch.nn.Module,
-    save_path: Path,
+    adj_mat_seer: nn.Module,
+    save_path: str | Path,
     mock_molecules: List[str],
+    report: bool = False
 ) -> None:
     mols = [Chem.MolFromXYZFile(x) for x in mock_molecules]
 
@@ -128,22 +153,104 @@ def adj_mat_seer_onnx_export(
 
     batch_size = Dim("batch_size")
 
-    onnx_model = torch.onnx.export(
-        adj_mat_seer,
-        inputs[:-1],
-        input_names=["elements", "dist_mat", "adj_mat"],
-        output_names=["out"],
-        export_params=True,
-        dynamic_shapes={
-            "elements": {0: batch_size},
-            "dist_mat": {0: batch_size},
-            "adj_mat": {0: batch_size},
-        },
-        opset_version=18,
-        verbose=True,
-        dynamo=True,
-    )
+    try:
+        onnx_model = torch.onnx.export(
+            adj_mat_seer,
+            inputs[:-1],
+            input_names=["elements", "dist_mat", "adj_mat"],
+            output_names=["out"],
+            export_params=True,
+            dynamic_shapes={
+                "elements": {0: batch_size},
+                "dist_mat": {0: batch_size},
+                "adj_mat": {0: batch_size},
+            },
+            opset_version=18,
+            verbose=True,
+            dynamo=True,
+            verify=False,
+            optimize=True,
+            report=report,
+            artifacts_dir=ARTIFACTS_DIR,
+        )
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(
+            'Failed to export ONNX model. To resolve run `pip install "mlconfgen[onnx]"`\n'
+        ) from e
 
     onnx_model.save(save_path)
 
     return None
+
+
+def edm_adapter_onnx_export(edm_adapter: nn.Module, save_path: str | Path, report: bool = False) -> None:
+    batch_size = Dim("batch_size")
+    num_nodes = Dim("num_nodes")
+    num_edges = Dim("num_edges")
+
+    adapter_inputs = prepare_edm_adapter_dummy_inputs(device=edm_adapter.device)
+    wrapped = ExportableAdaptor(edm_adapter).eval()
+
+    try:
+        onnx_model = torch.onnx.export(
+            wrapped,
+            adapter_inputs,
+            input_names=["x", "h", "node_mask", "edge_mask"],
+            output_names=["x_new", "h_new"],
+            export_params=True,
+            dynamic_shapes={
+                "x": {0: batch_size, 1: num_nodes},
+                "h": {0: batch_size, 1: num_nodes},
+                "node_mask": {0: batch_size, 1: num_nodes},
+                "edge_mask": {0: num_edges},
+            },
+            opset_version=18,
+            verbose=True,
+            dynamo=True,
+            verify=True,
+            optimize=False,
+            report=report,
+            artifacts_dir=ARTIFACTS_DIR,
+        )
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(
+            'Failed to export ONNX model. To resolve run `pip install "mlconfgen[onnx]"`\n'
+        ) from e
+
+    onnx_model.save(save_path)
+    return None
+
+
+def prepare_edm_adapter_dummy_inputs(
+        n_samples: int = 2,
+        min_n_nodes: int = 16,
+        max_n_nodes: int = 20,
+        device: str | torch.device = torch.device("cpu"),
+):
+    nodesxsample = []
+
+    for n in range(n_samples):
+        nodesxsample.append(random.randint(min_n_nodes, max_n_nodes))
+
+    nodesxsample = torch.tensor(nodesxsample)
+
+    batch_size = nodesxsample.size(0)
+
+    node_mask = torch.zeros(batch_size, max_n_nodes)
+    for i in range(batch_size):
+        node_mask[i, 0: nodesxsample[i]] = 1
+
+    # Compute edge_mask
+
+    edge_mask = node_mask.unsqueeze(1) * node_mask.unsqueeze(2)
+    diag_mask = ~torch.eye(edge_mask.size(1), dtype=torch.bool).unsqueeze(0)
+    edge_mask *= diag_mask
+    edge_mask = edge_mask.view(batch_size * max_n_nodes * max_n_nodes, 1).to(device)
+    node_mask = node_mask.unsqueeze(2).to(device)
+
+    x = sample_center_gravity_zero_gaussian_with_mask(
+        (batch_size, max_n_nodes, 3), device, node_mask
+    )
+    h = sample_gaussian_with_mask((batch_size, max_n_nodes, 8), device, node_mask)
+
+    return x, h, node_mask, edge_mask

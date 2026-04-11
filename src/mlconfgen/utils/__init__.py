@@ -8,9 +8,10 @@ from .mol_utils import (align_mol_to_principal_frame, concat_masked_and_pad,
                         get_moment_of_inertia_tensor, ifm_get_xh_from_fragment,
                         ifm_prepare_fragments_for_merge,
                         ifm_prepare_gen_fragment_context,
-                        inverse_coord_transform, prepare_adj_mat_seer_input,
-                        prepare_edm_input, prepare_fragment, prepare_masks,
-                        redefine_bonds, samples_to_rdkit_mol)
+                        inverse_coord_transform, is_valid_mol,
+                        prepare_adj_mat_seer_input, prepare_edm_input,
+                        prepare_fragment, prepare_masks, redefine_bonds,
+                        samples_to_rdkit_mol)
 from .standardizer import standardize_mol
 
 __all__ = [
@@ -35,6 +36,7 @@ __all__ = [
     "ifm_prepare_fragments_for_merge",
     "ifm_get_xh_from_fragment",
     "inverse_coord_transform",
+    "is_valid_mol",
     "redefine_bonds",
     "standardize_mol",
     "DIMENSION",

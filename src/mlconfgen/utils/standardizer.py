@@ -90,14 +90,14 @@ def md_minimize_energy(mol: Chem.Mol) -> Tuple[Chem.Mol, bool]:
 
 def standardize_mol(
     mol: Chem.Mol, optimize_geometry: bool = True, ifm_mode: bool = False
-) -> Chem.Mol:
+) -> Chem.Mol | None:
     """
     Molecule Standardization
     :param mol: input conformer
     :param optimize_geometry: if MMFF94 optimisation is required
     :param ifm_mode: if True, reject molecules with multiple disconnected fragments
                      instead of keeping only the largest one
-    :return: standardized conformer
+    :return: standardized conformer or None if Failed
     """
     try:
         if ifm_mode:

@@ -195,7 +195,9 @@ def inertial_fragment_matching(
         frag_coord = frag_coord.to("cpu")
         for old_x in frag_coord:
             try:
-                aligned_x.append(align_coord(cand_coord=old_x, ref_coord=ref_fragment_coords[i]))
+                aligned_x.append(
+                    align_coord(cand_coord=old_x, ref_coord=ref_fragment_coords[i])
+                )
             except RuntimeError:
                 pass
 

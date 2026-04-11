@@ -1,0 +1,52 @@
+[scoring]
+type = "geometric_mean"
+
+[[scoring.component]]
+[scoring.component.custom_alerts]
+
+[[scoring.component.custom_alerts.endpoint]]
+name = "Alerts"
+
+params.smarts = [
+    "[*;r8]",
+    "[*;r9]",
+    "[*;r10]",
+    "[*;r11]",
+    "[*;r12]",
+    "[*;r13]",
+    "[*;r14]",
+    "[*;r15]",
+    "[*;r16]",
+    "[*;r17]",
+    "[#8][#8]",
+    "[#6;+]",
+    "[#16][#16]",
+    "[#7;!n][S;!$(S(=O)=O)]",
+    "[#7;!n][#7;!n]",
+    "C#C",
+    "C(=[O,S])[O,S]",
+    "[#7;!n][C;!$(C(=[O,N])[N,O])][#16;!s]",
+    "[#7;!n][C;!$(C(=[O,N])[N,O])][#7;!n]",
+    "[#7;!n][C;!$(C(=[O,N])[N,O])][#8;!o]",
+    "[#8;!o][C;!$(C(=[O,N])[N,O])][#16;!s]",
+    "[#8;!o][C;!$(C(=[O,N])[N,O])][#8;!o]",
+    "[#16;!s][C;!$(C(=[O,N])[N,O])][#16;!s]"
+]
+
+[[scoring.component]]
+[scoring.component.QED]
+
+[[scoring.component.QED.endpoint]]
+name = "QED"
+weight = 0.6
+
+
+[[scoring.component]]
+[scoring.component.NumAtomStereoCenters]
+
+[[scoring.component.NumAtomStereoCenters.endpoint]]
+name = "Stereo"
+weight = 0.4
+
+transform.type = "left_step"
+transform.low = 0

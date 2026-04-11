@@ -185,7 +185,9 @@ def redefine_bonds(mol: Chem.Mol, adj_mat: torch.Tensor) -> Chem.Mol:
     ed_mol = Chem.EditableMol(c_mol)
 
     repr_m = torch.tril(torch.argmax(adj_mat, dim=2))
-    repr_m = repr_m * (1 - torch.eye(repr_m.size(0), repr_m.size(0)))
+    repr_m = repr_m * (
+        1 - torch.eye(repr_m.size(0), repr_m.size(0), device=adj_mat.device)
+    )
 
     for i in range(n):
         for j in range(n):
@@ -671,3 +673,14 @@ def concat_masked_and_pad(
         out = out[:, :l_]
 
     return out
+
+
+def is_valid_mol(mol: Chem.Mol | None) -> float:
+    if mol is None:
+        return 0.0
+    try:
+        test_mol = Chem.Mol(mol)
+        Chem.SanitizeMol(test_mol)
+        return 1.0
+    except Exception:
+        return 0.0

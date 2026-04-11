@@ -1,15 +1,8 @@
 import torch
 
-from src.mlconfgen.egnn import (
-    GCL,
-    EGNN,
-    EGNNDynamics,
-    EquivariantBlock,
-    coord2diff,
-    remove_mean_with_mask,
-    unsorted_segment_sum,
-)
-
+from src.mlconfgen.egnn import (GCL, EGNNDynamics, EquivariantBlock,
+                                coord2diff, remove_mean_with_mask,
+                                unsorted_segment_sum)
 
 # --- coord2diff ---
 

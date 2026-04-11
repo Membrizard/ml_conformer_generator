@@ -26,6 +26,11 @@ that are both chemically valid and spatially similar to a reference shape.
     Generate novel molecules that conform to arbitrary 3D shapes—such as protein binding pockets or custom-defined spatial regions.
 
 
+* **Objective-guided Generation**
+    
+    Use reinforcement learning (RL) to steer molecular generation toward higher-scoring candidates, with support for custom scoring functions.
+
+
 * **Reference-based conformer similarity**
 
     Create molecules conformations of which closely resemble a reference structure, supporting scaffold-hopping and ligand-based design workflows.
@@ -178,6 +183,114 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 **Average SA Score**: **3.18**
 
 <img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/benchmarks/sa_score_dist.png" width="300">
+
+---
+
+## RL Fine Tuning
+
+MLConformerGenerator supports objective-guided reinforcement learning (RL) fine-tuning, allowing you to steer the generated molecular distribution toward molecules that better match your desired properties.
+
+Scoring functions are fully customizable. The only requirement is that they accept a list of RDKit `Mol` objects and return a list of scores in the range `[0, 1]`.
+
+A scoring function should follow this interface:
+
+```python
+from rdkit import Chem
+
+def scoring_function(mols: list[Chem.Mol | None]) -> list[float]:
+    ...
+```
+### Example: RL fine-tuning
+
+> [!NOTE]
+> If `scoring_function` is None, a default scoring function enforcing validity is applied for RL.
+
+```python
+from rdkit import Chem
+from mlconfgen import MLConformerGenerator
+
+model = MLConformerGenerator(
+                             edm_weights="./edm_moi_chembl_15_39.pt",
+                             adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+                             diffusion_steps=10,
+                            )
+
+reference = Chem.MolFromMolFile('./assets/demo_files/ceyyag.mol')
+
+model.fine_tune(
+                  reference_conformer=reference,
+                  variance=1,
+                  n_epochs=20,
+                  sigma=60.0,
+                  lambda_edm_adapter=1.5,
+                  temperature=1.5,
+                  n_samples_per_mol=16,
+                  eval_every=5,
+                  save_dir="./rl_checkpoints"
+)
+
+
+
+```
+
+Fine-tuning produces both the best and the latest checkpoints, which can later be loaded into the model:
+
+```python
+from mlconfgen import MLConformerGenerator
+
+model = MLConformerGenerator(
+                             edm_weights="./edm_moi_chembl_15_39.pt",
+                             adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+                             finetune_checkpoint = "./finetune_checkpoint.pt",
+                             diffusion_steps=10,
+                            )
+
+# Or
+
+model.load_finetune_checkpoint("./finetune_checkpoint.pt")
+
+```
+
+### REINVENT4 compatibility
+
+The RL fine-tuning pipeline is compatible with scoring functions from [REINVENT4](https://github.com/MolecularAI/REINVENT4/tree/main).
+If REINVENT4 is installed, you can use `ReinventScoreWrapper` to load a REINVENT4 scoring configuration and use MLConfGen as a spatially-aware molecule generator.
+
+For working examples, see `rl_fine_tuning_demo.ipynb.`
+
+```python
+from rdkit import Chem
+from mlconfgen import MLConformerGenerator
+from mlconfgen.rl_fine_tuning.reinvent_score_wrapper import ReinventScoreWrapper
+
+model = MLConformerGenerator(
+                             edm_weights="./edm_moi_chembl_15_39.pt",
+                             adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+                             diffusion_steps=10,
+                            )
+
+reference = Chem.MolFromMolFile('./assets/demo_files/ceyyag.mol')
+scoring_function = ReinventScoreWrapper("./assets/demo_files/scoring_config.toml")
+
+model.fine_tune(
+                  scoring_function=scoring_function, 
+                  reference_conformer=reference,
+                  variance=1,
+                  n_epochs=100,
+                  train_batch_size=128,
+                  eval_batch_size=128,
+                  learning_rate= 8e-5,
+                  sigma=128.0,
+                  lambda_edm_adapter=1.5,
+                  lambda_edm_reg=0.2,
+                  temperature=1.5,
+                  n_samples_per_mol=32,
+                  eval_every=5,
+                  save_dir="./rl_checkpoints_reinvent",
+
+)
+
+```
 
 ---
 

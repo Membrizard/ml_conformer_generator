@@ -2,7 +2,6 @@ import torch
 
 from src.mlconfgen.adj_mat_seer import AdjMatSeer, GraphConv
 
-
 # --- GraphConv ---
 
 

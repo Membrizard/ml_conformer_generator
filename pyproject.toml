@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mlconfgen"
-description = "Shape-constrained molecule generation via Equivariant Diffusion and GCN"
+description = "Spatially-aware molecule generation via Equivariant Diffusion and GCN"
 readme = "README.md"
 dynamic = ["version"]
 authors = [

@@ -1,12 +1,6 @@
-from src.mlconfgen.utils.config import (
-    ATOM_DECODER,
-    CONTEXT_NORMS,
-    DIMENSION,
-    MAX_N_NODES,
-    MIN_N_NODES,
-    NUM_BOND_TYPES,
-    PERMITTED_ELEMENTS,
-)
+from src.mlconfgen.utils.config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION,
+                                        MAX_N_NODES, MIN_N_NODES,
+                                        NUM_BOND_TYPES, PERMITTED_ELEMENTS)
 
 
 def test_dimension_value():
