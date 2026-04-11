@@ -264,7 +264,6 @@ from mlconfgen.rl_fine_tuning.reinvent_score_wrapper import ReinventScoreWrapper
 model = MLConformerGenerator(
                              edm_weights="./edm_moi_chembl_15_39.pt",
                              adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
-                             finetune_checjpoint = "./finetune_checkpoint.pt",
                              diffusion_steps=10,
                             )
 
