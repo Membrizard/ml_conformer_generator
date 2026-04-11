@@ -386,9 +386,9 @@ def bond_assignment_log_prob(
     Log-probability of a fixed sampled lower-triangular bond assignment.
     :param adj_mat: [N, N, T] logits
     :param sampled_bonds: [E]
-    :param n_atoms:
-    :param temperature:
-    :returns:
+    :param n_atoms: number of atoms
+    :param temperature: controls sample variability
+    :returns: log probabilities
     """
     edge_i, edge_j = torch.tril_indices(
         n_atoms, n_atoms, offset=-1, device=adj_mat.device
@@ -407,7 +407,7 @@ def redefine_bonds_sampled(
     Sample one bond assignment from adjacency logits.
     :param mol: RDkit Mol Object to write bonds to
     :param adj_mat: Adjacency matrix tensor with initial logits
-    :param temperature:
+    :param temperature: controls sample variability
     :returns:
         new_mol: RDKit mol or None
         log_prob: scalar tensor
