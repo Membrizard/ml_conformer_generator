@@ -31,7 +31,7 @@ class RLFineTuner:
     def __init__(
         self,
         pretrained_adj_mat_seer: AdjMatSeer,
-        edm_sampler_fn: Callable[[int], list[Chem.Mol]],
+        edm_sampler_fn: Callable[[int], tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
         score_fn: Callable[[list[Chem.Mol | None]], list[float]],
         lr: float = 1e-5,
         lambda_adapter: float = 0.5,
@@ -321,7 +321,7 @@ class RLFineTuner:
 
     def execute(
         self,
-        edm_sampler_fn: Callable[[int], list[Chem.Mol]],
+        edm_sampler_fn: Callable[[int], tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
         n_epochs: int,
         edm_batch_size: int = 32,
         eval_batch_size: int = 32,
