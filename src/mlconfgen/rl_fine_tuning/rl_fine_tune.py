@@ -321,7 +321,6 @@ class RLFineTuner:
 
     def execute(
         self,
-        edm_sampler_fn: Callable[[int], tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]],
         n_epochs: int,
         edm_batch_size: int = 32,
         eval_batch_size: int = 32,
@@ -335,7 +334,7 @@ class RLFineTuner:
         latest_checkpoint_path = f"{save_dir}/latest_checkpoint.pt"
 
         for epoch in range(1, n_epochs + 1):
-            x, h, node_mask, edge_mask = edm_sampler_fn(edm_batch_size)
+            x, h, node_mask, edge_mask = self.edm_sampler_fn(edm_batch_size)
             train_stats = self.train_step(x, h, node_mask, edge_mask)
 
             msg = (

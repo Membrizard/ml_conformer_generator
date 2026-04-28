@@ -520,7 +520,6 @@ class MLConformerGenerator(torch.nn.Module):
         )
 
         trainer.execute(
-            edm_sampler_fn=edm_sampler_fn,
             n_epochs=n_epochs,
             edm_batch_size=train_batch_size,
             eval_batch_size=eval_batch_size,
