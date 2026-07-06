@@ -10,7 +10,11 @@ from mlconfgen import MLConformerGenerator, evaluate_samples
 from rdkit import Chem
 from rdkit.Chem import Draw
 
-CMAP = matplotlib.cm.get_cmap("viridis")
+# Support Different Matplotlib interfaces
+try:
+    CMAP = matplotlib.cm.get_cmap("viridis")
+except:
+    CMAP = matplotlib.colormaps["viridis"]
 
 RESULT_STORAGE = "./tmp"
 RESULTS_FILEPATH = f"{RESULT_STORAGE}/generation_results.sdf"
@@ -156,7 +160,6 @@ def draw_compound_image(compound: Chem.Mol) -> str:
     dopts = d2d.drawOptions()
     dopts.setAtomPalette(SVG_PALETTE)
     dopts.bondLineWidth = 1
-    dopts.bondColor = (0, 0, 0)
     dopts.clearBackground = False
     # Generate and save an image
 
