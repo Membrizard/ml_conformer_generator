@@ -384,6 +384,9 @@ To bypass generation tests
 ![streamlit_app](https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/app_ui/streamlit_app.png)
 
 ### Running
+> [!NOTE]
+> Python 3.12 or later is required to run the Streamlit app.
+
 - Move the trained PyTorch weights into `./streamlit_app`
 
 `./streamlit_app/edm_moi_chembl_15_39.pt`
