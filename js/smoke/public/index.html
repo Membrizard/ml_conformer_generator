@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>mlconfgen smoke</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="https://unpkg.com/@rdkit/rdkit/dist/RDKit_minimal.js"></script>
+    <script src="https://unpkg.com/3dmol@2.4.2/build/3Dmol-min.js"></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="brand">mlconfgen</p>
+        <h1>Generation smoke check</h1>
+        <p class="lede">
+          Runs the Node ONNX package locally. Structures are drawn with RDKit.js
+          (2D) and 3Dmol.js (3D).
+        </p>
+        <p id="status" class="status">Checking models…</p>
+      </header>
+
+      <form id="form">
+        <fieldset>
+          <legend>Context (MOI)</legend>
+          <div class="row triple">
+            <label>
+              I₁
+              <input name="c0" type="number" step="any" value="89.8693" required />
+            </label>
+            <label>
+              I₂
+              <input name="c1" type="number" step="any" value="210.783" required />
+            </label>
+            <label>
+              I₃
+              <input name="c2" type="number" step="any" value="217.7825" required />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Sampling</legend>
+          <div class="row">
+            <label>
+              Atoms
+              <input name="nAtoms" type="number" min="15" max="39" value="20" required />
+            </label>
+            <label>
+              Samples
+              <input name="nSamples" type="number" min="1" max="8" value="2" required />
+            </label>
+            <label>
+              Variance
+              <input name="variance" type="number" min="0" max="10" value="0" required />
+            </label>
+            <label>
+              Diffusion steps
+              <input name="diffusionSteps" type="number" min="10" max="100" value="20" required />
+            </label>
+          </div>
+          <div class="row checks">
+            <label class="check">
+              <input name="keepLargestFragment" type="checkbox" checked />
+              Keep largest fragment
+            </label>
+            <label class="check">
+              <input name="filterInvalid" type="checkbox" checked />
+              Filter invalid (RDKit sanitize)
+            </label>
+          </div>
+        </fieldset>
+
+        <button type="submit" id="run">Generate</button>
+      </form>
+
+      <section id="results" hidden>
+        <div class="results-head">
+          <h2>Results</h2>
+          <p id="meta"></p>
+        </div>
+        <div id="cards"></div>
+      </section>
+    </main>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

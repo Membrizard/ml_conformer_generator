@@ -16,3 +16,5 @@ memory_profile.csv
 /rl_checkpoints
 /onnx_export_reports
 /test_rl_fine_tuning
+/js/node_modules
+settings.json

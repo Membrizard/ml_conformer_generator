@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Iterator
 
 import torch
 import torch.nn.functional as F
@@ -675,7 +675,7 @@ class EquivariantDiffusion(torch.nn.Module):
         edge_mask: torch.Tensor,
         context: torch.Tensor,
         resample_steps: int = 0,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> Iterator[tuple[torch.Tensor, torch.Tensor]]:
         """
         Iterator
         Draw samples from the generative model, while yielding all intermediate states.
