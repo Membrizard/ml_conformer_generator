@@ -14,8 +14,10 @@
     "smoke": "node smoke/server.js",
     "smoke:no-rdkit": "NO_RDKIT=1 node smoke/server.js",
     "test": "node --test test/unit/*.test.js",
+    "test:mock": "node --test test/conformer_generator_mock.test.js",
     "test:slow": "node --test test/generation_onnx.test.js",
-    "test:all": "node --test test/unit/*.test.js test/generation_onnx.test.js",
+    "test:golden": "node --test test/generation_golden.test.js",
+    "test:all": "node --test test/unit/*.test.js test/conformer_generator_mock.test.js test/generation_onnx.test.js test/generation_golden.test.js",
     "prepublishOnly": "npm test"
   },
   "engines": {
