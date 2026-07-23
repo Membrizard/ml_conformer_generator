@@ -14,6 +14,7 @@ import {
   samplesToMolecules,
   standardizeMol,
 } from "./mol.js";
+import { clearRdkitLoader, registerDefaultRdkit, setRdkitLoader } from "./rdkit.js";
 
 /**
  * ONNX Runtime conformer generator.
@@ -58,6 +59,7 @@ export class MLConformerGenerator {
   /**
    * @param {object} [options]
    * @param {object} options.ort ONNX Runtime namespace (required, e.g. onnxruntime-node)
+   * @param {() => Promise<any>} [options.rdkitLoader] custom RDKit loader; defaults to the bundled @rdkit/rdkit
    * @param {string|Uint8Array} [options.egnnOnnx]
    * @param {string|Uint8Array} [options.adjMatSeerOnnx]
    * @param {string|Uint8Array|null} [options.finetuneCheckpointOnnx]
@@ -65,6 +67,7 @@ export class MLConformerGenerator {
    */
   static async create({
     ort,
+    rdkitLoader,
     egnnOnnx = "./egnn_chembl_15_39.onnx",
     adjMatSeerOnnx = "./adj_mat_seer_chembl_15_39.onnx",
     finetuneCheckpointOnnx = null,
@@ -79,6 +82,16 @@ export class MLConformerGenerator {
       throw new TypeError(
         "Invalid `ort` module — expected onnxruntime-node (or compatible) with InferenceSession.",
       );
+    }
+
+    if (rdkitLoader) {
+      setRdkitLoader(rdkitLoader);
+    } else {
+      // Force the bundled default even if a prior generator set a custom
+      // loader — the RDKit loader is module-global and registerDefaultRdkit
+      // alone no-ops when any loader is already set.
+      clearRdkitLoader();
+      registerDefaultRdkit();
     }
 
     const loads = [

@@ -66,7 +66,7 @@ const mols = await gen.generateConformers({
 });
 ```
 
-To skip RDKit sanitize / SMILES reorder, call `clearRdkitLoader()` before generating.
+RDKit (bundled `@rdkit/rdkit`) is used automatically for validity filtering and SMILES canonicalisation. To supply your own build (e.g. a browser WASM RDKit), pass a `rdkitLoader` function to `createGenerator`.
 
 ## Tests
 

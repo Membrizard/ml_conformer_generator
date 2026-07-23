@@ -1,8 +1,4 @@
 import { MLConformerGenerator } from "./conformerGenerator.js";
-import { registerDefaultRdkit } from "./rdkit.js";
-
-// Wire package dependencies on import.
-registerDefaultRdkit();
 
 /**
  * Create a conformer generator.
@@ -28,13 +24,7 @@ export {
   standardizeMol,
 } from "./mol.js";
 export { seed, NumpyRandomState } from "./numpyRandom.js";
-export {
-  setRdkitLoader,
-  clearRdkitLoader,
-  hasRdkitLoader,
-  getRdkit,
-  registerDefaultRdkit,
-} from "./rdkit.js";
+
 export {
   ATOM_DECODER,
   CONTEXT_NORMS,

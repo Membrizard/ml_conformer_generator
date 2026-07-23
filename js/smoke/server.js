@@ -2,11 +2,11 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createGenerator } from "../src/index.js";
 import {
-  createGenerator,
   clearRdkitLoader,
   hasRdkitLoader,
-} from "../src/index.js";
+} from "../src/rdkit.js";
 import * as ort from "onnxruntime-node";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
