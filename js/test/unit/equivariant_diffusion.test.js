@@ -100,3 +100,38 @@ describe("EquivariantDiffusion: full reverse process (sample)", () => {
     assert.deepEqual([...h.data], [0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
   });
 });
+
+describe("EquivariantDiffusion: animate (trajectory)", () => {
+  const nodeMask = { data: Float64Array.from([1, 1]), shape: [1, 2] };
+  const edgeMask = { data: Float64Array.from([0, 1, 1, 0]), shape: [4, 1] };
+  const ctx = { data: Float64Array.from([0.5, 0.5, 0.5]), shape: [1, 3] };
+
+  it("yields one decoded frame per denoising step", async () => {
+    const ed = makeEd();
+    seed(7);
+    const frames = [];
+    for await (const f of ed.animate(nodeMask, edgeMask, ctx, 0)) frames.push(f);
+
+    assert.equal(frames.length, ed.T);
+    assert.deepEqual(frames.map((f) => f.step), [1, 2, 3]);
+    assert.deepEqual(frames.map((f) => f.total), [3, 3, 3]);
+    for (const f of frames) {
+      assert.deepEqual(f.x.shape, [1, 2, 3]);
+      assert.ok([...f.x.data].every(Number.isFinite));
+    }
+  });
+
+  it("is seed-deterministic end to end", async () => {
+    const runOnce = async () => {
+      const ed = makeEd();
+      seed(11);
+      const frames = [];
+      for await (const f of ed.animate(nodeMask, edgeMask, ctx, 0)) frames.push(f);
+      return frames.at(-1);
+    };
+    const a = await runOnce();
+    const b = await runOnce();
+    close([...a.x.data], [...b.x.data]);
+    assert.deepEqual([...a.h.data], [...b.h.data]);
+  });
+});

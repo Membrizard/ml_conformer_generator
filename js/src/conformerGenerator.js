@@ -285,6 +285,58 @@ export class MLConformerGenerator {
     }
     return valid;
   }
+
+  /**
+   * Streaming variant of `generateConformers`: yields one frame per denoising
+   * step, each frame being the batch decoded to molecules at that step. Bond
+   * prediction is opt-in (`predictBonds: true`) because running AdjMatSeer on
+   * every step is expensive; by default a frame carries the moving atom cloud
+   * (no bonds). The optional EDM (RL fine-tune) adapter is not applied per frame.
+   *
+   * @returns {AsyncGenerator<{ step: number, total: number, molecules: object[] }>}
+   */
+  async *animateConformers({
+    referenceConformer = null,
+    referenceContext = null,
+    nAtoms = null,
+    nSamples = 1,
+    variance = 2,
+    resampleSteps = 0,
+    predictBonds = false,
+  } = {}) {
+    const prepared = this.prepareInputs({
+      referenceConformer,
+      referenceContext,
+      nAtoms,
+    });
+
+    const minNNodes = Math.max(prepared.nAtoms - variance, this.minNNodes);
+    const maxNNodes = Math.min(prepared.nAtoms + variance, this.maxNNodes);
+    if (minNNodes > maxNNodes) {
+      throw new RangeError(
+        `Invalid node range [${minNNodes}, ${maxNNodes}] after clamping.`,
+      );
+    }
+
+    const { nodeMask, edgeMask, batchContext } = prepareEdmInput({
+      nSamples,
+      referenceContext: prepared.referenceContext,
+      contextNorms: this.contextNorms,
+      minNNodes,
+      maxNNodes,
+    });
+
+    for await (const frame of this.generativeModel.animate(
+      nodeMask,
+      edgeMask,
+      batchContext,
+      resampleSteps,
+    )) {
+      let mols = samplesToMolecules(frame.x, frame.h, nodeMask, this.atomDecoder);
+      if (predictBonds) mols = await this.predictBonds(mols);
+      yield { step: frame.step, total: frame.total, molecules: mols };
+    }
+  }
 }
 
 function flattenPositions(ref) {

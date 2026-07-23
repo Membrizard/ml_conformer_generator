@@ -113,4 +113,32 @@ describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
     const b = (await gen.generateConformers(opts)).map((m) => m.toMolBlock());
     assert.deepEqual(a, b);
   });
+
+  it("animateConformers streams one frame per diffusion step", async () => {
+    const gen = await createGenerator({
+      ort: mockOrt,
+      egnnOnnx: "egnn.onnx",
+      adjMatSeerOnnx: "adj.onnx",
+      diffusionSteps: 5,
+    });
+
+    seed(3);
+    const frames = [];
+    for await (const f of gen.animateConformers({
+      referenceContext: [89.8693, 210.783, 217.7825],
+      nAtoms: 20,
+      nSamples: 2,
+      variance: 0,
+    })) {
+      frames.push(f);
+    }
+
+    assert.equal(frames.length, 5);
+    assert.deepEqual(frames.map((f) => f.step), [1, 2, 3, 4, 5]);
+    for (const f of frames) {
+      assert.equal(f.total, 5);
+      assert.equal(f.molecules.length, 2);
+      for (const m of f.molecules) assert.ok(m.nAtoms >= 1);
+    }
+  });
 });
