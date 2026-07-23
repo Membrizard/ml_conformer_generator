@@ -14,7 +14,7 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { MLConformerGenerator } from "../src/conformerGenerator.js";
+import { createGenerator } from "../src/index.js";
 import { DIMENSION } from "../src/constants.js";
 import { seed } from "../src/numpyRandom.js";
 
@@ -67,7 +67,7 @@ const mockOrt = {
 
 describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
   it("generateConformers returns nSamples molecules with valid MOL blocks", async () => {
-    const gen = await MLConformerGenerator.create({
+    const gen = await createGenerator({
       ort: mockOrt,
       egnnOnnx: "egnn.onnx",
       adjMatSeerOnnx: "adj.onnx",
@@ -94,7 +94,7 @@ describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
   });
 
   it("is seed-deterministic across two runs (same mock)", async () => {
-    const gen = await MLConformerGenerator.create({
+    const gen = await createGenerator({
       ort: mockOrt,
       egnnOnnx: "egnn.onnx",
       adjMatSeerOnnx: "adj.onnx",

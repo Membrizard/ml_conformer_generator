@@ -1,4 +1,3 @@
-import * as defaultOrt from "onnxruntime-node";
 import {
   ATOM_DECODER,
   CONTEXT_NORMS,
@@ -22,15 +21,15 @@ import {
  * Mirrors `MLConformerGeneratorONNX` for the main generation path:
  * context → EDM samples → AdjMatSeer bonds → standardize / validity filter.
  *
- * Defaults to `onnxruntime-node` (package dependency). Pass another `ort`
- * (e.g. `onnxruntime-web`) to override.
+ * The ONNX Runtime is supplied by the caller as `ort` — pass `onnxruntime-node`
+ * for Node, or an `onnxruntime-web` build for the browser.
  *
  * MMFF geometry optimisation from the Python API is not available in RDKit.js;
  * validity uses RDKit sanitize when an RDKit loader is configured.
  */
 export class MLConformerGenerator {
   constructor({
-    ort = defaultOrt,
+    ort,
     generativeModel,
     adjMatSeer,
     edmAdapter = null,
@@ -58,14 +57,14 @@ export class MLConformerGenerator {
 
   /**
    * @param {object} [options]
-   * @param {object} [options.ort] ONNX Runtime namespace (default: onnxruntime-node)
+   * @param {object} options.ort ONNX Runtime namespace (required, e.g. onnxruntime-node)
    * @param {string|Uint8Array} [options.egnnOnnx]
    * @param {string|Uint8Array} [options.adjMatSeerOnnx]
    * @param {string|Uint8Array|null} [options.finetuneCheckpointOnnx]
    * @param {number} [options.diffusionSteps]
    */
   static async create({
-    ort = defaultOrt,
+    ort,
     egnnOnnx = "./egnn_chembl_15_39.onnx",
     adjMatSeerOnnx = "./adj_mat_seer_chembl_15_39.onnx",
     finetuneCheckpointOnnx = null,

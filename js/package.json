@@ -5,8 +5,7 @@
   "type": "module",
   "main": "./src/index.js",
   "exports": {
-    ".": "./src/index.js",
-    "./node": "./src/node.js"
+    ".": "./src/index.js"
   },
   "scripts": {
     "start": "node examples/generate.js",
@@ -24,8 +23,15 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@rdkit/rdkit": "^2025.3.4-1.0.0",
+    "@rdkit/rdkit": "^2025.3.4-1.0.0"
+  },
+  "peerDependencies": {
     "onnxruntime-node": "^1.27.0"
+  },
+  "peerDependenciesMeta": {
+    "onnxruntime-node": {
+      "optional": true
+    }
   },
   "files": [
     "src",

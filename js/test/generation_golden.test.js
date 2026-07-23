@@ -18,8 +18,9 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { before, describe, it } from "node:test";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { MLConformerGenerator, seed } from "../src/index.js";
+import { createGenerator, seed } from "../src/index.js";
 import { resolveOnnxPaths } from "./helpers.js";
+import * as ort from "onnxruntime-node";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GOLDEN_PATH = join(__dirname, "__goldens__", "generation_seed42.json");
@@ -39,7 +40,8 @@ describe("E2E generation golden (seed=42)", { skip: skipReason }, () => {
   let generator;
 
   before(async () => {
-    generator = await MLConformerGenerator.create({
+    generator = await createGenerator({
+      ort,
       egnnOnnx: onnx.egnn,
       adjMatSeerOnnx: onnx.adj,
       diffusionSteps: DIFFUSION_STEPS,

@@ -1,16 +1,25 @@
-import * as ort from "onnxruntime-node";
 import { MLConformerGenerator } from "./conformerGenerator.js";
 import { registerDefaultRdkit } from "./rdkit.js";
 
 // Wire package dependencies on import.
 registerDefaultRdkit();
 
-/** @param {object} [options] same as `MLConformerGenerator.create` (`ort` optional) */
-export async function create(options = {}) {
-  return MLConformerGenerator.create({ ort, ...options });
+/**
+ * Create a conformer generator.
+ *
+ * @param {object} options  Generation options.
+ * @param {object} options.ort  ONNX Runtime namespace (required) — e.g.
+ *   `import * as ort from "onnxruntime-node"`, or an `onnxruntime-web` build.
+ * @param {string|Uint8Array} [options.egnnOnnx]  EGNN model path or bytes.
+ * @param {string|Uint8Array} [options.adjMatSeerOnnx]  AdjMatSeer model path or bytes.
+ * @param {string|Uint8Array|null} [options.finetuneCheckpointOnnx]  Optional EDM adapter.
+ * @param {number} [options.diffusionSteps]  Reverse-process steps.
+ * @returns {Promise<object>}  A ready generator exposing `generateConformers(...)`.
+ */
+export async function createGenerator(options = {}) {
+  return MLConformerGenerator.create(options);
 }
 
-export { ort, MLConformerGenerator };
 export { EquivariantDiffusion } from "./equivariantDiffusion.js";
 export {
   Molecule,
