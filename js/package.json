@@ -1,6 +1,6 @@
 {
   "name": "mlconfgen",
-  "version": "0.1.0a",
+  "version": "0.1.0",
   "description": "Spatially-aware molecule generation via equivariant diffusion (ONNX Runtime)",
   "type": "module",
   "main": "./src/index.js",
@@ -50,7 +50,7 @@
   "contributors": [
     "Fedor Bakharev <fbakharev@gmail.com>",
     "Azamat Gafurov <azamat.gafurov@gmail.com>",
-    "Azat Davlitashin <>"
+    "Azat Davliatshin <ardavlyatshin@gmail.com>"
   ],
   "repository": {
     "type": "git",

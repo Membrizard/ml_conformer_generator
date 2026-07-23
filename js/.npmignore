@@ -1,9 +1,0 @@
-# Dev / local only — never ship weights or smoke UI
-*.onnx
-node_modules/
-smoke/
-test/
-.DS_Store
-*.log
-.env*
-.npmrc
