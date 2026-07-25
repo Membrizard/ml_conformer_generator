@@ -49,7 +49,7 @@ async function main() {
 
   const frames = [];
   let last = null;
-  for await (const { step, total, molecules } of gen.animateConformers({
+  for await (const { step, total, molecules } of gen.animateGeneration({
     referenceContext: [89.8693, 210.783, 217.7825], // MOI eigenvalues
     nAtoms: 20,
     nSamples: 1,

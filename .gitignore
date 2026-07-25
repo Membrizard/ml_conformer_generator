@@ -18,3 +18,5 @@ memory_profile.csv
 /test_rl_fine_tuning
 /js/node_modules
 settings.json
+/js/**/*.xyz
+

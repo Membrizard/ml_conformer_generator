@@ -47,10 +47,20 @@ function adjSession() {
     outputNames: ["out"],
     async run(feeds) {
       const B = feeds.elements.dims[0];
-      // (B, D, D, 5) all-zero → argmax channel 0 ("no bond"); exercises the
-      // decode/fallback path deterministically.
+      // (B, D, D, 5): prefer single-bond (channel 1) on the lower triangle so
+      // redefineBonds produces edges (needed to assert final-frame bonding).
+      const data = new Float32Array(B * DIMENSION * DIMENSION * 5);
+      for (let b = 0; b < B; b += 1) {
+        for (let i = 0; i < DIMENSION; i += 1) {
+          for (let j = 0; j < i; j += 1) {
+            const offset = ((b * DIMENSION + i) * DIMENSION + j) * 5;
+            data[offset] = 0; // no-bond
+            data[offset + 1] = 1; // single bond
+          }
+        }
+      }
       return {
-        out: { data: new Float32Array(B * DIMENSION * DIMENSION * 5), dims: [B, DIMENSION, DIMENSION, 5] },
+        out: { data, dims: [B, DIMENSION, DIMENSION, 5] },
       };
     },
   };
@@ -114,7 +124,7 @@ describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
     assert.deepEqual(a, b);
   });
 
-  it("animateConformers streams one frame per diffusion step", async () => {
+  it("animateGeneration streams one frame per diffusion step", async () => {
     const gen = await createGenerator({
       ort: mockOrt,
       egnnOnnx: "egnn.onnx",
@@ -124,7 +134,7 @@ describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
 
     seed(3);
     const frames = [];
-    for await (const f of gen.animateConformers({
+    for await (const f of gen.animateGeneration({
       referenceContext: [89.8693, 210.783, 217.7825],
       nAtoms: 20,
       nSamples: 2,
@@ -139,6 +149,13 @@ describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
       assert.equal(f.total, 5);
       assert.equal(f.molecules.length, 2);
       for (const m of f.molecules) assert.ok(m.nAtoms >= 1);
+    }
+    // Bonds only on the final frame (AdjMatSeer).
+    for (const f of frames.slice(0, -1)) {
+      for (const m of f.molecules) assert.equal(m.bonds.length, 0);
+    }
+    for (const m of frames[frames.length - 1].molecules) {
+      assert.ok(m.bonds.length > 0);
     }
   });
 });

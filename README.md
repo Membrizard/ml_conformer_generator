@@ -96,6 +96,42 @@ aligned_reference, std_samples = evaluate_samples(reference, samples)
 ```
 ---
 
+## 🟨 JavaScript API
+
+The ONNX weights can also be run from Node.js via the `mlconfgen` npm package
+(no PyTorch required). Full docs: [`./js/README.md`](./js/README.md).
+
+```bash
+npm install mlconfgen onnxruntime-node
+```
+
+```js
+import { createGenerator, seed } from "mlconfgen";
+import * as ort from "onnxruntime-node";
+
+seed(42);
+
+const gen = await createGenerator({
+  ort,
+  egnnOnnx: "./egnn_chembl_15_39.onnx",
+  adjMatSeerOnnx: "./adj_mat_seer_chembl_15_39.onnx",
+  diffusionSteps: 100,
+});
+
+const mols = await gen.generateConformers({
+  referenceContext: [89.87, 210.78, 217.78], // MOI eigenvalues
+  nAtoms: 20,
+  nSamples: 10,
+  variance: 2,
+});
+
+for (const mol of mols) {
+  console.log(mol.toMolBlock());
+}
+```
+
+---
+
 ## 🚀 Overview
 
 This solution employs:

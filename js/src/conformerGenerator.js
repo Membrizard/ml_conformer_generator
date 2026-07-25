@@ -288,21 +288,20 @@ export class MLConformerGenerator {
 
   /**
    * Streaming variant of `generateConformers`: yields one frame per denoising
-   * step, each frame being the batch decoded to molecules at that step. Bond
-   * prediction is opt-in (`predictBonds: true`) because running AdjMatSeer on
-   * every step is expensive; by default a frame carries the moving atom cloud
-   * (no bonds). The optional EDM (RL fine-tune) adapter is not applied per frame.
+   * step, each frame being the batch decoded to molecules at that step.
+   * Intermediate frames are atom clouds only (no AdjMatSeer); bonds are
+   * predicted on the final frame. The optional EDM (RL fine-tune) adapter is
+   * not applied per frame.
    *
    * @returns {AsyncGenerator<{ step: number, total: number, molecules: object[] }>}
    */
-  async *animateConformers({
+  async *animateGeneration({
     referenceConformer = null,
     referenceContext = null,
     nAtoms = null,
     nSamples = 1,
     variance = 2,
     resampleSteps = 0,
-    predictBonds = false,
   } = {}) {
     const prepared = this.prepareInputs({
       referenceConformer,
@@ -333,7 +332,11 @@ export class MLConformerGenerator {
       resampleSteps,
     )) {
       let mols = samplesToMolecules(frame.x, frame.h, nodeMask, this.atomDecoder);
-      if (predictBonds) mols = await this.predictBonds(mols);
+      // AdjMatSeer only on the last denoising step (expensive; earlier frames
+      // are for trajectory visualisation of the atom cloud).
+      if (frame.step === frame.total) {
+        mols = await this.predictBonds(mols);
+      }
       yield { step: frame.step, total: frame.total, molecules: mols };
     }
   }
