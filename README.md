@@ -98,7 +98,7 @@ aligned_reference, std_samples = evaluate_samples(reference, samples)
 
 ## 🟨 JavaScript API
 
-The ONNX weights can also be run from Node.js via the `mlconfgen` npm package
+The ONNX weights can also be run via the `mlconfgen` npm package
 (no PyTorch required). Full docs: [`./js/README.md`](./js/README.md).
 
 ```bash
