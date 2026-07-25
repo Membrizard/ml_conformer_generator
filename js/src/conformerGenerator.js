@@ -1,4 +1,3 @@
-import * as defaultOrt from "onnxruntime-node";
 import {
   ATOM_DECODER,
   CONTEXT_NORMS,
@@ -15,6 +14,7 @@ import {
   samplesToMolecules,
   standardizeMol,
 } from "./mol.js";
+import { clearRdkitLoader, registerDefaultRdkit, setRdkitLoader } from "./rdkit.js";
 
 /**
  * ONNX Runtime conformer generator.
@@ -22,15 +22,15 @@ import {
  * Mirrors `MLConformerGeneratorONNX` for the main generation path:
  * context → EDM samples → AdjMatSeer bonds → standardize / validity filter.
  *
- * Defaults to `onnxruntime-node` (package dependency). Pass another `ort`
- * (e.g. `onnxruntime-web`) to override.
+ * The ONNX Runtime is supplied by the caller as `ort` — pass `onnxruntime-node`
+ * for Node, or an `onnxruntime-web` build for the browser.
  *
  * MMFF geometry optimisation from the Python API is not available in RDKit.js;
  * validity uses RDKit sanitize when an RDKit loader is configured.
  */
 export class MLConformerGenerator {
   constructor({
-    ort = defaultOrt,
+    ort,
     generativeModel,
     adjMatSeer,
     edmAdapter = null,
@@ -58,14 +58,16 @@ export class MLConformerGenerator {
 
   /**
    * @param {object} [options]
-   * @param {object} [options.ort] ONNX Runtime namespace (default: onnxruntime-node)
+   * @param {object} options.ort ONNX Runtime namespace (required, e.g. onnxruntime-node)
+   * @param {() => Promise<any>} [options.rdkitLoader] custom RDKit loader; defaults to the bundled @rdkit/rdkit
    * @param {string|Uint8Array} [options.egnnOnnx]
    * @param {string|Uint8Array} [options.adjMatSeerOnnx]
    * @param {string|Uint8Array|null} [options.finetuneCheckpointOnnx]
    * @param {number} [options.diffusionSteps]
    */
   static async create({
-    ort = defaultOrt,
+    ort,
+    rdkitLoader,
     egnnOnnx = "./egnn_chembl_15_39.onnx",
     adjMatSeerOnnx = "./adj_mat_seer_chembl_15_39.onnx",
     finetuneCheckpointOnnx = null,
@@ -80,6 +82,16 @@ export class MLConformerGenerator {
       throw new TypeError(
         "Invalid `ort` module — expected onnxruntime-node (or compatible) with InferenceSession.",
       );
+    }
+
+    if (rdkitLoader) {
+      setRdkitLoader(rdkitLoader);
+    } else {
+      // Force the bundled default even if a prior generator set a custom
+      // loader — the RDKit loader is module-global and registerDefaultRdkit
+      // alone no-ops when any loader is already set.
+      clearRdkitLoader();
+      registerDefaultRdkit();
     }
 
     const loads = [
@@ -272,6 +284,58 @@ export class MLConformerGenerator {
       if (std) valid.push(std);
     }
     return valid;
+  }
+
+  /**
+   * Streaming variant of `generateConformers`: yields one frame per denoising
+   * step, each frame being the batch decoded to molecules at that step. Bond
+   * prediction is opt-in (`predictBonds: true`) because running AdjMatSeer on
+   * every step is expensive; by default a frame carries the moving atom cloud
+   * (no bonds). The optional EDM (RL fine-tune) adapter is not applied per frame.
+   *
+   * @returns {AsyncGenerator<{ step: number, total: number, molecules: object[] }>}
+   */
+  async *animateConformers({
+    referenceConformer = null,
+    referenceContext = null,
+    nAtoms = null,
+    nSamples = 1,
+    variance = 2,
+    resampleSteps = 0,
+    predictBonds = false,
+  } = {}) {
+    const prepared = this.prepareInputs({
+      referenceConformer,
+      referenceContext,
+      nAtoms,
+    });
+
+    const minNNodes = Math.max(prepared.nAtoms - variance, this.minNNodes);
+    const maxNNodes = Math.min(prepared.nAtoms + variance, this.maxNNodes);
+    if (minNNodes > maxNNodes) {
+      throw new RangeError(
+        `Invalid node range [${minNNodes}, ${maxNNodes}] after clamping.`,
+      );
+    }
+
+    const { nodeMask, edgeMask, batchContext } = prepareEdmInput({
+      nSamples,
+      referenceContext: prepared.referenceContext,
+      contextNorms: this.contextNorms,
+      minNNodes,
+      maxNNodes,
+    });
+
+    for await (const frame of this.generativeModel.animate(
+      nodeMask,
+      edgeMask,
+      batchContext,
+      resampleSteps,
+    )) {
+      let mols = samplesToMolecules(frame.x, frame.h, nodeMask, this.atomDecoder);
+      if (predictBonds) mols = await this.predictBonds(mols);
+      yield { step: frame.step, total: frame.total, molecules: mols };
+    }
   }
 }
 

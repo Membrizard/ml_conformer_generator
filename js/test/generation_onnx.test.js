@@ -6,13 +6,14 @@
  */
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
-import { MLConformerGenerator, seed } from "../src/index.js";
+import { createGenerator, seed } from "../src/index.js";
 import { contextFromCoordinates } from "../src/mol.js";
 import {
   ceyyagMolPath,
   loadMolFile,
   resolveOnnxPaths,
 } from "./helpers.js";
+import * as ort from "onnxruntime-node";
 
 const DIFFUSION_STEPS = 50;
 const N_SAMPLES = 20;
@@ -31,7 +32,8 @@ describe("ONNX generation (slow)", { skip: skipReason }, () => {
   let refContext;
 
   before(async () => {
-    generator = await MLConformerGenerator.create({
+    generator = await createGenerator({
+      ort,
       egnnOnnx: onnx.egnn,
       adjMatSeerOnnx: onnx.adj,
       diffusionSteps: DIFFUSION_STEPS,

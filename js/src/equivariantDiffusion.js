@@ -224,20 +224,51 @@ export class EquivariantDiffusion {
     return { x: xOut, h };
   }
 
+  /**
+   * Advance the latent z through one reverse-process timestep (t -> s),
+   * including any resampling iterations. Shared by `sample` and `animate`
+   * so their numerics can never drift apart.
+   */
+  async advanceStep(step, z, nSamples, nodeMask, edgeMask, context, resampleSteps) {
+    const sArray = full([nSamples, 1], step / this.T);
+    const tArray = full([nSamples, 1], (step + 1) / this.T);
+
+    for (let r = 0; r < resampleSteps; r += 1) {
+      z = await this.samplePZsGivenZt(sArray, tArray, z, nodeMask, edgeMask, context);
+    }
+    return this.samplePZsGivenZt(sArray, tArray, z, nodeMask, edgeMask, context);
+  }
+
   async sample(nodeMask, edgeMask, context, resampleSteps = 0) {
     const [nSamples, nNodes] = nodeMask.shape;
     let z = this.sampleCombinedNoise(nSamples, nNodes, nodeMask);
 
     for (let step = this.T - 1; step >= 0; step -= 1) {
-      const sArray = full([nSamples, 1], step / this.T);
-      const tArray = full([nSamples, 1], (step + 1) / this.T);
-
-      for (let r = 0; r < resampleSteps; r += 1) {
-        z = await this.samplePZsGivenZt(sArray, tArray, z, nodeMask, edgeMask, context);
-      }
-      z = await this.samplePZsGivenZt(sArray, tArray, z, nodeMask, edgeMask, context);
+      z = await this.advanceStep(step, z, nSamples, nodeMask, edgeMask, context, resampleSteps);
     }
 
     return this.samplePXhGivenZ0(z, nodeMask, edgeMask, context);
+  }
+
+  /**
+   * Like `sample`, but yields the decoded `{ x, h }` at every denoising step
+   * so callers can render the diffusion trajectory. Mirrors Python `animate`.
+   *
+   * Each frame also carries `step` (1..T, steps completed) and `total` (= T).
+   * Note: decoding every step consumes RNG, so the final `animate` frame is a
+   * valid sample but is NOT bit-identical to a single `sample` call under the
+   * same seed (same behaviour as the Python reference).
+   *
+   * @returns {AsyncGenerator<{ x: object, h: object, step: number, total: number }>}
+   */
+  async *animate(nodeMask, edgeMask, context, resampleSteps = 0) {
+    const [nSamples, nNodes] = nodeMask.shape;
+    let z = this.sampleCombinedNoise(nSamples, nNodes, nodeMask);
+
+    for (let step = this.T - 1; step >= 0; step -= 1) {
+      z = await this.advanceStep(step, z, nSamples, nodeMask, edgeMask, context, resampleSteps);
+      const { x, h } = await this.samplePXhGivenZ0(z, nodeMask, edgeMask, context);
+      yield { x, h, step: this.T - step, total: this.T };
+    }
   }
 }

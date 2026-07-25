@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>mlconfgen — diffusion trajectory viewer</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    background: #0b0f17; color: #e6edf3;
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 28px 16px;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: .2px; }
+  h1 small { color: #8b98a9; font-weight: 400; }
+  #wrap { width: min(720px, 100%); }
+  #viewer {
+    position: relative; width: 100%; height: 460px;
+    border: 1px solid #223; border-radius: 12px; overflow: hidden; background: #05070c;
+  }
+  #drop {
+    position: absolute; inset: 0; z-index: 2;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    text-align: center; padding: 24px; color: #8b98a9; cursor: pointer;
+    background: #05070c; transition: background .15s, color .15s;
+  }
+  #drop.hover { background: #0d1524; color: #cdd7e2; }
+  #drop strong { color: #e6edf3; font-weight: 600; }
+  #drop code { color: #b9c4d0; background: #131a26; padding: 2px 6px; border-radius: 5px; }
+  #controls { display: flex; align-items: center; gap: 14px; margin-top: 14px; visibility: hidden; }
+  button {
+    background: #1f6feb; color: #fff; border: 0; border-radius: 8px;
+    padding: 9px 16px; font-size: 14px; font-weight: 600; cursor: pointer; min-width: 84px;
+  }
+  button:hover { background: #388bfd; }
+  input[type=range] { flex: 1; accent-color: #1f6feb; }
+  #label { font-variant-numeric: tabular-nums; color: #b9c4d0; min-width: 168px; text-align: right; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; color: #8b98a9; font-size: 13px; margin-top: 8px; visibility: hidden; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .note { color: #6e7d8d; font-size: 12.5px; max-width: 640px; text-align: center; }
+</style>
+</head>
+<body>
+  <h1>mlconfgen — diffusion trajectory viewer &nbsp;<small>animateConformers()</small></h1>
+  <div id="wrap">
+    <div id="viewer">
+      <label id="drop">
+        <strong>Drop a trajectory .xyz here</strong>
+        <span>or click to choose a file</span>
+        <span>generate one with <code>node examples/animate.js</code> → <code>trajectory.xyz</code></span>
+        <input id="file" type="file" accept=".xyz,text/plain" hidden />
+      </label>
+    </div>
+    <div id="controls">
+      <button id="play">Pause</button>
+      <input id="slider" type="range" min="0" value="0" step="1" />
+      <span id="label">step –/–</span>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <p class="note">
+    Each frame is the batch decoded at one denoising step. Watch the atom cloud condense from
+    noise into a molecule. Bonds are inferred by distance for display only — the pipeline predicts
+    real bonds via AdjMatSeer at the end.
+  </p>
+
+<script>
+const ELEMENT_COLORS = {
+  C: "#909090", N: "#3050f8", O: "#ff0d0d", F: "#90e050",
+  P: "#ff8000", S: "#ffff30", Cl: "#1ff01f", Br: "#a62929",
+};
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+}
+
+// Parse per-frame comment labels (line 2 of each frame) for the readout.
+function parseLabels(xyz) {
+  const lines = xyz.split("\n");
+  const labels = [];
+  let i = 0;
+  while (i < lines.length) {
+    const n = parseInt(lines[i], 10);
+    if (!Number.isFinite(n)) break;
+    labels.push((lines[i + 1] || "").trim());
+    i += n + 2;
+  }
+  return labels;
+}
+
+let viewerReady = null; // resolves to the 3Dmol viewer once the lib is loaded
+
+async function ensureViewer() {
+  if (viewerReady) return viewerReady;
+  viewerReady = (async () => {
+    try {
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.4.0/3Dmol-min.js");
+    } catch (_) {
+      await loadScript("https://3dmol.org/build/3Dmol-min.js");
+    }
+    return $3Dmol.createViewer(document.getElementById("viewer"), { backgroundColor: "#05070c" });
+  })();
+  return viewerReady;
+}
+
+let timer = null;
+
+async function showTrajectory(xyz) {
+  const labels = parseLabels(xyz);
+  if (labels.length === 0) {
+    alert("No frames found — expected a multi-frame XYZ file.");
+    return;
+  }
+  const viewer = await ensureViewer();
+  document.getElementById("drop").style.display = "none";
+
+  viewer.removeAllModels();
+  viewer.addModelsAsFrames(xyz, "xyz");
+  viewer.setStyle({}, {
+    sphere: { scale: 0.30, colorscheme: "Jmol" },
+    stick: { radius: 0.13, colorscheme: "Jmol" },
+  });
+  viewer.zoomTo();
+  viewer.render();
+
+  const nFrames = labels.length;
+  const slider = document.getElementById("slider");
+  const label = document.getElementById("label");
+  const playBtn = document.getElementById("play");
+  const controls = document.getElementById("controls");
+  const legend = document.getElementById("legend");
+  controls.style.visibility = "visible";
+  legend.style.visibility = "visible";
+  slider.max = String(nFrames - 1);
+
+  let frame = 0, playing = true;
+  function show(i) {
+    frame = ((i % nFrames) + nFrames) % nFrames;
+    viewer.setFrame(frame);
+    viewer.render();
+    slider.value = String(frame);
+    label.textContent = labels[frame] || `frame ${frame + 1}/${nFrames}`;
+  }
+  show(0);
+
+  if (timer) clearInterval(timer);
+  timer = setInterval(() => { if (playing) show(frame + 1); }, 600);
+  playBtn.textContent = "Pause";
+  playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? "Pause" : "Play"; };
+  slider.oninput = () => { playing = false; playBtn.textContent = "Play"; show(Number(slider.value)); };
+
+  legend.innerHTML = "";
+  for (const [el, col] of Object.entries(ELEMENT_COLORS)) {
+    const s = document.createElement("span");
+    s.innerHTML = `<i class="dot" style="background:${col}"></i>${el}`;
+    legend.appendChild(s);
+  }
+}
+
+// --- File input: click-to-pick + drag-and-drop ---
+const drop = document.getElementById("drop");
+const fileInput = document.getElementById("file");
+const readFile = (file) => file && file.text().then(showTrajectory);
+
+fileInput.addEventListener("change", (e) => readFile(e.target.files[0]));
+["dragenter", "dragover"].forEach((ev) =>
+  drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("hover"); }));
+["dragleave", "drop"].forEach((ev) =>
+  drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("hover"); }));
+drop.addEventListener("drop", (e) => readFile(e.dataTransfer.files[0]));
+</script>
+</body>
+</html>

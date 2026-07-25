@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import "../../src/index.js"; // registers default RDKit loader
+// Register RDKit directly (not via index.js) so the unit suite runs without
+// onnxruntime-node — index.js statically imports the native ORT addon.
+import { registerDefaultRdkit } from "../../src/rdkit.js";
 import {
   Molecule,
   contextFromCoordinates,
@@ -8,6 +10,8 @@ import {
   standardizeMol,
 } from "../../src/mol.js";
 import { ceyyagMolPath, loadMolFile } from "../helpers.js";
+
+registerDefaultRdkit();
 
 describe("Molecule validity / MOI context", () => {
   it("isValidMol accepts a simple ethane-like molecule", async () => {

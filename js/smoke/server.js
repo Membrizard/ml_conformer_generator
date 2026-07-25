@@ -2,11 +2,12 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createGenerator } from "../src/index.js";
 import {
-  MLConformerGenerator,
   clearRdkitLoader,
   hasRdkitLoader,
-} from "../src/index.js";
+} from "../src/rdkit.js";
+import * as ort from "onnxruntime-node";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -27,7 +28,8 @@ async function ensureGenerator({ diffusionSteps }) {
   const key = `${diffusionSteps}:${USE_RDKIT ? "rdkit" : "nordkit"}`;
   if (generator?.__smokeKey === key) return generator;
 
-  generator = await MLConformerGenerator.create({
+  generator = await createGenerator({
+    ort,
     egnnOnnx: EGNN,
     adjMatSeerOnnx: ADJ,
     diffusionSteps,

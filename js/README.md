@@ -1,12 +1,18 @@
 # ML Conformer Generator JS (JavaScript / ONNX Runtime)
 
-Node.js package for spatially-aware molecule generation. Ships with **onnxruntime-node** and **@rdkit/rdkit**
+JavaScript package for spatially-aware molecule generation via equivariant diffusion.
+Bundles **@rdkit/rdkit**; you bring your own ONNX Runtime.
 
 ## Install
 
 ```bash
-npm install mlconfgen
+npm install mlconfgen onnxruntime-node
 ```
+
+`onnxruntime-node` is an **optional peer dependency** — the package core is runtime-neutral
+and you pass the runtime in. Install `onnxruntime-node` for Node, or `onnxruntime-web`
+for the browser / a WebAssembly build, and pass whichever you installed as `ort` (see below).
+`@rdkit/rdkit` ships with the package, so there's nothing else to install.
 
 For local development from this repository:
 
@@ -23,11 +29,13 @@ Place the ONNX weights next to your app (or pass absolute paths). **Weights are 
 ## Quick start
 
 ```js
-import { MLConformerGenerator, seed } from "mlconfgen";
+import { createGenerator, seed } from "mlconfgen";
+import * as ort from "onnxruntime-node";
 
 seed(42);
 
-const gen = await MLConformerGenerator.create({
+const gen = await createGenerator({
+  ort,
   egnnOnnx: "./egnn_chembl_15_39.onnx",
   adjMatSeerOnnx: "./adj_mat_seer_chembl_15_39.onnx",
   diffusionSteps: 100,
@@ -45,7 +53,9 @@ for (const mol of mols) {
 }
 ```
 
-`create()` also works as `import { create } from "mlconfgen"`.
+`createGenerator(options)` takes the ONNX Runtime namespace as the `ort` option.
+To run in the browser (or any WebAssembly build), install `onnxruntime-web` and pass it
+instead: `import * as ort from "onnxruntime-web"`.
 
 You can pass coordinates and let the package compute the context:
 
@@ -56,7 +66,7 @@ const mols = await gen.generateConformers({
 });
 ```
 
-To use a different ONNX Runtime build, pass `ort` explicitly (e.g. `onnxruntime-web`). To skip RDKit sanitize / SMILES reorder, call `clearRdkitLoader()` before generating.
+RDKit (bundled `@rdkit/rdkit`) is used automatically for validity filtering and SMILES canonicalisation. To supply your own build (e.g. a browser WASM RDKit), pass a `rdkitLoader` function to `createGenerator`.
 
 ## Tests
 
@@ -82,9 +92,9 @@ Optional env vars: `PORT`, `EGNN_ONNX`, `ADJ_ONNX`.
 
 ## Notes / limitations
 
-- **Dependencies** — `onnxruntime-node` + `@rdkit/rdkit` (installed with the package). Node 18+.
+- **Runtime** — bring your own ONNX Runtime (`onnxruntime-node` or `onnxruntime-web`), passed to `createGenerator` as `ort`. `@rdkit/rdkit` is bundled. Node 18+.
 - **RDKit.js** — SMILES atom-order canonicalisation before AdjMatSeer, plus validity filtering via sanitize.
-- **Validity** — `generateConformers` defaults to `filterInvalid: true` 
-- **RNG / float64** —  Same `seed(n)` as `np.random.seed(n)`.
+- **Validity** — `generateConformers` defaults to `filterInvalid: true`.
+- **RNG / float64** — same `seed(n)` as `np.random.seed(n)`.
 - **Fine-tune adapter** — pass `finetuneCheckpointOnnx` for the optional EDM adapter.
 - Fixed-fragment inpainting / IFM merge from the Python API are not ported.
