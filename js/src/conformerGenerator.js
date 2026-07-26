@@ -288,11 +288,29 @@ export class MLConformerGenerator {
 
   /**
    * Streaming variant of `generateConformers`: yields one frame per denoising
-   * step, each frame being the batch decoded to molecules at that step.
-   * Intermediate frames are atom clouds only (no AdjMatSeer); bonds are
-   * predicted on the final frame. The optional EDM (RL fine-tune) adapter is
-   * not applied per frame.
+   * step, each frame being the batch decoded to molecules at that step. The
+   * optional EDM (RL fine-tune) adapter is not applied per frame.
    *
+   * Bond prediction is controlled by `predictBonds`:
+   *   - `"last"` (default) — AdjMatSeer on the final frame only. Intermediate
+   *     frames are atom clouds, which is what a trajectory view wants, and the
+   *     whole animation costs one extra inference.
+   *   - `"always"` — AdjMatSeer on every frame, so a viewer can show real
+   *     connectivity forming instead of guessing bonds by distance. Costs one
+   *     AdjMatSeer call per denoising step.
+   *   - `"never"` — atom clouds only, no bonds at any point.
+   *
+   * By default the final frame carries bonds but is NOT put through the
+   * `standardizeMol` / largest-fragment / validity pass that
+   * `generateConformers` applies, so it may be multi-fragment or fail RDKit
+   * sanitize. Pass `filterInvalid: true` to run that pass on the final frame
+   * and get a frame equivalent to a `generateConformers` result — note it can
+   * drop molecules, so the final frame may be shorter than the frames before
+   * it (possibly empty). Filtering is only ever applied to the final frame.
+   *
+   * @param {"last"|"never"|"always"} [predictBonds="last"]
+   * @param {boolean} [filterInvalid=false] standardize + validity-filter the final frame
+   * @param {boolean} [keepLargestFragment=true] only meaningful with `filterInvalid`
    * @returns {AsyncGenerator<{ step: number, total: number, molecules: object[] }>}
    */
   async *animateGeneration({
@@ -302,7 +320,21 @@ export class MLConformerGenerator {
     nSamples = 1,
     variance = 2,
     resampleSteps = 0,
+    predictBonds = "last",
+    filterInvalid = false,
+    keepLargestFragment = true,
   } = {}) {
+    if (!["last", "never", "always"].includes(predictBonds)) {
+      throw new TypeError(
+        `Invalid predictBonds "${predictBonds}" — expected "last", "never" or "always".`,
+      );
+    }
+    if (filterInvalid && predictBonds === "never") {
+      throw new TypeError(
+        'filterInvalid needs bonds on the final frame — use predictBonds "last" or "always".',
+      );
+    }
+
     const prepared = this.prepareInputs({
       referenceConformer,
       referenceContext,
@@ -331,12 +363,24 @@ export class MLConformerGenerator {
       batchContext,
       resampleSteps,
     )) {
+      const isFinal = frame.step === frame.total;
       let mols = samplesToMolecules(frame.x, frame.h, nodeMask, this.atomDecoder);
-      // AdjMatSeer only on the last denoising step (expensive; earlier frames
-      // are for trajectory visualisation of the atom cloud).
-      if (frame.step === frame.total) {
+
+      if (predictBonds === "always" || (predictBonds === "last" && isFinal)) {
         mols = await this.predictBonds(mols);
       }
+
+      // Final frame only: mirror the generateConformers post-processing so the
+      // last frame can be used as the result rather than just as a picture.
+      if (isFinal && filterInvalid) {
+        const valid = [];
+        for (const mol of mols) {
+          const std = await standardizeMol(mol, { keepLargestFragment });
+          if (std) valid.push(std);
+        }
+        mols = valid;
+      }
+
       yield { step: frame.step, total: frame.total, molecules: mols };
     }
   }
