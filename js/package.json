@@ -1,0 +1,73 @@
+{
+  "name": "mlconfgen",
+  "version": "0.1.0",
+  "description": "Spatially-aware molecule generation via equivariant diffusion (ONNX Runtime)",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node examples/generate.js",
+    "example": "node examples/generate.js",
+    "smoke": "node smoke/server.js",
+    "smoke:no-rdkit": "NO_RDKIT=1 node smoke/server.js",
+    "test": "node --test test/unit/*.test.js",
+    "test:mock": "node --test test/conformer_generator_mock.test.js",
+    "test:slow": "node --test test/generation_onnx.test.js",
+    "test:golden": "node --test test/generation_golden.test.js",
+    "test:all": "node --test test/unit/*.test.js test/conformer_generator_mock.test.js test/generation_onnx.test.js test/generation_golden.test.js",
+    "prepublishOnly": "npm test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@rdkit/rdkit": "^2025.3.4-1.0.0"
+  },
+  "peerDependencies": {
+    "onnxruntime-node": "^1.27.0"
+  },
+  "peerDependenciesMeta": {
+    "onnxruntime-node": {
+      "optional": true
+    }
+  },
+  "files": [
+    "src",
+    "examples",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "molecule",
+    "machine-learning",
+    "generative-chemistry",
+    "spatial-aware",
+    "conformer",
+    "diffusion",
+    "onnx",
+    "chemistry",
+    "rdkit",
+    "molecule-generation"
+  ],
+  "license": "Apache-2.0",
+  "author": "Denis Sapegin <dasapegin@gmail.com>",
+  "contributors": [
+    "Fedor Bakharev <fbakharev@gmail.com>",
+    "Azamat Gafurov <azamat.gafurov@gmail.com>",
+    "Azat Davliatshin <ardavlyatshin@gmail.com>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Membrizard/ml_conformer_generator.git",
+    "directory": "js"
+  },
+  "bugs": {
+    "url": "https://github.com/Membrizard/ml_conformer_generator/issues"
+  },
+  "homepage": "https://github.com/Membrizard/ml_conformer_generator/tree/main/js#readme",
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Tuple, Union, Iterator
 
 import numpy as np
 
@@ -673,7 +673,7 @@ class EquivariantDiffusionONNX:
         edge_mask: np.ndarray,
         context: np.ndarray,
         resample_steps: int = 0,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Iterator[tuple[np.ndarray, np.ndarray]]:
         """
         Iterator
         Draw samples from the generative model, while yielding all intermediate states.
