@@ -76,6 +76,31 @@ const mockOrt = {
 };
 
 describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
+  /** Generator wired to the mock ORT with a short 5-step trajectory. */
+  async function animGenerator() {
+    return createGenerator({
+      ort: mockOrt,
+      egnnOnnx: "egnn.onnx",
+      adjMatSeerOnnx: "adj.onnx",
+      diffusionSteps: 5,
+    });
+  }
+
+  /** Drain animateGeneration into an array, with a fixed reference context. */
+  async function collectFrames(gen, opts = {}) {
+    const frames = [];
+    for await (const f of gen.animateGeneration({
+      referenceContext: [89.8693, 210.783, 217.7825],
+      nAtoms: 20,
+      nSamples: 2,
+      variance: 0,
+      ...opts,
+    })) {
+      frames.push(f);
+    }
+    return frames;
+  }
+
   it("generateConformers returns nSamples molecules with valid MOL blocks", async () => {
     const gen = await createGenerator({
       ort: mockOrt,
@@ -150,12 +175,77 @@ describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
       assert.equal(f.molecules.length, 2);
       for (const m of f.molecules) assert.ok(m.nAtoms >= 1);
     }
-    // Bonds only on the final frame (AdjMatSeer).
+    // Bonds only on the final frame (AdjMatSeer), i.e. predictBonds: "last".
     for (const f of frames.slice(0, -1)) {
       for (const m of f.molecules) assert.equal(m.bonds.length, 0);
     }
     for (const m of frames[frames.length - 1].molecules) {
       assert.ok(m.bonds.length > 0);
+    }
+  });
+
+  it('animateGeneration predictBonds: "always" bonds every frame', async () => {
+    const gen = await animGenerator();
+    const frames = await collectFrames(gen, { predictBonds: "always" });
+
+    assert.equal(frames.length, 5);
+    for (const f of frames) {
+      for (const m of f.molecules) assert.ok(m.bonds.length > 0);
+    }
+  });
+
+  it('animateGeneration predictBonds: "never" bonds no frame', async () => {
+    const gen = await animGenerator();
+    const frames = await collectFrames(gen, { predictBonds: "never" });
+
+    assert.equal(frames.length, 5);
+    for (const f of frames) {
+      for (const m of f.molecules) assert.equal(m.bonds.length, 0);
+    }
+  });
+
+  it("animateGeneration rejects an unknown predictBonds mode", async () => {
+    const gen = await animGenerator();
+    await assert.rejects(
+      () => collectFrames(gen, { predictBonds: "sometimes" }),
+      /Invalid predictBonds/,
+    );
+  });
+
+  it('animateGeneration rejects filterInvalid with predictBonds: "never"', async () => {
+    const gen = await animGenerator();
+    await assert.rejects(
+      () => collectFrames(gen, { predictBonds: "never", filterInvalid: true }),
+      /filterInvalid needs bonds/,
+    );
+  });
+
+  it("animateGeneration filterInvalid standardizes only the final frame", async () => {
+    const gen = await animGenerator();
+
+    seed(3);
+    const unfiltered = await collectFrames(gen, {});
+    seed(3);
+    const filtered = await collectFrames(gen, { filterInvalid: true });
+
+    // Same trajectory length and identical intermediate frames — filtering is
+    // confined to the last frame and must not perturb the ones before it.
+    assert.equal(filtered.length, unfiltered.length);
+    for (let i = 0; i < filtered.length - 1; i += 1) {
+      assert.equal(filtered[i].molecules.length, 2);
+      assert.deepEqual(
+        filtered[i].molecules.map((m) => m.nAtoms),
+        unfiltered[i].molecules.map((m) => m.nAtoms),
+      );
+    }
+
+    // Final frame: a subset of the unfiltered batch, every survivor a single
+    // connected fragment (keepLargestFragment defaults to true).
+    const finalFiltered = filtered[filtered.length - 1].molecules;
+    assert.equal(unfiltered[unfiltered.length - 1].molecules.length, 2);
+    assert.ok(finalFiltered.length <= 2);
+    for (const m of finalFiltered) {
+      assert.equal(m.fragmentCount(), 1);
     }
   });
 });
