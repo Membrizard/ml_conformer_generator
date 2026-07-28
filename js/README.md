@@ -3,6 +3,8 @@
 JavaScript package for spatially-aware molecule generation via equivariant diffusion.
 Bundles **@rdkit/rdkit**; you bring your own ONNX Runtime.
 
+<img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/logo/mlconfgen_logo.png" width="120" style="display: block; margin: 0 10%;">
+
 ## Install
 
 ```bash
