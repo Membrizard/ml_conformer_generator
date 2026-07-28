@@ -6,7 +6,7 @@ import {
   NUM_BOND_TYPES,
 } from "./constants.js";
 import { numpyRandint } from "./numpyRandom.js";
-import { getRdkit, hasRdkitLoader } from "./rdkit.js";
+import { getRdkit, hasRdkitLoader, RdkitLoadError } from "./rdkit.js";
 import { zeros } from "./tensor.js";
 
 /** Lightweight molecule: atoms + coordinates + bonds. */
@@ -325,7 +325,8 @@ export async function canonicalise(mol) {
 
     if (!order) return connected;
     return permuteMolecule(connected, order);
-  } catch {
+  } catch (err) {
+    if (err instanceof RdkitLoadError) throw err;
     return connected;
   }
 }
@@ -474,7 +475,8 @@ export async function isValidMol(mol) {
     const ok = rdMol.is_valid();
     rdMol.delete();
     return ok ? 1 : 0;
-  } catch {
+  } catch (err) {
+    if (err instanceof RdkitLoadError) throw err;
     return 0;
   }
 }
@@ -520,7 +522,8 @@ export async function standardizeMol(
     }
     rdMol.delete();
     return out;
-  } catch {
+  } catch (err) {
+    if (err instanceof RdkitLoadError) throw err;
     return null;
   }
 }
