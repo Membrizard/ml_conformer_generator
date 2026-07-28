@@ -54,8 +54,40 @@ for (const mol of mols) {
 ```
 
 `createGenerator(options)` takes the ONNX Runtime namespace as the `ort` option.
+
+### Browser
+
 To run in the browser (or any WebAssembly build), install `onnxruntime-web` and pass it
-instead: `import * as ort from "onnxruntime-web"`.
+instead:
+
+```js
+import { createGenerator } from "mlconfgen";
+import * as ort from "onnxruntime-web";
+
+// Weights loaded from the user's own machine (e.g. an <input type="file">),
+// so they are never uploaded or re-hosted.
+const gen = await createGenerator({
+  ort,
+  egnnOnnx: new Uint8Array(await egnnFile.arrayBuffer()),
+  adjMatSeerOnnx: new Uint8Array(await adjFile.arrayBuffer()),
+});
+```
+
+RDKit is resolved automatically for the runtime it finds, so no extra wiring is needed
+under a bundler (Vite, webpack, …), from a `<script>` tag that defines a global
+`initRDKitModule`, or with no bundler at all. Pass `rdkitLoader` only to pin a specific
+RDKit build:
+
+```js
+const gen = await createGenerator({
+  ort,
+  rdkitLoader: () => initRDKitModule({ locateFile: () => "/wasm/RDKit_minimal.wasm" }),
+});
+```
+
+The weights are **not** published on npm and are licensed CC BY-NC-ND — download them
+from Hugging Face and keep them local to your machine or application. Point
+`egnnOnnx` / `adjMatSeerOnnx` at those local files, as in the example above.
 
 You can pass coordinates and let the package compute the context:
 
@@ -66,7 +98,13 @@ const mols = await gen.generateConformers({
 });
 ```
 
-RDKit (bundled `@rdkit/rdkit`) is used automatically for validity filtering and SMILES canonicalisation. To supply your own build (e.g. a browser WASM RDKit), pass a `rdkitLoader` function to `createGenerator`.
+RDKit (bundled `@rdkit/rdkit`) is used automatically for validity filtering and SMILES
+canonicalisation, in both Node and the browser. Pass a `rdkitLoader` function to
+`createGenerator` to supply your own build.
+
+If RDKit is configured but fails to initialise, generation throws an error named
+`RdkitLoadError` rather than quietly treating every molecule as invalid and
+returning an empty result set.
 
 ## Tests
 
@@ -92,7 +130,7 @@ Optional env vars: `PORT`, `EGNN_ONNX`, `ADJ_ONNX`.
 
 ## Notes / limitations
 
-- **Runtime** — bring your own ONNX Runtime (`onnxruntime-node` or `onnxruntime-web`), passed to `createGenerator` as `ort`. `@rdkit/rdkit` is bundled. Node 18+.
+- **Runtime** — bring your own ONNX Runtime (`onnxruntime-node` or `onnxruntime-web`), passed to `createGenerator` as `ort`. `@rdkit/rdkit` is bundled and loads in both Node and the browser. Node 18+.
 - **RDKit.js** — SMILES atom-order canonicalisation before AdjMatSeer, plus validity filtering via sanitize.
 - **Validity** — `generateConformers` defaults to `filterInvalid: true`.
 - **RNG / float64** — same `seed(n)` as `np.random.seed(n)`.
