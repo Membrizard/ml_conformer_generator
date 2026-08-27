@@ -362,26 +362,26 @@ class EquivariantDiffusion(torch.nn.Module):
         z = torch.cat([z_x, z_h], dim=2)
         return z
 
-    def forward(
+    def denoise(
         self,
+        z: torch.Tensor,
         node_mask: torch.Tensor,
         edge_mask: torch.Tensor,
         context: torch.Tensor,
         resample_steps: int = 0,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> torch.Tensor:
         """
-        Draw samples from the generative model.
-        Inference
+        Denoise a given Random Noise into a Molecule.
+        Inference.
 
+        :param z: Input random noise tensor (z_T)
         :param node_mask: node mask tensor
         :param edge_mask: edge mask tensor
         :param context: batched context for generation
         :param resample_steps: number of resampling steps for harmonisation
-        :return: generated samples in tensor representation
+        :return: denoised z_0 tensor
         """
         n_samples, n_nodes, _ = node_mask.size()
-
-        z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
 
         # Iteratively sample p(z_s | z_t) for t = 1, ..., T, with s = t - 1.
         for s in self.time_steps:
@@ -409,6 +409,68 @@ class EquivariantDiffusion(torch.nn.Module):
                 edge_mask,
                 context,
             )
+
+        return z
+
+    def teach(
+        self,
+        z: torch.Tensor,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+        context: torch.Tensor,
+        resample_steps: int = 0,
+    ) -> torch.Tensor:
+        """
+        Computes full latent z_0 output byt the EDM for teaching distilled models.
+        Inference
+
+        :param z: Input random noise tensor (z_T)
+        :param node_mask: node mask tensor
+        :param edge_mask: edge mask tensor
+        :param context: batched context for generation
+        :param resample_steps: number of resampling steps for harmonisation
+        :return: Final EDM Latent after all EDM steps and sampling.
+        """
+        n_samples, n_nodes, _ = node_mask.size()
+
+        z0 = self.denoise(z, node_mask, edge_mask, context, resample_steps)
+
+        # Final EDM step, deterministic (include phi, drop stochasticity for stable targets)
+        zeros = torch.zeros(z0.size(0), 1, device=z0.device)
+        gamma_0 = self.gamma(zeros)
+        eps = self.phi(z0, zeros, node_mask, edge_mask, context)
+        mu  = self.compute_x_pred(eps, z0, gamma_0)   # latent (B,N,3+F)
+        # Match how sample_p_xh_given_z0 picks features: types from z0, coords from final pred
+        x1 = torch.cat([
+            mu[:, :, :self.n_dims],
+            z0[:, :, self.n_dims:],   # keep same layout as z (incl. last channel if present)
+        ], dim=-1)
+        # COM-project coords
+        x1 = torch.cat([remove_mean_with_mask(x1[..., :3], node_mask), x1[..., 3:]], -1) * node_mask
+        return x1
+
+    def forward(
+        self,
+        node_mask: torch.Tensor,
+        edge_mask: torch.Tensor,
+        context: torch.Tensor,
+        resample_steps: int = 0,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Draw samples from the generative model.
+        Inference
+
+        :param node_mask: node mask tensor
+        :param edge_mask: edge mask tensor
+        :param context: batched context for generation
+        :param resample_steps: number of resampling steps for harmonisation
+        :return: generated samples in tensor representation
+        """
+        n_samples, n_nodes, _ = node_mask.size()
+
+        z = self.sample_combined_position_feature_noise(n_samples, n_nodes, node_mask)
+
+        z = self.denoise(z, node_mask, edge_mask, context, resample_steps)
 
         # Finally sample p(x, h | z_0).
         x, h = self.sample_p_xh_given_z0(

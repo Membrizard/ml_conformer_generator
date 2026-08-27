@@ -13,6 +13,7 @@ from .mol_utils import (align_mol_to_principal_frame, concat_masked_and_pad,
                         prepare_fragment, prepare_masks, redefine_bonds,
                         samples_to_rdkit_mol)
 from .standardizer import standardize_mol
+from .model_utils import sample_combined_position_feature_noise, remove_mean_with_mask
 
 __all__ = [
     "align_mol_to_principal_frame",
@@ -21,6 +22,8 @@ __all__ = [
     "set_conformer_positions",
     "split_molecule_size_constrained",
     "apply_transform",
+    "sample_combined_position_feature_noise",
+    "remove_mean_with_mask",
     "bond_type_dict",
     "canonicalise",
     "elements_decoder",
