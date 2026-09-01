@@ -1,7 +1,9 @@
 import torch
 from torch import Tensor
 
-from utils import sample_combined_position_feature_noise, remove_mean_with_mask
+from .utils import sample_combined_position_feature_noise, remove_mean_with_mask
+from .egnn import EGNNDynamics
+from typing import Tuple
 
 class EquivariantFlowMatching(torch.nn.Module):
     def __init__(self,
@@ -27,10 +29,10 @@ class EquivariantFlowMatching(torch.nn.Module):
                 edge_mask: Tensor,
                 context: Tensor,
     ) -> Tensor:
-    """
-    EGNN Dynamics Model forward pass to compute the velocity field v(x, t)
-    """
-            net_out = self.dynamics(t, xh, node_mask, edge_mask, context)
+        """
+        EGNN Dynamics Model forward pass to compute the velocity field v(x, t)
+        """
+        net_out = self.dynamics(t, xh, node_mask, edge_mask, context)
         return net_out
 
     def sample_combined_position_feature_noise(self,
@@ -38,28 +40,28 @@ class EquivariantFlowMatching(torch.nn.Module):
         n_nodes: int,
         node_mask: Tensor,
     ) -> Tensor:
-    """
-    Samples combined position and feature noise for the input noise x0
-    """
+        """
+        Samples combined position and feature noise for the input noise x0
+        """
         return sample_combined_position_feature_noise(
             n_samples, n_nodes, node_mask, self.in_node_nf, self.n_dims
         )
 
     def decode(self, z: Tensor, node_mask: Tensor) -> tuple[Tensor, Tensor]:
-    """
-    Latent z → (x, h) like EDM sample_p_xh_given_z0, without phi / noise.
-    """
-    x = z[:, :, : self.n_dims]
-    h_cat = z[:, :, self.n_dims : -1]  # same slice as EDM
-    # unnormalize (same as EquivariantDiffusion.unnormalize)
-    x = x * self.norm_values[0]
-    h_cat = h_cat * self.norm_values[1] * node_mask
-    h = torch.nn.functional.one_hot(
-        torch.argmax(h_cat, dim=2),
-        num_classes=self.in_node_nf,  # 8 classes; confirm vs n_dims:-1 width
-    ).float() * node_mask
-    x = remove_mean_with_mask(x, node_mask)  # optional; EDM often COM-free already
-    return x, h
+        """
+        Latent z → (x, h) like EDM sample_p_xh_given_z0, without phi / noise.
+        """
+        x = z[:, :, : self.n_dims]
+        h_cat = z[:, :, self.n_dims : -1]  # same slice as EDM
+        # unnormalize (same as EquivariantDiffusion.unnormalize)
+        x = x * self.norm_values[0]
+        h_cat = h_cat * self.norm_values[1] * node_mask
+        h = torch.nn.functional.one_hot(
+            torch.argmax(h_cat, dim=2),
+            num_classes=self.in_node_nf,  # 8 classes; confirm vs n_dims:-1 width
+        ).float() * node_mask
+        x = remove_mean_with_mask(x, node_mask)  # optional; EDM often COM-free already
+        return x, h
     
     def compute_loss(self, 
                     x0: Tensor, # Input Noise zT
@@ -79,12 +81,12 @@ class EquivariantFlowMatching(torch.nn.Module):
         return loss
 
     def step(self,
-             xt,
-            t_start,
-            t_end,
-            node_mask,
-            edge_mask,
-            context) -> Tensor:
+             xt: Tensor,
+            t_start: torch.Tensor,
+            t_end: float,
+            node_mask: Tensor,
+            edge_mask: Tensor,
+            context: Tensor) -> Tensor:
         """
         Simple midpoint step rule for the velocity field integration.
         """

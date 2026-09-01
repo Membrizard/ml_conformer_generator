@@ -102,7 +102,7 @@ def align_fragment_com_to_generated(
     z_known_shifted[:, :, :3] = coords_shifted
     return z_known_shifted
 
- def sample_combined_position_feature_noise(
+def sample_combined_position_feature_noise(
         n_samples: int,
         n_nodes: int,
         node_mask: Tensor,
