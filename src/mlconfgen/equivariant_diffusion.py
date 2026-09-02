@@ -447,6 +447,7 @@ class EquivariantDiffusion(torch.nn.Module):
         ], dim=-1)
         # COM-project coords
         x1 = torch.cat([remove_mean_with_mask(x1[..., :3], node_mask), x1[..., 3:]], -1) * node_mask
+        
         return x1
 
     def forward(
