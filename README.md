@@ -349,12 +349,7 @@ The trained model **Weights** are available at
 
 > https://huggingface.co/Membrizard/ml_conformer_generator
 
-And are licensed under CC BY-NC-ND 4.0
-
-The usage of the trained weights for any profit-generating activity is restricted.
-
-For commercial licensing and inference-as-a-service, contact:
-[Denis Sapegin](https://github.com/Membrizard)
+And are licensed under Apache 2.0
 
 ---
 
