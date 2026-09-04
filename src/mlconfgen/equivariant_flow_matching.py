@@ -107,7 +107,7 @@ class EquivariantFlowMatching(torch.nn.Module):
                n_steps: int=50):
 
         """
-        Samples a molecule from teh generative model using flow matching algorithm.
+        Samples a molecule from the generative model using flow matching algorithm.
         """
         z = self.sample_combined_position_feature_noise(...)
         ts = torch.linspace(0, 1, n_steps + 1, device=...)
