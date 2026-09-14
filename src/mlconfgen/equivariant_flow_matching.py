@@ -70,7 +70,7 @@ class EquivariantFlowMatching(torch.nn.Module):
                     edge_mask: Tensor,
                     context: Tensor,
                     lambda_x: float = 1.00,
-                    lambda_h: float = 0.25,
+                    lambda_h: float = 1.00,
                 ) -> Tensor:
 
 
