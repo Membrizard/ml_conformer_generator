@@ -68,7 +68,9 @@ class EquivariantFlowMatching(torch.nn.Module):
                     x1: Tensor, # Final Molecule z0
                     node_mask: Tensor,
                     edge_mask: Tensor,
-                    context: Tensor
+                    context: Tensor,
+                    lambda_x: float = 1.00,
+                    lambda_h: float = 0.25,
                 ) -> Tensor:
         
         t = torch.rand(x0.shape[0], 1, device=x0.device)
@@ -77,7 +79,14 @@ class EquivariantFlowMatching(torch.nn.Module):
         target = (x1 - x0) * node_mask
         pred = self.velocity(xt, t, node_mask, edge_mask, context)
         # Masked MSE loss
-        loss = ((pred - target) ** 2 * node_mask).sum() / node_mask.sum().clamp_min(1)
+        error = ((pred - target) ** 2 * node_mask).sum()
+        n = node_mask.sum().clamp_min(1)
+
+        # Split Position and Feature Loss
+        loss_x = error[..., :3] / ( n * self.n_dims )
+        loss_h = error[..., 3:] / ( n * self.in_node_nf )
+
+        loss = lambda_x * loss_x + lambda_h * loss_h
         return loss
 
     def step(self,
