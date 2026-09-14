@@ -83,7 +83,7 @@ class EquivariantFlowMatching(torch.nn.Module):
 
 
         # Easy polynomial
-        t = torch.rand(B, 1, device=x0.device)
+        t = torch.rand(x0.shape[0], 1, device=x0.device)
         # p = 2 or 3; or use smoothstep below
         phi = 1 - (1 - t) ** 2
         dphi = 2 * (1 - t)
