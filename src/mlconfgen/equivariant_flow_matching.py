@@ -72,11 +72,28 @@ class EquivariantFlowMatching(torch.nn.Module):
                     lambda_x: float = 1.00,
                     lambda_h: float = 0.25,
                 ) -> Tensor:
-        
-        t = torch.rand(x0.shape[0], 1, device=x0.device)
-        xt = (1 - t[:, None, :]) * x0 + t[:, None, :] * x1
+
+
+        # Easy linear
+        # t = torch.rand(x0.shape[0], 1, device=x0.device)
+        # xt = (1 - t[:, None, :]) * x0 + t[:, None, :] * x1
+        # xt = torch.cat([remove_mean_with_mask(xt[..., :3], node_mask), xt[..., 3:]], -1) * node_mask
+        # target = (x1 - x0) * node_mask
+        # pred = self.velocity(xt, t, node_mask, edge_mask, context)
+
+
+        # Easy polynomial
+        t = torch.rand(B, 1, device=x0.device)
+        # p = 2 or 3; or use smoothstep below
+        phi = 1 - (1 - t) ** 2
+        dphi = 2 * (1 - t)
+        # smoothstep instead:
+        # phi = t * t * (3 - 2 * t)
+        # dphi = 6 * t * (1 - t)
+        phi_b = phi[:, None, :]
+        xt = (1 - phi_b) * x0 + phi_b * x1
         xt = torch.cat([remove_mean_with_mask(xt[..., :3], node_mask), xt[..., 3:]], -1) * node_mask
-        target = (x1 - x0) * node_mask
+        target = (dphi[:, None, :] * (x1 - x0)) * node_mask   # NOT (x1-x0)
         pred = self.velocity(xt, t, node_mask, edge_mask, context)
         # Masked MSE loss
         error = ((pred - target) ** 2 * node_mask)
