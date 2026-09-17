@@ -42,3 +42,6 @@ MAX_N_NODES = 39
 
 MIN_FRAG_SIZE = 6
 MAX_FRAG_SIZE = 20
+
+HF_REPO = "Membrizard/ml_conformer_generator"
+
