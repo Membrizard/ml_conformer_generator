@@ -19,4 +19,4 @@ memory_profile.csv
 /js/node_modules
 settings.json
 /js/**/*.xyz
-
+/.weights
