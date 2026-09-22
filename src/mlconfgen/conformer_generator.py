@@ -62,31 +62,17 @@ class MLConformerGenerator(torch.nn.Module):
         self.min_n_nodes = min_n_nodes
         self.max_n_nodes = max_n_nodes
 
-        net_dynamics = EGNNDynamics(
-            in_node_nf=9,
-            context_node_nf=3,
-            hidden_nf=420,
-            device=device,
-        )
-
-        generative_model = EquivariantDiffusion(
-            dynamics=net_dynamics,
-            in_node_nf=8,
-            timesteps=1000,
-            noise_precision=1e-5,
-        )
-
-        adj_mat_seer = AdjMatSeer(
-            dimension=dimension,
-            n_hidden=2048,
-            embedding_dim=64,
-            num_embeddings=36,
-            num_bond_types=num_bond_types,
-            device=device,
-        )
+        # Check Size of the loaded models
 
         gm_state_dict = torch.load(edm_weights, map_location=device)
+        ams_state_dict = torch.load(adj_mat_seer_weights, map_location=device)
 
+        # Get Model Dimensions from the indicated state dicts  
+        n_hidden_edm = gm_state_dict['state_dict']['dynamics.egnn.embedding_out.weight'].size(1)
+        base_timesteps = gm_state_dict['state_dict']['gamma.gamma'].size(0) - 1
+        n_hidden_adj_mat_seer = ams_state_dict['state_dict']['gcn1.linear.weight'].size(0)
+        
+       
         if "context_norms" in gm_state_dict:
             self.context_norms = {
                 key: torch.tensor(value)
@@ -97,9 +83,30 @@ class MLConformerGenerator(torch.nn.Module):
                 key: torch.tensor(value) for key, value in context_norms.items()
             }
 
-        generative_model.load_state_dict(gm_state_dict["state_dict"])
+        net_dynamics = EGNNDynamics(
+                    in_node_nf=9,
+                    context_node_nf=3,
+                    hidden_nf=n_hidden_edm,
+                    device=device,
+                )
+        
+        generative_model = EquivariantDiffusion(
+                    dynamics=net_dynamics,
+                    in_node_nf=8,
+                    timesteps=base_timesteps,
+                    noise_precision=1e-5,
+                )
+        
+        adj_mat_seer = AdjMatSeer(
+                    dimension=dimension,
+                    n_hidden=n_hidden_adj_mat_seer,
+                    embedding_dim=64,
+                    num_embeddings=36,
+                    num_bond_types=num_bond_types,
+                    device=device,
+                )
 
-        ams_state_dict = torch.load(adj_mat_seer_weights, map_location=device)
+        generative_model.load_state_dict(gm_state_dict["state_dict"])
         adj_mat_seer.load_state_dict(ams_state_dict["state_dict"])
 
         # Update denoising steps for the Equivariant Diffusion

@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 PREFIX = '[MLConfGen Weights Manager]'
 
 
-
 def _ensure_hf_hub():
     try:
         import huggingface_hub 
