@@ -3,11 +3,10 @@ import time
 
 from rdkit import Chem
 
-from mlconfgen import (
+from src.mlconfgen import (
     MLConformerGenerator,
     evaluate_samples,
 )
-
 
 def exact_match(taget, source):
     reader = Chem.SDMolSupplier(taget)
@@ -41,7 +40,6 @@ def exact_match(taget, source):
 
     return {"unique_within_batch": n_unique_target, "unique_train_set": set_unique}
 
-
 device = "cuda"
 source_path = "./full_15_39_atoms_conf_chembl.inchi"
 n_samples = 100
@@ -51,12 +49,17 @@ references = Chem.SDMolSupplier("./data/1000_ccdc_validation_set.sdf")
 n_ref = len(references)
 expected_n_samples = n_samples * n_ref
 
-n_dif_steps = [100]
+n_dif_steps = [10, 100]
 folder = "./time_steps_experiments"
 os.makedirs(folder, exist_ok=True)
 
 for time_steps in n_dif_steps:
-    generator = MLConformerGenerator(device=device, diffusion_steps=time_steps)
+    generator = MLConformerGenerator(
+                                     edm_weights="./small_edm_moi_chembl_15_39.pt",
+                                     adj_mat_seer_weights="./small_adj_mat_seer_obabel_15_39.pt",   
+                                     device=device,
+                                     diffusion_steps=time_steps)
+    
     out_file_name = f"{folder}/{time_steps}_time_steps_generated_samples.sdf"
     writer = Chem.SDWriter(out_file_name)
 
@@ -195,7 +198,7 @@ for time_steps in n_dif_steps:
 
     print("Done!")
 
-    file_name = f"{folder}/{time_steps}_time_steps_generation_performance_report_1000_ref_100_samples_var_2.txt"
+    file_name = f"{folder}/{time_steps}_distilled_time_steps_generation_performance_report_1000_ref_100_samples_var_2.txt"
 
     with open(file_name, "w+") as f:
         f.write(f"Number of diffusion steps {time_steps}\n")
