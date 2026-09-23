@@ -43,6 +43,9 @@ class WeightsManager:
 
     @contextmanager
     def _file_lock(self, lock_path: Path, timeout=60):
+        """
+        Helper for streaming download
+        """
         start = time.time()
         while lock_path.exists():
             if time.time() - start > timeout:
@@ -59,8 +62,12 @@ class WeightsManager:
                 lock_path.unlink()
 
     def resolve(self, filename: str, force_download: bool = False) -> Path:
+        """
+        Resolve the path to a required weights file
+        """
 
-        p = Path("adj_mat_seer.pt")
+        # check script folder
+        p = Path(filename)
         if p.exists():
             return p
 
@@ -92,17 +99,37 @@ class WeightsManager:
         return cache_path
 
     def clear_cache(self) -> None:
+        """
+        Clear weight cache directory
+        """
         if self.cache_dir.exists():
             shutil.rmtree(self.cache_dir)
             self.cache_dir.mkdir(parents=True, exist_ok=True)
 
         logger.info(f"{PREFIX} Weights cache cleared: %s", self.cache_dir)
 
-    def list_available_weights(self) -> list[str]: 
-        suffixes = [".pt",  ".onnx"]
+    def list_available_weights(self, suffixes: set = {".pt", ".onnx"}) -> dict[str, list[str]]:
+        """
+        List all available weights on remote and local
+        """
+        out = {"remote":[], "local": []}
+
         _ensure_hf_hub()
+
         from huggingface_hub import list_repo_files
-        return sorted(
+
+        out['remote'] = [
             f for f in list_repo_files(HF_REPO)
-            if Path(f).suffix in suffixes
-    )
+            if Path(f).suffix.lower() in suffixes
+        ]
+
+        cache_dir = Path(MLCONFGEN_CACHE)
+
+        if cache_dir.exists():
+            out['local'] = [
+                str(f.relative_to(cache_dir))
+                for f in cache_dir.rglob("*")
+                if f.is_file() and f.suffix.lower() in suffixes
+            ]
+
+        return out

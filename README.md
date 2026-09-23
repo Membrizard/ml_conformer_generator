@@ -171,7 +171,9 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 
 ---
 
-## 📊 Performance (100 Denoising Steps)
+## 📊 CORE MODEL Performance (100 Denoising Steps) 
+
+[24M EDM + 22M AdjMatSeer Parameters]
 
 *Tested on 100,000 samples using 1,000 CCDC Virtual Screening [[4]](https://www.ccdc.cam.ac.uk/support-and-resources/downloads/) reference compounds.*
 
@@ -191,6 +193,27 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
   - To ChEMBL: 4.13  
   - To PubChem: 2.64  
   - To ZINC (250k): 4.95
+
+## 📊 DISTILLED MODEL Performance (100 Denoising Steps) 
+
+[8.9M EDM + 1.6M AdjMatSeer]
+
+*Tested on 100,000 samples using 1,000 CCDC Virtual Screening [[4]](https://www.ccdc.cam.ac.uk/support-and-resources/downloads/) reference compounds.*
+> [!NOTE]
+> AdjMatSeer Distillation was accompanied with fine-tuning to match OpenBabel bond prediction to maximise validity, that may affect general chemical quality of the generated structures
+
+### General Overview
+
+- ⏱ **Avg time to generate 50 valid samples**:  sec (NVIDIA A40) (100 samples batch)
+- ⚡️ **Generation speed**:  valid molecules/sec (100 samples batch)
+- 💾 **GPU memory (per generation thread)**:
+- 📐 **Avg Shape Tanimoto Similarity**: 
+- 🎯 **Max Shape Tanimoto Similarity**: 
+- 🔬 **Avg Chemical Tanimoto Similarity (2-hop 2048-bit Morgan Fingerprints)**: 10.87%
+- ✔️ **% Valid molecules (post-standardization)**: __% (ML Bond Prediction) - 93% (OpenBabel bond prediction)
+- 🔁 **% Unique molecules in generated set**: 
+
+## ⚖️ Generation Quality
 
 ### PoseBusters [[5]](https://doi.org/10.1039/D3SC04185A) validity check results:
 

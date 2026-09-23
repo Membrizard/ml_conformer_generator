@@ -45,12 +45,8 @@ MAX_FRAG_SIZE = 20
 
 # Weights Management
 HF_REPO = "Membrizard/ml_conformer_generator"
-MLCONFGEN_CACHE = "./.weights"
 
-# Default weights for each backend
-EDM_DEFAULT_TORCH = "edm_moi_chembl_15_39.pt"
-ADJMATSEER_DEFAULT_TORCH = "adj_mat_seer_chembl_15_39.pt"
+from pathlib import Path
+MLCONFGEN_CACHE = Path.home() / ".mlconfgen_weights"
 
-EGNN_DEFAULT_ONNX = "egnn_chembl_15_39.onnx"
-ADJMATSEER_DEFAULT_ONNX = "adj_mat_seer_chembl_15_39.onnx"
 

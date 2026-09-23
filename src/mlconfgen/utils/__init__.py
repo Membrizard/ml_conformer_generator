@@ -14,6 +14,7 @@ from .mol_utils import (align_mol_to_principal_frame, concat_masked_and_pad,
                         samples_to_rdkit_mol)
 from .standardizer import standardize_mol
 from .model_utils import sample_combined_position_feature_noise, remove_mean_with_mask
+from .weights_manager import WeightsManager
 
 __all__ = [
     "align_mol_to_principal_frame",

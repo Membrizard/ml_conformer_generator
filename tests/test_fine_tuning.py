@@ -23,24 +23,32 @@ def diffusion_steps():
 def device():
     if torch.cuda.is_available():
         _device = torch.device("cuda:0")
-    elif torch.backends.mps.is_available():
-        _device = torch.device("mps:0")
     else:
         _device = torch.device("cpu")
     return _device
 
 
-@pytest.fixture(scope="module")
-def ifm_device():
-    if torch.cuda.is_available():
-        _device = torch.device("cuda:0")
-    else:
-        _device = torch.device("cpu")
-    return _device
+# @pytest.fixture(scope="module")
+# def ifm_device():
+#     if torch.cuda.is_available():
+#         _device = torch.device("cuda:0")
+#     else:
+#         _device = torch.device("cpu")
+#     return _device
 
 
 @pytest.fixture(scope="module")
 def generator(device, diffusion_steps):
+    generator = MLConformerGenerator(
+        edm_weights="./edm_moi_chembl_15_39.pt",
+        adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+        device=device,
+        diffusion_steps=diffusion_steps,
+    )
+    return generator
+
+@pytest.fixture(scope="module")
+def small_generator(device, diffusion_steps):
     generator = MLConformerGenerator(
         edm_weights="./edm_moi_chembl_15_39.pt",
         adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",

@@ -14,7 +14,7 @@ from .utils import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
                     apply_transform, extract_fragment, is_valid_mol,
                     prepare_adj_mat_seer_input, prepare_edm_input,
                     prepare_fragment, redefine_bonds, samples_to_rdkit_mol,
-                    set_conformer_positions, standardize_mol)
+                    set_conformer_positions, standardize_mol, WeightsManager)
 
 
 class MLConformerGenerator(torch.nn.Module):
@@ -33,8 +33,8 @@ class MLConformerGenerator(torch.nn.Module):
         max_n_nodes: int = MAX_N_NODES,
         context_norms: dict = CONTEXT_NORMS,
         atom_decoder: dict = ATOM_DECODER,
-        edm_weights: str | Path = "./edm_moi_chembl_15_39.pt",
-        adj_mat_seer_weights: str | Path = "./adj_mat_seer_chembl_15_39.pt",
+        edm_weights: str | Path = "edm_moi_chembl_15_39.pt",
+        adj_mat_seer_weights: str | Path = "adj_mat_seer_chembl_15_39.pt",
         finetune_checkpoint: str | Path = None,
     ):
         """
@@ -62,10 +62,15 @@ class MLConformerGenerator(torch.nn.Module):
         self.min_n_nodes = min_n_nodes
         self.max_n_nodes = max_n_nodes
 
-        # Check Size of the loaded models
+        self.weights_manager = WeightsManager()
 
-        gm_state_dict = torch.load(edm_weights, map_location=device)
-        ams_state_dict = torch.load(adj_mat_seer_weights, map_location=device)
+        # Resolve path to the requested weights file
+        edm_weights_path = self.weights_manager.resolve(filename=edm_weights)
+        ams_weights_path = self.weights_manager.resolve(filename=adj_mat_seer_weights)
+
+        # Check Size of the loaded models
+        gm_state_dict = torch.load(edm_weights_path, map_location=device)
+        ams_state_dict = torch.load(ams_weights_path, map_location=device)
 
         # Get Model Dimensions from the indicated state dicts  
         n_hidden_edm = gm_state_dict['state_dict']['dynamics.egnn.embedding_out.weight'].size(1)
@@ -133,6 +138,18 @@ class MLConformerGenerator(torch.nn.Module):
         self.edm_adapter = None
         if finetune_checkpoint:
             self.load_finetune_checkpoint(finetune_checkpoint)
+
+    def list_weights(self) -> dict[str: list[str]]:
+        """
+        List all available weights compatible with this class in remote and locally.
+        """
+        available_weights = self.weights_manager.list_available_weights(suffixes={".pt"})
+        return available_weights
+
+    def clear_cache(self) -> None:
+        """Clear Weights Cache"""
+        self.weights_manager.clear_cache()
+        return None
 
     @staticmethod
     def prepare_inputs(
