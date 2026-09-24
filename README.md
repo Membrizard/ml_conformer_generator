@@ -205,7 +205,8 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 ### General Overview
 
 - ⏱ **Avg time to generate 50 valid samples**: 10.9 sec (NVIDIA A40) (100 samples batch)
-- ⚡️ **Generation speed**:  3.25 valid molecules/sec (100 samples batch)
+- ⚡️ **Generation speed**:  4.59 valid molecules/sec (100 samples batch)
+- 💾 **GPU memory (per generation thread)**: Up to 8.6 GB (`float16` 39 atoms 100 samples)
 - 📐 **Avg Shape Tanimoto Similarity**: 50.5%
 - 🎯 **Max Shape Tanimoto Similarity**: 88.65%
 - 🔬 **Avg Chemical Tanimoto Similarity (2-hop 2048-bit Morgan Fingerprints)**: 7.53%

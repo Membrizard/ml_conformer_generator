@@ -221,10 +221,21 @@ def fit_profile(profile_csv: str):
     # Load CSV (assumes columns: x, y)
     df = pd.read_csv(profile_csv)
 
-    n_samples = df["n_samples"].to_numpy()
-    n_atoms = df["n_atoms"].to_numpy()
-    egnn_memory = df["egnn_memory_bytes"].to_numpy()
-    gcn_memory = df["adj_mat_seer_memory_bytes"].to_numpy()
+    cols = [
+            "n_samples",
+            "n_atoms",
+            "egnn_memory_bytes",
+            "adj_mat_seer_memory_bytes",
+        ]
+
+    df[cols] = df[cols].apply(pd.to_numeric, errors="coerce")
+
+    df = df.dropna(subset=cols)
+
+    n_samples = df["n_samples"].to_numpy(dtype=float)
+    n_atoms = df["n_atoms"].to_numpy(dtype=float)
+    egnn_memory = df["egnn_memory_bytes"].to_numpy(dtype=float)
+    gcn_memory = df["adj_mat_seer_memory_bytes"].to_numpy(dtype=float)
 
     y = (egnn_memory + gcn_memory) / 1024**2
 
