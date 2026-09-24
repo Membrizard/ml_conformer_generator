@@ -196,7 +196,7 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 
 ## 📊 DISTILLED MODEL Performance (100 Denoising Steps) 
 
-[8.9M EDM + 1.6M AdjMatSeer]
+[8.9M EDM + 1.6M AdjMatSeer Parameters]
 
 *Tested on 100,000 samples using 1,000 CCDC Virtual Screening [[4]](https://www.ccdc.cam.ac.uk/support-and-resources/downloads/) reference compounds.*
 > [!NOTE]
