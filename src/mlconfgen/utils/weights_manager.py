@@ -92,7 +92,7 @@ class WeightsManager:
                 cache_path = Path(hf_hub_download(HF_REPO, filename, local_dir=self.cache_dir))
             except Exception as e:
                 logger.error(f"{PREFIX} Download failed due to: {e}")
-                return None
+                raise ValueError(f"Could not resolve path to the weights file: {filename}")
 
             logger.info(f"{PREFIX} Download complete")
 

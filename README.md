@@ -204,14 +204,12 @@ Aligns and Evaluates shape similarity between generated molecules and a referenc
 
 ### General Overview
 
-- ⏱ **Avg time to generate 50 valid samples**:  sec (NVIDIA A40) (100 samples batch)
-- ⚡️ **Generation speed**:  valid molecules/sec (100 samples batch)
-- 💾 **GPU memory (per generation thread)**:
-- 📐 **Avg Shape Tanimoto Similarity**: 
-- 🎯 **Max Shape Tanimoto Similarity**: 
-- 🔬 **Avg Chemical Tanimoto Similarity (2-hop 2048-bit Morgan Fingerprints)**: 10.87%
-- ✔️ **% Valid molecules (post-standardization)**: __% (ML Bond Prediction) - 93% (OpenBabel bond prediction)
-- 🔁 **% Unique molecules in generated set**: 
+- ⏱ **Avg time to generate 50 valid samples**: 10.9 sec (NVIDIA A40) (100 samples batch)
+- ⚡️ **Generation speed**:  3.25 valid molecules/sec (100 samples batch)
+- 📐 **Avg Shape Tanimoto Similarity**: 50.5%
+- 🎯 **Max Shape Tanimoto Similarity**: 88.65%
+- 🔬 **Avg Chemical Tanimoto Similarity (2-hop 2048-bit Morgan Fingerprints)**: 7.53%
+- ✔️ **% Valid molecules (post-standardization)**: 71.14% (ML Bond Prediction)
 
 ## ⚖️ Generation Quality
 
