@@ -10,6 +10,7 @@ from onnx_export import export_to_onnx
 from src.mlconfgen import (MLConformerGenerator, MLConformerGeneratorONNX,
                            evaluate_samples)
 from src.mlconfgen.rl_fine_tuning.edm_adapter import EDMAdapter
+from tests.conftest import TORCH_WEIGHT_SETS
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -28,34 +29,20 @@ def device():
     return _device
 
 
-# @pytest.fixture(scope="module")
-# def ifm_device():
-#     if torch.cuda.is_available():
-#         _device = torch.device("cuda:0")
-#     else:
-#         _device = torch.device("cpu")
-#     return _device
+@pytest.fixture(scope="module", params=TORCH_WEIGHT_SETS)
+def torch_weights(request):
+    return request.param
 
 
 @pytest.fixture(scope="module")
-def generator(device, diffusion_steps):
-    generator = MLConformerGenerator(
-        edm_weights="./edm_moi_chembl_15_39.pt",
-        adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+def generator(torch_weights, device, diffusion_steps):
+    edm_weights, adj_weights, _ = torch_weights
+    return MLConformerGenerator(
+        edm_weights=edm_weights,
+        adj_mat_seer_weights=adj_weights,
         device=device,
         diffusion_steps=diffusion_steps,
     )
-    return generator
-
-@pytest.fixture(scope="module")
-def small_generator(device, diffusion_steps):
-    generator = MLConformerGenerator(
-        edm_weights="./edm_moi_chembl_15_39.pt",
-        adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
-        device=device,
-        diffusion_steps=diffusion_steps,
-    )
-    return generator
 
 
 @pytest.fixture(scope="module")
@@ -64,10 +51,11 @@ def ceyyag():
 
 
 @pytest.fixture(scope="module")
-def artifacts_dir():
-    dir_path = "./test_rl_fine_tuning"
+def artifacts_dir(torch_weights):
+    _, _, label = torch_weights
+    dir_path = f"./test_rl_fine_tuning_{label}"
     yield dir_path
-    shutil.rmtree(dir_path)
+    shutil.rmtree(dir_path, ignore_errors=True)
 
 
 @pytest.fixture(scope="module")
@@ -78,27 +66,26 @@ def latest_checkpoint(artifacts_dir):
 @pytest.fixture(scope="module")
 def onnx_paths(artifacts_dir):
     return (
-            Path(f"{artifacts_dir}/egnn_chembl_15_39.onnx"),
-            Path(f"{artifacts_dir}/adj_mat_seer_chembl_15_39.onnx"),
-            Path(f"{artifacts_dir}/finetune_checkpoint.onnx"),
-            )
+        Path(f"{artifacts_dir}/egnn.onnx"),
+        Path(f"{artifacts_dir}/adj_mat_seer.onnx"),
+        Path(f"{artifacts_dir}/finetune_checkpoint.onnx"),
+    )
 
 
 @pytest.fixture(scope="module")
-def generator_onnx(device, diffusion_steps, onnx_paths):
+def generator_onnx(diffusion_steps, onnx_paths):
     edm, adj, ft = onnx_paths
-    generator = MLConformerGeneratorONNX(
+    return MLConformerGeneratorONNX(
         egnn_onnx=edm,
         adj_mat_seer_onnx=adj,
         finetune_checkpoint_onnx=ft,
         diffusion_steps=diffusion_steps,
     )
-    return generator
 
 
 @pytest.mark.slow
 def test_basic_fine_tuning(generator, ceyyag, artifacts_dir, latest_checkpoint):
-    torch.manual_seed(8)
+    torch.manual_seed(13)
     generator.fine_tune(
         scoring_function=None,
         reference_conformer=ceyyag,
@@ -118,7 +105,6 @@ def test_basic_fine_tuning(generator, ceyyag, artifacts_dir, latest_checkpoint):
         load_best_checkpoint=True,
     )
 
-    # Make sure checkpoints are saved
     assert os.path.isfile(latest_checkpoint)
     generator.load_finetune_checkpoint(latest_checkpoint)
     assert generator.edm_adapter is not None

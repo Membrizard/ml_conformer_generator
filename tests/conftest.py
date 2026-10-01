@@ -1,8 +1,70 @@
+from pathlib import Path
+
 import pytest
 import torch
 from rdkit import Chem
 
 from src.mlconfgen.utils.config import ATOM_DECODER, CONTEXT_NORMS
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _weights_present(*relative_paths: str) -> bool:
+    return all((REPO_ROOT / p.lstrip("./")).is_file() for p in relative_paths)
+
+
+# Single tuple per case so fixture `params=` receives one value
+TORCH_WEIGHT_SETS = [
+    pytest.param(
+        (
+            "./edm_moi_chembl_15_39.pt",
+            "./adj_mat_seer_chembl_15_39.pt",
+            "full",
+        ),
+        id="full",
+    ),
+    pytest.param(
+        (
+            "./small_edm_moi_chembl_15_39.pt",
+            "./small_adj_mat_seer_obabel_15_39.pt",
+            "distilled",
+        ),
+        id="distilled",
+        marks=pytest.mark.skipif(
+            not _weights_present(
+                "small_edm_moi_chembl_15_39.pt",
+                "small_adj_mat_seer_obabel_15_39.pt",
+            ),
+            reason="distilled torch weights missing",
+        ),
+    ),
+]
+
+ONNX_WEIGHT_SETS = [
+    pytest.param(
+        (
+            "./egnn_chembl_15_39.onnx",
+            "./adj_mat_seer_chembl_15_39.onnx",
+            "full",
+        ),
+        id="full",
+    ),
+    pytest.param(
+        (
+            "./small_egnn_chembl_15_39.onnx",
+            "./small_adj_mat_seer_obabel_15_39.onnx",
+            "distilled",
+        ),
+        id="distilled",
+        marks=pytest.mark.skipif(
+            not _weights_present(
+                "small_egnn_chembl_15_39.onnx",
+                "small_adj_mat_seer_obabel_15_39.onnx",
+            ),
+            reason="distilled onnx weights missing",
+        ),
+    ),
+]
 
 
 @pytest.fixture(scope="session")
