@@ -49,4 +49,8 @@ HF_REPO = "Membrizard/ml_conformer_generator"
 from pathlib import Path
 MLCONFGEN_CACHE = Path.home() / ".mlconfgen_weights"
 
+# Random context seeds
+
+RANDOM_CONTEXT_SEEDS = "random_molecule_seeds.json"
+
 

@@ -1,5 +1,5 @@
 from .common import (apply_transform, bond_type_dict, canonicalise,
-                     elements_decoder, set_conformer_positions)
+                     elements_decoder, set_conformer_positions, random_context)
 from .config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_FRAG_SIZE,
                      MAX_N_NODES, MIN_FRAG_SIZE, MIN_N_NODES, NUM_BOND_TYPES)
 from .mol_split import extract_fragment, split_molecule_size_constrained
@@ -42,6 +42,7 @@ __all__ = [
     "inverse_coord_transform",
     "is_valid_mol",
     "redefine_bonds",
+    "random_context",
     "standardize_mol",
     "DIMENSION",
     "NUM_BOND_TYPES",

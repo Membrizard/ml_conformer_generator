@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 from rdkit import Chem
 
-from ..utils.common import apply_transform, set_conformer_positions
+from ..utils.common import apply_transform, set_conformer_positions, random_context
 from ..utils.config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION,
                             MAX_N_NODES, MIN_N_NODES)
 from ..utils.mol_split import extract_fragment
@@ -364,3 +364,21 @@ class MLConformerGeneratorONNX:
         )
 
         return out
+
+    def random(
+        self, size: int = 1, seed=None, optimize_geometry: bool = True
+    ) -> List[Chem.Mol]:
+        """
+        Generate random molecules using the random context seed.
+        :param size: number of molecules to generate
+        :param seed: random seed to use for sampling
+        :returns: list of generated molecules
+        """
+        context_seed = random_context(size=size, seed=seed)
+        return self.generate_conformers(
+            reference_context=context_seed["context"],
+            n_atoms=context_seed["n_atoms"],
+            variance=0,
+            optimize_geometry=optimize_geometry,
+        )
+

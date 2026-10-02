@@ -63,3 +63,14 @@ markers = [
 ]
 
 [tool.setuptools_scm]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["research_scripts", "streamlit_app"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]  # long lines: left to the formatter
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # re-exports

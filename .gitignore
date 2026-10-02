@@ -20,3 +20,8 @@ memory_profile.csv
 settings.json
 /js/**/*.xyz
 /.weights
+:memory:.ses
+
+# mkdocs build output
+/site
+/documentation/site

@@ -6,15 +6,28 @@ from rdkit import Chem
 
 from .adj_mat_seer import AdjMatSeer
 from .egnn import EGNNDynamics
-from .equivariant_diffusion import (EquivariantDiffusion,
-                                    PredefinedNoiseSchedule)
+from .equivariant_diffusion import EquivariantDiffusion, PredefinedNoiseSchedule
 from .rl_fine_tuning import EDMAdapter, RLFineTuner
-from .utils import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES,
-                    MIN_N_NODES, NUM_BOND_TYPES, align_mol_to_principal_frame,
-                    apply_transform, extract_fragment, is_valid_mol,
-                    prepare_adj_mat_seer_input, prepare_edm_input,
-                    prepare_fragment, redefine_bonds, samples_to_rdkit_mol,
-                    set_conformer_positions, standardize_mol, WeightsManager)
+from .utils import (
+    ATOM_DECODER,
+    CONTEXT_NORMS,
+    DIMENSION,
+    MAX_N_NODES,
+    MIN_N_NODES,
+    NUM_BOND_TYPES,
+    align_mol_to_principal_frame,
+    apply_transform,
+    extract_fragment,
+    is_valid_mol,
+    prepare_adj_mat_seer_input,
+    prepare_edm_input,
+    prepare_fragment,
+    redefine_bonds,
+    samples_to_rdkit_mol,
+    set_conformer_positions,
+    standardize_mol,
+    WeightsManager,
+)
 
 
 class MLConformerGenerator(torch.nn.Module):
@@ -72,12 +85,15 @@ class MLConformerGenerator(torch.nn.Module):
         gm_state_dict = torch.load(edm_weights_path, map_location=device)
         ams_state_dict = torch.load(ams_weights_path, map_location=device)
 
-        # Get Model Dimensions from the indicated state dicts  
-        n_hidden_edm = gm_state_dict['state_dict']['dynamics.egnn.embedding_out.weight'].size(1)
-        base_timesteps = gm_state_dict['state_dict']['gamma.gamma'].size(0) - 1
-        n_hidden_adj_mat_seer = ams_state_dict['state_dict']['gcn1.linear.weight'].size(0)
-        
-       
+        # Get Model Dimensions from the indicated state dicts
+        n_hidden_edm = gm_state_dict["state_dict"][
+            "dynamics.egnn.embedding_out.weight"
+        ].size(1)
+        base_timesteps = gm_state_dict["state_dict"]["gamma.gamma"].size(0) - 1
+        n_hidden_adj_mat_seer = ams_state_dict["state_dict"]["gcn1.linear.weight"].size(
+            0
+        )
+
         if "context_norms" in gm_state_dict:
             self.context_norms = {
                 key: torch.tensor(value)
@@ -89,27 +105,27 @@ class MLConformerGenerator(torch.nn.Module):
             }
 
         net_dynamics = EGNNDynamics(
-                    in_node_nf=9,
-                    context_node_nf=3,
-                    hidden_nf=n_hidden_edm,
-                    device=device,
-                )
-        
+            in_node_nf=9,
+            context_node_nf=3,
+            hidden_nf=n_hidden_edm,
+            device=device,
+        )
+
         generative_model = EquivariantDiffusion(
-                    dynamics=net_dynamics,
-                    in_node_nf=8,
-                    timesteps=base_timesteps,
-                    noise_precision=1e-5,
-                )
-        
+            dynamics=net_dynamics,
+            in_node_nf=8,
+            timesteps=base_timesteps,
+            noise_precision=1e-5,
+        )
+
         adj_mat_seer = AdjMatSeer(
-                    dimension=dimension,
-                    n_hidden=n_hidden_adj_mat_seer,
-                    embedding_dim=64,
-                    num_embeddings=36,
-                    num_bond_types=num_bond_types,
-                    device=device,
-                )
+            dimension=dimension,
+            n_hidden=n_hidden_adj_mat_seer,
+            embedding_dim=64,
+            num_embeddings=36,
+            num_bond_types=num_bond_types,
+            device=device,
+        )
 
         generative_model.load_state_dict(gm_state_dict["state_dict"])
         adj_mat_seer.load_state_dict(ams_state_dict["state_dict"])
@@ -139,11 +155,13 @@ class MLConformerGenerator(torch.nn.Module):
         if finetune_checkpoint:
             self.load_finetune_checkpoint(finetune_checkpoint)
 
-    def list_weights(self) -> dict[str: list[str]]:
+    def list_weights(self) -> dict[str : list[str]]:
         """
         List all available weights compatible with this class in remote and locally.
         """
-        available_weights = self.weights_manager.list_available_weights(suffixes={".pt"})
+        available_weights = self.weights_manager.list_available_weights(
+            suffixes={".pt"}
+        )
         return available_weights
 
     def clear_cache(self) -> None:
@@ -569,3 +587,21 @@ class MLConformerGenerator(torch.nn.Module):
         self.edm_adapter.load_state_dict(checkpoint["edm_adapter"])
         self.adj_mat_seer.resize.load_state_dict(checkpoint["adj_mat_seer_head"])
         return None
+
+    def random(
+        self, size: int = 1, seed=None, optimize_geometry: bool = True
+    ) -> List[Chem.Mol]:
+        """
+        Generate random molecules using the random context seed.
+        :param size: number of molecules to generate
+        :param seed: random seed to use for sampling
+        :returns: list of generated molecules
+        """
+        context_seed = random_context(seed=seed)
+        return self.generate_conformers(
+            n_samples=size,
+            reference_context=context_seed["context"],
+            n_atoms=context_seed["n_atoms"],
+            variance=0,
+            optimize_geometry=optimize_geometry,
+        )

@@ -1,0 +1,47 @@
+name: Slow tests (generation)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 1"  # Mondays 03:00 UTC
+
+jobs:
+  python-slow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install CPU torch and the package
+        run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[full]" pytest huggingface_hub
+      - name: Download weights
+        # Mirrors the WeightsManager default names; files land in the repo root,
+        # where tests/conftest.py expects them.
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python - <<'EOF'
+          from huggingface_hub import hf_hub_download
+          repo = "Membrizard/ml_conformer_generator"
+          for name in [
+              "edm_moi_chembl_15_39.pt",
+              "adj_mat_seer_chembl_15_39.pt",
+              "edm_moi_chembl_6_39_fragments.pt",
+              "small_edm_moi_chembl_15_39.pt",
+              "small_adj_mat_seer_obabel_15_39.pt",
+              "egnn_chembl_15_39.onnx",
+              "adj_mat_seer_chembl_15_39.onnx",
+              "small_egnn_chembl_15_39.onnx",
+              "small_adj_mat_seer_obabel_15_39.onnx",
+          ]:
+              hf_hub_download(repo, name, local_dir=".")
+          EOF
+      - name: Slow tests
+        run: pytest tests -m slow -v
