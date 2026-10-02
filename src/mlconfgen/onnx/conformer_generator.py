@@ -374,9 +374,10 @@ class MLConformerGeneratorONNX:
         :param seed: random seed to use for sampling
         :returns: list of generated molecules
         """
-        context_seed = random_context(size=size, seed=seed)
+        context_seed = random_context(seed=seed)
         context = np.array(context_seed["context"], dtype=np.float32)
         return self.generate_conformers(
+            n_samples=size,
             reference_context=context,
             n_atoms=context_seed["n_atoms"],
             variance=0,

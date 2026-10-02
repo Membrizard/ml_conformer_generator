@@ -333,3 +333,16 @@ def test_ifm_ff_mol_ref_context(
 
     valid_samples = len(samples) / n_samples
     assert valid_samples > 0.3
+
+
+@pytest.mark.slow
+def test_random_generation(generator):
+    n_samples = 20
+    samples = generator.random(size=n_samples, seed=42)
+
+    valid_samples = len(samples) / n_samples
+    assert valid_samples > 0.3
+
+    n_atoms = [mol.GetNumHeavyAtoms() for mol in samples]
+    assert all(15 <= n <= 39 for n in n_atoms)
+    assert len(set(n_atoms)) == 1
