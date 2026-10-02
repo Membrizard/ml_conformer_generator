@@ -1,5 +1,6 @@
 # ML Conformer Generator
 [![DOI](https://img.shields.io/badge/DOI-10.1039%2FD5DD00318K-blue)](https://doi.org/10.1039/D5DD00318K)
+[![Docs](https://img.shields.io/badge/docs-membrizard.github.io-blue)](https://membrizard.github.io/ml_conformer_generator/)
 
 <img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/logo/mlconfgen_logo.png" width="120" style="display: block; margin: 0 10%;">
 
@@ -7,6 +8,8 @@
 is a tool for spatially-aware molecule generation with an Equivariant Diffusion Model (EDM)
 and a Graph Convolutional Network (GCN). It is designed to generate 3D molecular conformations
 that are both chemically valid and spatially similar to a reference shape.
+
+📖 **Documentation:** https://membrizard.github.io/ml_conformer_generator/ — Python and JavaScript guides, parameter reference, model details.
 
 ---
 
@@ -58,19 +61,50 @@ DOI: [10.1039/D5DD00318K](https://doi.org/10.1039/D5DD00318K)
 ---
 ## Installation
 
-1. Install the package for your preferred backend:
+Install the package for your preferred backend:
 
-   *  `pip install mlconfgen[torch]` — use the PyTorch-based inference pipeline
+*  `pip install "mlconfgen[torch]"` — PyTorch-based inference pipeline (generation, IFM, RL fine-tuning, ONNX export)
 
-   *  `pip install mlconfgen[onnx]` — use the torch-free ONNX runtime version
+*  `pip install "mlconfgen[onnx]"` — torch-free ONNX Runtime version
 
+*  `pip install "mlconfgen[full]"` — both
 
-2. Load the weights from Huggingface
+---
+
+## 💾 Model Weights
+
+Weights are **resolved automatically** — no manual download step. Every `*_weights` / `*_onnx` argument accepts either a local path or a file name from the Hugging Face repository
 > https://huggingface.co/Membrizard/ml_conformer_generator
 
-`edm_moi_chembl_15_39.pt`
+Resolution order: existing local path → local cache (`~/.mlconfgen_weights`) → download from Hugging Face (`huggingface_hub` is installed on demand).
 
-`adj_mat_seer_chembl_15_39.pt`
+| File | Model |
+|---|---|
+| `edm_moi_chembl_15_39.pt` / `adj_mat_seer_chembl_15_39.pt` | Core EDM + AdjMatSeer (defaults) |
+| `small_edm_moi_chembl_15_39.pt` / `small_adj_mat_seer_obabel_15_39.pt` | Distilled EDM + AdjMatSeer — lower memory, higher validity |
+| `edm_moi_chembl_6_39_fragments.pt` | Fragment EDM (6–39 atoms) for Inertial Fragment Matching |
+| `egnn_chembl_15_39.onnx` / `adj_mat_seer_chembl_15_39.onnx` | Core models in ONNX format |
+| `small_egnn_chembl_15_39.onnx` / `small_adj_mat_seer_obabel_15_39.onnx` | Distilled models in ONNX format |
+
+Model width and base timesteps are read from the checkpoint, so full and distilled weights load through the same constructor.
+
+```python
+from mlconfgen import MLConformerGenerator
+
+model = MLConformerGenerator()                      # core weights, downloaded on first use
+
+model = MLConformerGenerator(                       # distilled weights, by name
+    edm_weights="small_edm_moi_chembl_15_39.pt",
+    adj_mat_seer_weights="small_adj_mat_seer_obabel_15_39.pt",
+)
+
+model.list_weights()   # {"remote": [...], "local": [...]}
+model.clear_cache()    # wipe ~/.mlconfgen_weights
+```
+
+For a custom cache location use `mlconfgen.utils.WeightsManager(cache_dir=...)`. See [Model Weights](https://membrizard.github.io/ml_conformer_generator/getting_started/2_model_weights/) in the docs.
+
+> The JavaScript package does **not** download weights — pass the ONNX files as local paths or `Uint8Array` buffers.
 
 ---
 
@@ -83,8 +117,8 @@ from rdkit import Chem
 from mlconfgen import MLConformerGenerator, evaluate_samples
 
 model = MLConformerGenerator(
-                             edm_weights="./edm_moi_chembl_15_39.pt",
-                             adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+                             edm_weights="edm_moi_chembl_15_39.pt",
+                             adj_mat_seer_weights="adj_mat_seer_chembl_15_39.pt",
                              diffusion_steps=100,
                             )
 
@@ -269,8 +303,8 @@ from rdkit import Chem
 from mlconfgen import MLConformerGenerator
 
 model = MLConformerGenerator(
-                             edm_weights="./edm_moi_chembl_15_39.pt",
-                             adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+                             edm_weights="edm_moi_chembl_15_39.pt",
+                             adj_mat_seer_weights="adj_mat_seer_chembl_15_39.pt",
                              diffusion_steps=10,
                             )
 
@@ -298,8 +332,8 @@ Fine-tuning produces both the best and the latest checkpoints, which can later b
 from mlconfgen import MLConformerGenerator
 
 model = MLConformerGenerator(
-                             edm_weights="./edm_moi_chembl_15_39.pt",
-                             adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+                             edm_weights="edm_moi_chembl_15_39.pt",
+                             adj_mat_seer_weights="adj_mat_seer_chembl_15_39.pt",
                              finetune_checkpoint = "./finetune_checkpoint.pt",
                              diffusion_steps=10,
                             )
@@ -323,8 +357,8 @@ from mlconfgen import MLConformerGenerator
 from mlconfgen.rl_fine_tuning.reinvent_score_wrapper import ReinventScoreWrapper
 
 model = MLConformerGenerator(
-                             edm_weights="./edm_moi_chembl_15_39.pt",
-                             adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+                             edm_weights="edm_moi_chembl_15_39.pt",
+                             adj_mat_seer_weights="adj_mat_seer_chembl_15_39.pt",
                              diffusion_steps=10,
                             )
 
@@ -378,21 +412,15 @@ And are licensed under Apache 2.0
 ## ONNX Inference:
 For torch Free inference an ONNX version of the model is present. 
 
-Weights of the model in ONNX format are available at:
-> https://huggingface.co/Membrizard/ml_conformer_generator
-
-`egnn_chembl_15_39.onnx`
-
-`adj_mat_seer_chembl_15_39.onnx`
-
+ONNX weights are resolved by the same weights manager (`egnn_chembl_15_39.onnx`, `adj_mat_seer_chembl_15_39.onnx`, or the distilled `small_*` variants):
 
 ```python
 from mlconfgen import MLConformerGeneratorONNX
 from rdkit import Chem
 
 model = MLConformerGeneratorONNX(
-                                 egnn_onnx="./egnn_chembl_15_39.onnx",
-                                 adj_mat_seer_onnx="./adj_mat_seer_chembl_15_39.onnx",
+                                 egnn_onnx="egnn_chembl_15_39.onnx",
+                                 adj_mat_seer_onnx="adj_mat_seer_chembl_15_39.onnx",
                                  diffusion_steps=100,
                                 )
 
