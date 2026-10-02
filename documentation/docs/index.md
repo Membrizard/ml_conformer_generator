@@ -55,3 +55,5 @@ Digital Discovery, 2025. DOI: [10.1039/D5DD00318K](https://doi.org/10.1039/D5DD0
 - Trained weights: [huggingface.co/Membrizard/ml_conformer_generator](https://huggingface.co/Membrizard/ml_conformer_generator) — see the model card for the applicable license
 
 > **Note:** The weights are **not** bundled with either package. They are resolved from Hugging Face on first use (Python) or must be supplied as local files (JavaScript). See [Model Weights](getting_started/2_model_weights.md).
+
+Commercial deployments built on this stack — including [Quantori MLConfGen](https://quantori.com/mlconfgen) and the Steam game [*Trust Me, It Binds*](https://store.steampowered.com/app/5119610/Trust_Me_It_Binds/) — are listed under [Commercial Projects](projects/1_commercial.md).

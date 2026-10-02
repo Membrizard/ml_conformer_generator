@@ -58,3 +58,5 @@ nav:
   - Model:
       - Architecture & Pipeline: model/1_architecture.md
       - Performance: model/2_performance.md
+  - Projects:
+      - Commercial Projects: projects/1_commercial.md

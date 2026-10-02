@@ -375,8 +375,9 @@ class MLConformerGeneratorONNX:
         :returns: list of generated molecules
         """
         context_seed = random_context(size=size, seed=seed)
+        context = np.array(context_seed["context"], dtype=np.float32)
         return self.generate_conformers(
-            reference_context=context_seed["context"],
+            reference_context=context,
             n_atoms=context_seed["n_atoms"],
             variance=0,
             optimize_geometry=optimize_geometry,

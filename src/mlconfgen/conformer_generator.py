@@ -22,6 +22,7 @@ from .utils import (
     prepare_adj_mat_seer_input,
     prepare_edm_input,
     prepare_fragment,
+    random_context,
     redefine_bonds,
     samples_to_rdkit_mol,
     set_conformer_positions,
@@ -598,9 +599,11 @@ class MLConformerGenerator(torch.nn.Module):
         :returns: list of generated molecules
         """
         context_seed = random_context(seed=seed)
+
+        context = torch.tensor(context_seed["context"], dtype=torch.float32)
         return self.generate_conformers(
             n_samples=size,
-            reference_context=context_seed["context"],
+            reference_context=context,
             n_atoms=context_seed["n_atoms"],
             variance=0,
             optimize_geometry=optimize_geometry,
