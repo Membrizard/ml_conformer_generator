@@ -24,10 +24,8 @@ Capabilities highlighted on the product site include:
 
 **[View on Steam](https://store.steampowered.com/app/5119610/Trust_Me_It_Binds/)**
 
-*Trust Me, It Binds* is an indie procedural deckbuilder that embeds on-device molecule generation during play. Starting molecules and chemical modifications are driven by a generative model in the same family as MLConfGen; the game framing turns real chemistry into a satirical AI drug-design startup simulator.
+*Trust Me, It Binds* is an indie procedural deckbuilder that embeds on-device molecule generation during play. The molecules in the game are generated using MLConfGen; the game framing turns real chemistry into a satirical AI drug-design startup simulator . See the [Steam store page](https://store.steampowered.com/app/5119610/Trust_Me_It_Binds/) for more details - Purchasing the game is a nice way to support the Project!
 
-
-The generative AI in the game is used for molecular structure generation . See the [Steam store page](https://store.steampowered.com/app/5119610/Trust_Me_It_Binds/) for more details
 ---
 
 ## Relationship to this repository
@@ -38,4 +36,4 @@ The generative AI in the game is used for molecular structure generation . See t
 | Weights | Hugging Face (see model card) | hosted as part of the product |
 | APIs | Python (`mlconfgen`) and JavaScript (`mlconfgen` on npm) | REST, MCP, cloud UIs (Quantori); embedded ONNX / local inference (Steam game) |
 
-Using the open-source libraries does not require or include access to the commercial offerings above. Conversely, the commercial products may ship additional tooling, hosting, and support beyond what is documented here.
+Using the open-source libraries does not require or include access to the commercial offerings above. Conversely, the commercial products ship additional tooling, hosting, and support beyond what is documented here.

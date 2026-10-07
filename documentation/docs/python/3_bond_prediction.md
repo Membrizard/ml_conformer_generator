@@ -36,7 +36,7 @@ conda install -c conda-forge openbabel
 The EDM stage is called directly (`edm_samples`), OpenBabel assigns the bonds, and the library's own `standardize_mol` finishes the job exactly as it would after AdjMatSeer.
 
 ```python
-from openbabel import openbabel as ob
+from openbabel import openbabel
 from rdkit import Chem
 from mlconfgen import MLConformerGenerator
 from mlconfgen.utils import standardize_mol
@@ -46,29 +46,23 @@ ob.obErrorLog.SetOutputLevel(0)   # silence OpenBabel warnings
 BOND_TYPES = {1: Chem.BondType.SINGLE, 2: Chem.BondType.DOUBLE, 3: Chem.BondType.TRIPLE}
 
 
-def perceive_bonds_openbabel(mol: Chem.Mol, aromatic_bonds: bool = False) -> Chem.Mol | None:
-    """
-    Assign bonds to a bond-less RDKit molecule with OpenBabel's deterministic perception.
+def guess_bonds_openbabel(mol: Chem.Mol) -> Chem.Mol:
+    ob_conv = openbabel.OBConversion()
+    ob_conv.SetInAndOutFormats("xyz", "mol")
+    obmol = openbabel.OBMol()
+    xyz_block = Chem.MolToXYZBlock(mol)
+    ob_conv.ReadString(obmol, xyz_block)
 
-    Reading an XYZ block makes OpenBabel run ConnectTheDots + PerceiveBondOrders.
-    Atom order is preserved, so OpenBabel indices map 1:1 onto the RDKit atoms.
-    """
-    n = mol.GetNumAtoms()
-    conv = ob.OBConversion()
-    conv.SetInFormat("xyz")
-    obmol = ob.OBMol()
-    if not conv.ReadString(obmol, Chem.MolToXYZBlock(mol)) or obmol.NumAtoms() != n:
-        return None
+    obmol.ConnectTheDots()
+    obmol.PerceiveBondOrders()
 
-    rw = Chem.RWMol(mol)
-    for bond in ob.OBMolBondIter(obmol):
-        i, j = bond.GetBeginAtomIdx() - 1, bond.GetEndAtomIdx() - 1
-        if aromatic_bonds and bond.IsAromatic():
-            order = Chem.BondType.AROMATIC
-        else:
-            order = BOND_TYPES[min(max(bond.GetBondOrder(), 1), 3)]   # Kekulé orders
-        rw.AddBond(i, j, order)
-    return rw.GetMol()
+    mol_block = ob_conv.WriteString(obmol)
+    raw_mol = Chem.MolFromMolBlock(mol_block)
+    if raw_mol:
+        out_mol = strip_mol(raw_mol)
+    else:
+        out_mol = None
+
 
 
 model = MLConformerGenerator(diffusion_steps=100)
@@ -76,6 +70,7 @@ reference = Chem.MolFromMolFile("./assets/demo_files/ceyyag.mol")
 
 # Stage 1: atom clouds from the EDM
 ref_context, ref_n_atoms, _ = model.prepare_inputs(reference_conformer=reference)
+
 edm_mols = model.edm_samples(
     reference_context=ref_context,
     n_samples=50,
@@ -84,7 +79,7 @@ edm_mols = model.edm_samples(
 )
 
 # Stage 2: deterministic bonds instead of AdjMatSeer
-bonded = (perceive_bonds_openbabel(m) for m in edm_mols)
+bonded = [guess_bonds_openbabel(m) for m in edm_mols]
 
 # Stage 3: the library's standardisation (largest fragment, valence, kekulisation, MMFF94)
 samples = [
@@ -99,8 +94,6 @@ Everything downstream — `evaluate_samples`, RL scoring functions, export — a
 
 ### Notes on the example
 
-- **Kekulé vs. aromatic orders.** The default keeps OpenBabel's Kekulé bond orders (1/2/3), which RDKit sanitises most reliably. `aromatic_bonds=True` writes `AROMATIC` bonds for rings OpenBabel flags as aromatic; this mirrors AdjMatSeer's bond-type class 4 but fails sanitisation more often on imperfect geometries.
-- **No canonicalisation needed.** AdjMatSeer requires atoms in canonical order (`predict_bonds` handles that); OpenBabel's perception is order-independent.
 - **Fixed fragments.** Atom clouds from inpainting (`edm_samples(..., fixed_fragment=...)`) are processed the same way — only the geometry is used.
 - **ONNX backend.** `MLConformerGeneratorONNX.edm_samples` returns the same kind of bond-less molecules, so the snippet works unchanged with `MLConformerGeneratorONNX` in place of `MLConformerGenerator`.
 

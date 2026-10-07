@@ -135,7 +135,7 @@ The EDM occasionally produces disconnected atom groups. By default the largest c
 
 - `100` is typically sufficient; `1000` gives little additional benefit.
 - `20–50` speeds generation up roughly linearly with moderate quality loss.
-- Fine-tuning is commonly run at `10` steps for speed; see [RL Fine-Tuning](7_fine_tuning.md).
+- Fine-tuning can benefit from `10-20` steps generation, as it is easier to steer distribution in the noisier outputs, see [RL Fine-Tuning](7_fine_tuning.md).
 
 ---
 

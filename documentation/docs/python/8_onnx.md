@@ -100,7 +100,7 @@ export_to_onnx(
 
 - Build the model on the device you export from (`device="cpu"` is recommended; otherwise name the exact device, e.g. `"cuda:0"`).
 - `onnx_export` is a top-level package in the repository (not part of the `mlconfgen` wheel); run the export from a checkout.
-- Distilled PyTorch weights export the same way and yield the `small_*` ONNX files.
+- Distilled PyTorch weights export the same way.
 
 ### Exporting a fine-tuning checkpoint
 
