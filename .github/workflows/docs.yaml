@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - "documentation/**"
+      - "docs_dev/**"
       - ".github/workflows/docs.yaml"
   pull_request:
     paths:
-      - "documentation/**"
+      - "docs_dev/**"
       - ".github/workflows/docs.yaml"
   workflow_dispatch:
 
@@ -33,10 +33,11 @@ jobs:
           cache: pip
       - run: pip install mkdocs-material
       - name: Build (strict — fails on broken links)
-        run: mkdocs build --strict -f documentation/mkdocs.yml -d ../site
+        # -d docs is relative to the repo root (cwd after checkout), not docs_dev/
+        run: mkdocs build --strict -f docs_dev/mkdocs.yml -d docs
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: docs
 
   deploy:
     name: Publish to GitHub Pages
