@@ -1,13 +1,10 @@
-from pathlib import Path
 
 import pytest
 from rdkit import Chem, RDLogger
 
 from onnx_export import export_to_onnx
-from src.mlconfgen import (MLConformerGenerator, MLConformerGeneratorONNX,
-                           evaluate_samples)
-from src.mlconfgen.utils import (align_mol_to_principal_frame,
-                                 extract_fragment, set_conformer_positions)
+from src.mlconfgen import MLConformerGenerator, MLConformerGeneratorONNX, evaluate_samples
+from src.mlconfgen.utils import align_mol_to_principal_frame, extract_fragment, set_conformer_positions
 from tests.conftest import ONNX_WEIGHT_SETS, TORCH_WEIGHT_SETS
 
 RDLogger.DisableLog("rdApp.*")

@@ -4,18 +4,20 @@ from typing import List
 import numpy as np
 from rdkit import Chem
 
-from ..utils.common import (apply_transform, random_context,
-                            set_conformer_positions)
-from ..utils.config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION,
-                            MAX_N_NODES, MIN_N_NODES)
+from ..utils.common import apply_transform, random_context, set_conformer_positions
+from ..utils.config import ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES, MIN_N_NODES
 from ..utils.mol_split import extract_fragment
 from ..utils.standardizer import standardize_mol
 from ..utils.weights_manager import WeightsManager
 from .equivariant_diffusion import EquivariantDiffusionONNX
-from .utils import (align_mol_to_principal_frame_onnx,
-                    prepare_adj_mat_seer_input_onnx, prepare_edm_input_onnx,
-                    prepare_fragment_onnx, redefine_bonds_onnx,
-                    samples_to_rdkit_mol_onnx)
+from .utils import (
+    align_mol_to_principal_frame_onnx,
+    prepare_adj_mat_seer_input_onnx,
+    prepare_edm_input_onnx,
+    prepare_fragment_onnx,
+    redefine_bonds_onnx,
+    samples_to_rdkit_mol_onnx,
+)
 
 
 class MLConformerGeneratorONNX:

@@ -7,9 +7,14 @@ from rdkit import Chem
 from torch.distributions import Categorical
 
 from ..adj_mat_seer import AdjMatSeer
-from ..utils import (ATOM_DECODER, bond_type_dict, is_valid_mol,
-                     prepare_adj_mat_seer_input, redefine_bonds,
-                     samples_to_rdkit_mol)
+from ..utils import (
+    ATOM_DECODER,
+    bond_type_dict,
+    is_valid_mol,
+    prepare_adj_mat_seer_input,
+    redefine_bonds,
+    samples_to_rdkit_mol,
+)
 from .edm_adapter import EDMAdapter
 from .shared_prior_agent import SharedPriorAgent
 

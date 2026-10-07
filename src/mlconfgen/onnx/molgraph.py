@@ -2,8 +2,7 @@ import numpy as np
 from rdkit import Chem
 from rdkit.Chem import rdmolops
 
-from ..utils.common import (allowable_features, bond_type_dict,
-                            elements_decoder, elements_dict)
+from ..utils.common import allowable_features, bond_type_dict, elements_decoder, elements_dict
 from ..utils.config import DIMENSION, NUM_BOND_TYPES
 
 
@@ -99,7 +98,7 @@ class MolGraphONNX:
         if graph_size > DIMENSION:
             raise ValueError(f"The graph should have not more than {DIMENSION} nodes")
         if self.edge_attr is None:
-            raise ValueError(f"Bond types should be specified in edge_attr of Data")
+            raise ValueError("Bond types should be specified in edge_attr of Data")
 
         edge_attr = self.edge_attr.astype(np.int64)
 

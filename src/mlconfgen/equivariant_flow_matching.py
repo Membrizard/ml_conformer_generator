@@ -4,8 +4,7 @@ import torch
 from torch import Tensor
 
 from .egnn import EGNNDynamics
-from .utils import (remove_mean_with_mask,
-                    sample_combined_position_feature_noise)
+from .utils import remove_mean_with_mask, sample_combined_position_feature_noise
 
 
 class EquivariantFlowMatching(torch.nn.Module):

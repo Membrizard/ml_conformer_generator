@@ -7,8 +7,7 @@ import torch
 from rdkit import Chem, RDLogger
 
 from onnx_export import export_to_onnx
-from src.mlconfgen import (MLConformerGenerator, MLConformerGeneratorONNX,
-                           evaluate_samples)
+from src.mlconfgen import MLConformerGenerator, MLConformerGeneratorONNX, evaluate_samples
 from src.mlconfgen.rl_fine_tuning.edm_adapter import EDMAdapter
 from tests.conftest import TORCH_WEIGHT_SETS
 

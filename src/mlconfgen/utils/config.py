@@ -1,3 +1,5 @@
+from pathlib import Path
+
 # Configuration file for high-level framework parameters
 
 DIMENSION = 42
@@ -45,8 +47,6 @@ MAX_FRAG_SIZE = 20
 
 # Weights Management
 HF_REPO = "Membrizard/ml_conformer_generator"
-
-from pathlib import Path
 
 MLCONFGEN_CACHE = Path.home() / ".mlconfgen_weights"
 

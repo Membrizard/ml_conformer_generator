@@ -16,7 +16,7 @@ PREFIX = '[MLConfGen Weights Manager]'
 
 def _ensure_hf_hub():
     try:
-        import huggingface_hub 
+        import huggingface_hub
         return
     except ImportError:
         pass
@@ -24,7 +24,6 @@ def _ensure_hf_hub():
         [sys.executable, "-m", "pip", "install", "huggingface_hub"],
         stdout=sys.stderr,
     )
-    import huggingface_hub 
 
 
 class WeightsManager:
