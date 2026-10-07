@@ -14,12 +14,9 @@ logger = logging.getLogger(__name__)
 PREFIX = '[MLConfGen Weights Manager]'
 
 
-def _ensure_hf_hub():
-    try:
-        import huggingface_hub
-        return
-    except ImportError:
-        pass
+def _ensure_hf_hub() -> None:
+    if importlib.util.find_spec("huggingface_hub") is not None:
+        return None
     subprocess.check_call(
         [sys.executable, "-m", "pip", "install", "huggingface_hub"],
         stdout=sys.stderr,
