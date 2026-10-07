@@ -56,9 +56,14 @@ Digital Discovery, 2025. DOI: [10.1039/D5DD00318K](https://doi.org/10.1039/D5DD0
 
 > **Note:** The weights are **not** bundled with either package. They must be supplied as local files, or can be resolved from Hugging Face on first use. See [Model Weights](getting_started/2_model_weights.md).
 
-Commercial deployments built on this stack:
-- [Quantori MLConfGen](https://quantori.com/mlconfgen)
+## Support the Project
 
-- The Game [*Trust Me, It Binds*](https://store.steampowered.com/app/5119610/Trust_Me_It_Binds/)
+## Support the Project
+
+If you find MLConfGen useful, a simple way to support further open-source work is to pick up the indie game that ships it on-device:
+
+- [*Trust Me, It Binds*](https://store.steampowered.com/app/5119610/Trust_Me_It_Binds/) on Steam — a procedural deckbuilder built around MLConfGen molecule generation
+
+More context: [Commercial Projects](projects/1_commercial.md).
 
 

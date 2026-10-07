@@ -58,6 +58,10 @@ Denis Sapegin, Fedor Bakharev, Dmitry Krupenya, Azamat Gafurov, Konstantin Pildi
 Digital Discovery, 2025.
 DOI: [10.1039/D5DD00318K](https://doi.org/10.1039/D5DD00318K)
 
+## Support the project
+
+If you find this useful, consider supporting further development by getting [*Trust Me, It Binds*](https://store.steampowered.com/app/5119610/Trust_Me_It_Binds/) on Steam — an indie deckbuilder that embeds MLConfGen for on-device molecule generation.
+
 ---
 ## Installation
 
