@@ -14,11 +14,9 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: docs-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -35,19 +33,3 @@ jobs:
       - name: Build (strict — fails on broken links)
         # -d is resolved relative to docs_dev/ (config file dir), so ../docs = repo-root ./docs
         run: mkdocs build --strict -f docs_dev/mkdocs.yml -d ../docs
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: docs
-
-  deploy:
-    name: Publish to GitHub Pages
-    # Build runs on PRs as a check; only pushes to main are published.
-    if: github.event_name != 'pull_request'
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
