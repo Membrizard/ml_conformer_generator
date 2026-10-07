@@ -25,7 +25,7 @@ The project ships as two libraries that share the same trained weights:
 
 ## Key Features
 
-**Shape-Guided Generation**: Generate molecules that conform to a 3D reference — a molecular conformer or an arbitrary MOI context.
+**Shape-Guided Generation**: Generate molecules that conform to a 3D reference - a molecular conformer or an arbitrary MOI context.
 
 **Fixed Fragments (Inpainting)**: Keep a substructure fixed and let the model complete the rest of the molecule in a geometrically consistent way, enabling scaffold hopping and fragment growing.
 
@@ -41,10 +41,10 @@ The project ships as two libraries that share the same trained weights:
 
 ## Citation
 
-If you use **MLConfGen** in your research, please cite:
+If you use **MLConfGen** in your work or research, please cite:
 
 Denis Sapegin, Fedor Bakharev, Dmitry Krupenya, Azamat Gafurov, Konstantin Pildish, and Joseph C. Bear.
-*Moment of inertia as a simple shape descriptor for diffusion-based shape-constrained molecular generation.*
+**Moment of inertia as a simple shape descriptor for diffusion-based shape-constrained molecular generation.**
 Digital Discovery, 2025. DOI: [10.1039/D5DD00318K](https://doi.org/10.1039/D5DD00318K)
 
 ---
@@ -52,8 +52,13 @@ Digital Discovery, 2025. DOI: [10.1039/D5DD00318K](https://doi.org/10.1039/D5DD0
 ## Access & Licensing
 
 - Source code: [github.com/Membrizard/ml_conformer_generator](https://github.com/Membrizard/ml_conformer_generator) — Apache 2.0
-- Trained weights: [huggingface.co/Membrizard/ml_conformer_generator](https://huggingface.co/Membrizard/ml_conformer_generator) — see the model card for the applicable license
+- Trained weights: [huggingface.co/Membrizard/ml_conformer_generator](https://huggingface.co/Membrizard/ml_conformer_generator) — Apache 2.0
 
-> **Note:** The weights are **not** bundled with either package. They are resolved from Hugging Face on first use (Python) or must be supplied as local files (JavaScript). See [Model Weights](getting_started/2_model_weights.md).
+> **Note:** The weights are **not** bundled with either package. They must be supplied as local files, or can be resolved from Hugging Face on first use. See [Model Weights](getting_started/2_model_weights.md).
 
-Commercial deployments built on this stack — including [Quantori MLConfGen](https://quantori.com/mlconfgen) and the Steam game [*Trust Me, It Binds*](https://store.steampowered.com/app/5119610/Trust_Me_It_Binds/) — are listed under [Commercial Projects](projects/1_commercial.md).
+Commercial deployments built on this stack:
+- [Quantori MLConfGen](https://quantori.com/mlconfgen)
+
+- The Game [*Trust Me, It Binds*](https://store.steampowered.com/app/5119610/Trust_Me_It_Binds/)
+
+

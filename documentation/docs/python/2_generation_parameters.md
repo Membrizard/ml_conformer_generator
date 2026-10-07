@@ -81,6 +81,7 @@ The three principal moments of inertia of the target shape (equal-mass points, a
 
 ```python
 from mlconfgen.utils import align_mol_to_principal_frame
+
 context, shift, rotation, aligned_coord = align_mol_to_principal_frame(reference)
 ```
 
