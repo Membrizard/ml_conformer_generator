@@ -31,5 +31,6 @@ jobs:
           cache: pip
       - run: pip install mkdocs-material
       - name: Build (strict — fails on broken links)
-        # -d is resolved relative to docs_dev/ (config file dir), so ../docs = repo-root ./docs
+        # Verify docs_dev builds cleanly. Published site is the committed repo-root docs/
+        # (GitHub Pages: Deploy from a branch → /docs). -d is relative to docs_dev/.
         run: mkdocs build --strict -f docs_dev/mkdocs.yml -d ../docs

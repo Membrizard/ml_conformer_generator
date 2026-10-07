@@ -1,51 +1,36 @@
-#  Documentation
+# Documentation
 
- The documentation server is built using [MkDocs](https://www.mkdocs.org/) with the
- [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/) theme.
+The documentation is built with [MkDocs](https://www.mkdocs.org/) and the
+[Material for MkDocs](https://squidfunk.github.io/mkdocs-material/) theme.
+
+Markdown sources live in `docs/`. The published static site is committed at the
+repository root as **`../docs`** and served by GitHub Pages (**Settings → Pages →
+Deploy from a branch → `/docs`**). An empty `.nojekyll` file disables GitHub’s
+Jekyll step so MkDocs HTML is served as-is.
 
 ---
 
-##  Development
-
-To build and serve the documentation locally:
+## Development
 
 1. Install MkDocs with the Material theme:
 
    ```bash
    pip install mkdocs-material
    ```
-2. Serve the documentation locally:
 
-``` bash
-mkdocs serve -a localhost:8000
-```
-This will start a local server (at http://localhost:8000) where you can preview your changes in real-time.
+2. Live preview:
 
-## Guidelines
+   ```bash
+   mkdocs serve -a localhost:8000
+   ```
 
-- All documentation is written in Markdown (.md) files.
+## Publish (update the committed site)
 
-- Keep content concise, clear, and informative.
-
-- Use consistent structure and formatting for readability.
-
-- The documentation covers the two open-source libraries:
-
-    - `src/mlconfgen` — Python library (`docs/python/`)
-
-    - `js` — JavaScript / ONNX Runtime package (`docs/javascript/`)
-
-    - shared pages: installation and weights (`docs/getting_started/`), model architecture and benchmarks (`docs/model/`)
-
-- Navigation is defined explicitly in `mkdocs.yml`; add new pages there.
-
-- Validate with `mkdocs build --strict` before publishing — it fails on broken internal links.
-
-CI builds static HTML to the repository root **`../docs`**. `-d` is resolved relative to this directory (where `mkdocs.yml` lives), so use `../docs` — not `docs` (that would overwrite source `docs/`).
-
-From the repo root:
+After changing sources under `docs/`, rebuild into the repo-root `docs/` folder and
+commit those files (CI only verifies the build; it does not push Pages):
 
 ```bash
+# from repository root — note ../docs (relative to docs_dev/, not "docs")
 pip install mkdocs-material
 mkdocs build --strict -f docs_dev/mkdocs.yml -d ../docs
 ```
@@ -55,6 +40,20 @@ Or from this directory:
 ```bash
 mkdocs build --strict -d ../docs
 ```
+
+Then commit the updated `docs/` tree (including `.nojekyll`).
+
+## Guidelines
+
+- All documentation is written in Markdown (`.md`) files.
+- Keep content concise, clear, and informative.
+- Use consistent structure and formatting for readability.
+- The documentation covers the two open-source libraries:
+  - `src/mlconfgen` — Python library (`docs/python/`)
+  - `js` — JavaScript / ONNX Runtime package (`docs/javascript/`)
+  - shared pages: installation and weights (`docs/getting_started/`), model architecture and benchmarks (`docs/model/`)
+- Navigation is defined explicitly in `mkdocs.yml`; add new pages there.
+- Validate with `mkdocs build --strict` before publishing — it fails on broken internal links.
 
 ## Server Template
 
