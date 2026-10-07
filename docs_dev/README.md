@@ -41,14 +41,16 @@ This will start a local server (at http://localhost:8000) where you can preview 
 
 - Validate with `mkdocs build --strict` before publishing — it fails on broken internal links.
 
-CI builds static HTML to the repository root **`../docs`**. From the repo root:
+CI builds static HTML to the repository root **`../docs`**. `-d` is resolved relative to this directory (where `mkdocs.yml` lives), so use `../docs` — not `docs` (that would overwrite source `docs/`).
+
+From the repo root:
 
 ```bash
 pip install mkdocs-material
-mkdocs build --strict -f docs_dev/mkdocs.yml -d docs
+mkdocs build --strict -f docs_dev/mkdocs.yml -d ../docs
 ```
 
-Or from this directory (use an absolute/`../docs` path so output does not collide with source `docs/`):
+Or from this directory:
 
 ```bash
 mkdocs build --strict -d ../docs
