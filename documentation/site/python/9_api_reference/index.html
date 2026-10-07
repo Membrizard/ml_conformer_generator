@@ -1,0 +1,1938 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Spatially-aware molecule generation via Equivariant Diffusion and GCN">
+      
+      
+      
+        <link rel="canonical" href="https://membrizard.github.io/ml_conformer_generator/python/9_api_reference/">
+      
+      
+        <link rel="prev" href="../8_onnx/">
+      
+      
+        <link rel="next" href="../../javascript/1_quick_start/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.ico">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>API Reference - ML Conformer Generator</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="white" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#api-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="ML Conformer Generator" class="md-header__button md-logo" aria-label="ML Conformer Generator" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ML Conformer Generator
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              API Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Membrizard/ml_conformer_generator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Membrizard/ml_conformer_generator
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="ML Conformer Generator" class="md-nav__button md-logo" aria-label="ML Conformer Generator" data-md-component="logo">
+      
+  <img src="../../assets/logo.png" alt="logo">
+
+    </a>
+    ML Conformer Generator
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Membrizard/ml_conformer_generator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Membrizard/ml_conformer_generator
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/1_installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting_started/2_model_weights/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model Weights
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python Library
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Python Library
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../1_molecule_generation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Molecule Generation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../2_generation_parameters/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generation Parameters
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../3_bond_prediction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Bond Prediction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../4_fixed_fragments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fixed Fragments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../5_inertial_fragment_matching/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inertial Fragment Matching
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../6_shape_similarity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shape Similarity & Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../7_fine_tuning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    RL Fine-Tuning
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../8_onnx/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ONNX Inference & Export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#mlconformergenerator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MLConformerGenerator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MLConformerGenerator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Methods
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generate_conformers-listchemmol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        generate_conformers(...) -&gt; list[Chem.Mol]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edm_samples-listchemmol-tupletensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        edm_samples(...) -&gt; list[Chem.Mol] | tuple[Tensor, ...]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#predict_bondsedm_samples-listchemmol-listchemmol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        predict_bonds(edm_samples: list[Chem.Mol]) -&gt; list[Chem.Mol]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prepare_inputs-tupletensor-int-chemmol-none-static" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare_inputs(...) -&gt; tuple[Tensor, int, Chem.Mol | None] (static)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fine_tune-none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fine_tune(...) -&gt; None
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#load_finetune_checkpointpath-str-path-none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load_finetune_checkpoint(path: str | Path) -&gt; None
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list_weights-dictstr-liststr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        list_weights() -&gt; dict[str, list[str]]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clear_cache-none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clear_cache() -&gt; None
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#randomsize-int-1-seednone-optimize_geometry-bool-true-listchemmol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        random(size: int = 1, seed=None, optimize_geometry: bool = True) -&gt; list[Chem.Mol]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mlconformergeneratoronnx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MLConformerGeneratorONNX
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluate_samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        evaluate_samples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="evaluate_samples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mlconfgencheminformaticsshape_similarity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mlconfgen.cheminformatics.shape_similarity
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inertial_fragment_matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        inertial_fragment_matching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ff_inertial_fragment_matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ff_inertial_fragment_matching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mlconfgenrl_fine_tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mlconfgen.rl_fine_tuning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mlconfgenutils" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mlconfgen.utils
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#onnx_export-repository-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        onnx_export (repository package)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    JavaScript Library
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    JavaScript Library
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../javascript/1_quick_start/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../javascript/2_generation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Generation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../javascript/3_browser/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Browser Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../javascript/4_animation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Animating Generation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../javascript/5_api_reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Model
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Model
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/1_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture & Pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../model/2_performance/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Performance
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Projects
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Projects
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../projects/1_commercial/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commercial Projects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#mlconformergenerator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MLConformerGenerator
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MLConformerGenerator">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Methods
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Methods">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#generate_conformers-listchemmol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        generate_conformers(...) -&gt; list[Chem.Mol]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#edm_samples-listchemmol-tupletensor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        edm_samples(...) -&gt; list[Chem.Mol] | tuple[Tensor, ...]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#predict_bondsedm_samples-listchemmol-listchemmol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        predict_bonds(edm_samples: list[Chem.Mol]) -&gt; list[Chem.Mol]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prepare_inputs-tupletensor-int-chemmol-none-static" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare_inputs(...) -&gt; tuple[Tensor, int, Chem.Mol | None] (static)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fine_tune-none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fine_tune(...) -&gt; None
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#load_finetune_checkpointpath-str-path-none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load_finetune_checkpoint(path: str | Path) -&gt; None
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#list_weights-dictstr-liststr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        list_weights() -&gt; dict[str, list[str]]
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clear_cache-none" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        clear_cache() -&gt; None
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#randomsize-int-1-seednone-optimize_geometry-bool-true-listchemmol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        random(size: int = 1, seed=None, optimize_geometry: bool = True) -&gt; list[Chem.Mol]
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mlconformergeneratoronnx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        MLConformerGeneratorONNX
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluate_samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        evaluate_samples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="evaluate_samples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mlconfgencheminformaticsshape_similarity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mlconfgen.cheminformatics.shape_similarity
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inertial_fragment_matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        inertial_fragment_matching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ff_inertial_fragment_matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ff_inertial_fragment_matching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mlconfgenrl_fine_tuning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mlconfgen.rl_fine_tuning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#mlconfgenutils" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mlconfgen.utils
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#onnx_export-repository-package" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        onnx_export (repository package)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">&para;</a></h1>
+<p>Public surface of the <code>mlconfgen</code> package. Signatures are abbreviated to their meaningful arguments; see the per-topic pages for parameter semantics.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">mlconfgen</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MLConformerGenerator</span><span class="p">,</span>
+    <span class="n">MLConformerGeneratorONNX</span><span class="p">,</span>
+    <span class="n">evaluate_samples</span><span class="p">,</span>
+    <span class="n">inertial_fragment_matching</span><span class="p">,</span>
+    <span class="n">ff_inertial_fragment_matching</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<hr />
+<h2 id="mlconformergenerator"><code>MLConformerGenerator</code><a class="headerlink" href="#mlconformergenerator" title="Permanent link">&para;</a></h2>
+<p><code>torch.nn.Module</code>. PyTorch generation pipeline.</p>
+<div class="highlight"><pre><span></span><code><span class="n">MLConformerGenerator</span><span class="p">(</span>
+    <span class="n">diffusion_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">device</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span> <span class="o">|</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"cpu"</span><span class="p">,</span>
+    <span class="n">edm_weights</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">=</span> <span class="s2">"edm_moi_chembl_15_39.pt"</span><span class="p">,</span>
+    <span class="n">adj_mat_seer_weights</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">=</span> <span class="s2">"adj_mat_seer_chembl_15_39.pt"</span><span class="p">,</span>
+    <span class="n">finetune_checkpoint</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">dimension</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="n">num_bond_types</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">min_n_nodes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="n">max_n_nodes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">39</span><span class="p">,</span>
+    <span class="n">context_norms</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">CONTEXT_NORMS</span><span class="p">,</span>
+    <span class="n">atom_decoder</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">ATOM_DECODER</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Attributes: <code>generative_model</code> (<code>EquivariantDiffusion</code>), <code>adj_mat_seer</code> (<code>AdjMatSeer</code>), <code>edm_adapter</code> (<code>EDMAdapter | None</code>), <code>weights_manager</code>, <code>context_norms</code>, <code>device</code>.</p>
+<h3 id="methods">Methods<a class="headerlink" href="#methods" title="Permanent link">&para;</a></h3>
+<h4 id="generate_conformers-listchemmol"><code>generate_conformers(...) -&gt; list[Chem.Mol]</code><a class="headerlink" href="#generate_conformers-listchemmol" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="n">generate_conformers</span><span class="p">(</span>
+    <span class="n">reference_conformer</span><span class="p">:</span> <span class="n">Chem</span><span class="o">.</span><span class="n">Mol</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">variance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">reference_context</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_atoms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">optimize_geometry</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">resample_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">fixed_fragment</span><span class="p">:</span> <span class="n">Chem</span><span class="o">.</span><span class="n">Mol</span> <span class="o">|</span> <span class="nb">set</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">blend_power</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">keep_largest_fragment</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Full pipeline: EDM → AdjMatSeer → standardisation. Returns valid molecules only. <code>forward(...)</code> / <code>model(...)</code> is an alias without <code>keep_largest_fragment</code>.</p>
+<h4 id="edm_samples-listchemmol-tupletensor"><code>edm_samples(...) -&gt; list[Chem.Mol] | tuple[Tensor, ...]</code><a class="headerlink" href="#edm_samples-listchemmol-tupletensor" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="n">edm_samples</span><span class="p">(</span>
+    <span class="n">reference_context</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span>
+    <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">max_n_nodes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">32</span><span class="p">,</span>
+    <span class="n">min_n_nodes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span>
+    <span class="n">resample_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">fixed_fragment</span><span class="p">:</span> <span class="n">Chem</span><span class="o">.</span><span class="n">Mol</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">blend_power</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">raw_output</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Diffusion stage only. Returns bond-less molecules, or <code>(x, h, node_mask, edge_mask)</code> when <code>raw_output=True</code>. Applies the EDM adapter if a checkpoint is loaded. <code>reference_context</code> must already be the un-normalised MOI context (see <code>prepare_inputs</code>).</p>
+<h4 id="predict_bondsedm_samples-listchemmol-listchemmol"><code>predict_bonds(edm_samples: list[Chem.Mol]) -&gt; list[Chem.Mol]</code><a class="headerlink" href="#predict_bondsedm_samples-listchemmol-listchemmol" title="Permanent link">&para;</a></h4>
+<p>Canonicalises atom order, runs AdjMatSeer and writes the predicted bonds into the molecules. No standardisation.</p>
+<h4 id="prepare_inputs-tupletensor-int-chemmol-none-static"><code>prepare_inputs(...) -&gt; tuple[Tensor, int, Chem.Mol | None]</code> <em>(static)</em><a class="headerlink" href="#prepare_inputs-tupletensor-int-chemmol-none-static" title="Permanent link">&para;</a></h4>
+<div class="highlight"><pre><span></span><code><span class="n">prepare_inputs</span><span class="p">(</span><span class="n">reference_conformer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fixed_fragment</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reference_context</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n_atoms</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+<p>Returns <code>(reference_context, reference_n_atoms, prepared_fixed_fragment)</code>. Raises <code>ValueError</code> if neither a conformer nor a context + <code>n_atoms</code> is given, or if a <code>set</code> fragment is combined with a context.</p>
+<h4 id="fine_tune-none"><code>fine_tune(...) -&gt; None</code><a class="headerlink" href="#fine_tune-none" title="Permanent link">&para;</a></h4>
+<p>See <a href="../7_fine_tuning/">RL Fine-Tuning</a> for the full parameter list. Writes <code>best_checkpoint.pt</code> / <code>latest_checkpoint.pt</code> into <code>save_dir</code>.</p>
+<h4 id="load_finetune_checkpointpath-str-path-none"><code>load_finetune_checkpoint(path: str | Path) -&gt; None</code><a class="headerlink" href="#load_finetune_checkpointpath-str-path-none" title="Permanent link">&para;</a></h4>
+<p>Loads the EDM adapter and AdjMatSeer head from an RL checkpoint.</p>
+<h4 id="list_weights-dictstr-liststr"><code>list_weights() -&gt; dict[str, list[str]]</code><a class="headerlink" href="#list_weights-dictstr-liststr" title="Permanent link">&para;</a></h4>
+<p><code>{"remote": [...], "local": [...]}</code> of <code>.pt</code> files available on Hugging Face and in the cache.</p>
+<h4 id="clear_cache-none"><code>clear_cache() -&gt; None</code><a class="headerlink" href="#clear_cache-none" title="Permanent link">&para;</a></h4>
+<p>Deletes the weights cache directory.</p>
+<h4 id="randomsize-int-1-seednone-optimize_geometry-bool-true-listchemmol"><code>random(size: int = 1, seed=None, optimize_geometry: bool = True) -&gt; list[Chem.Mol]</code><a class="headerlink" href="#randomsize-int-1-seednone-optimize_geometry-bool-true-listchemmol" title="Permanent link">&para;</a></h4>
+<p>Generates molecules from a random context drawn from a bundled set of ChEMBL-derived seeds (<code>random_molecule_seeds.json</code>, 15–39 heavy atoms). Useful for smoke tests and unconditional sampling.</p>
+<hr />
+<h2 id="mlconformergeneratoronnx"><code>MLConformerGeneratorONNX</code><a class="headerlink" href="#mlconformergeneratoronnx" title="Permanent link">&para;</a></h2>
+<p>Torch-free generation pipeline on ONNX Runtime.</p>
+<div class="highlight"><pre><span></span><code><span class="n">MLConformerGeneratorONNX</span><span class="p">(</span>
+    <span class="n">diffusion_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">egnn_onnx</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">=</span> <span class="s2">"egnn_chembl_15_39.onnx"</span><span class="p">,</span>
+    <span class="n">adj_mat_seer_onnx</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">=</span> <span class="s2">"adj_mat_seer_chembl_15_39.onnx"</span><span class="p">,</span>
+    <span class="n">finetune_checkpoint_onnx</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">dimension</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">42</span><span class="p">,</span>
+    <span class="n">min_n_nodes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="n">max_n_nodes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">39</span><span class="p">,</span>
+    <span class="n">context_norms</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">CONTEXT_NORMS</span><span class="p">,</span>
+    <span class="n">atom_decoder</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="n">ATOM_DECODER</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Methods: <code>generate_conformers</code>, <code>edm_samples</code> (no <code>raw_output</code>), <code>predict_bonds</code>, <code>prepare_inputs</code>, <code>list_weights</code> (<code>.onnx</code> files), <code>clear_cache</code>, <code>random</code>, <code>__call__</code>. Contexts are <code>numpy.ndarray</code> of shape <code>(3,)</code>. Attributes <code>generative_model</code> (<code>EquivariantDiffusionONNX</code>), <code>adj_mat_seer</code> and <code>edm_adapter</code> are <code>onnxruntime.InferenceSession</code> objects.</p>
+<hr />
+<h2 id="evaluate_samples"><code>evaluate_samples</code><a class="headerlink" href="#evaluate_samples" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="n">evaluate_samples</span><span class="p">(</span>
+    <span class="n">reference</span><span class="p">:</span> <span class="n">Chem</span><span class="o">.</span><span class="n">Mol</span><span class="p">,</span>
+    <span class="n">samples</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Chem</span><span class="o">.</span><span class="n">Mol</span><span class="p">],</span>
+    <span class="n">generator</span><span class="p">:</span> <span class="n">rdFingerprintGenerator</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">Morgan</span> <span class="n">r</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2048</span> <span class="n">bits</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="n">sanitize_ref</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]]</span>
+</code></pre></div>
+<p>Returns the reference mol block in its shape-quadrupole frame and, per sample, <code>{"mol_block", "shape_tanimoto", "chemical_tanimoto"}</code> with the sample aligned to the reference. Hydrogens are ignored.</p>
+<h3 id="mlconfgencheminformaticsshape_similarity"><code>mlconfgen.cheminformatics.shape_similarity</code><a class="headerlink" href="#mlconfgencheminformaticsshape_similarity" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>get_shape_quadrupole_for_molecule(coordinates, ...)</code></td>
+<td><code>(main_moments, coordinates_in_shape_frame)</code> of a centred point set.</td>
+</tr>
+<tr>
+<td><code>best_pi_rotation_by_tanimoto(ref_coord, cand_coord)</code></td>
+<td><code>(best_coord, best_score)</code> over identity and π-rotations about x, y, z.</td>
+</tr>
+<tr>
+<td><code>tanimoto_score(ref_coord, cand_coord, n=40)</code></td>
+<td>Gaussian-volume Shape Tanimoto of two aligned point sets.</td>
+</tr>
+<tr>
+<td><code>ATOM_RADIUS</code>, <code>AMPLITUDE</code>, <code>ALPHA</code>, <code>get_alpha(...)</code></td>
+<td>Gaussian shape parameters.</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="../6_shape_similarity/">Shape Similarity &amp; Alignment</a>.</p>
+<hr />
+<h2 id="inertial_fragment_matching"><code>inertial_fragment_matching</code><a class="headerlink" href="#inertial_fragment_matching" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="n">inertial_fragment_matching</span><span class="p">(</span>
+    <span class="n">reference_conformer</span><span class="p">:</span> <span class="n">Chem</span><span class="o">.</span><span class="n">Mol</span><span class="p">,</span>
+    <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">generator</span><span class="p">:</span> <span class="n">MLConformerGenerator</span><span class="p">,</span>
+    <span class="n">merger</span><span class="p">:</span> <span class="n">MLConformerGenerator</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">variance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">n_atoms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">resample_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">diffusion_steps_merging</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">min_frag_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="n">max_frag_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span>
+    <span class="n">max_iter</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">predict_bonds</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">optimize_geometry</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Chem</span><span class="o">.</span><span class="n">Mol</span><span class="p">]</span>
+</code></pre></div>
+<h2 id="ff_inertial_fragment_matching"><code>ff_inertial_fragment_matching</code><a class="headerlink" href="#ff_inertial_fragment_matching" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="n">ff_inertial_fragment_matching</span><span class="p">(</span>
+    <span class="n">fixed_fragment</span><span class="p">:</span> <span class="n">Chem</span><span class="o">.</span><span class="n">Mol</span> <span class="o">|</span> <span class="nb">set</span><span class="p">,</span>
+    <span class="n">n_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">generator</span><span class="p">:</span> <span class="n">MLConformerGenerator</span><span class="p">,</span>
+    <span class="n">reference_conformer</span><span class="p">:</span> <span class="n">Chem</span><span class="o">.</span><span class="n">Mol</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">reference_context</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">n_atoms</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">merger</span><span class="p">:</span> <span class="n">MLConformerGenerator</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">variance</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">resample_steps</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="n">blend_power</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">diffusion_steps_merging</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">predict_bonds</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">optimize_geometry</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Chem</span><span class="o">.</span><span class="n">Mol</span><span class="p">]</span>
+</code></pre></div>
+<p>See <a href="../5_inertial_fragment_matching/">Inertial Fragment Matching</a>.</p>
+<hr />
+<h2 id="mlconfgenrl_fine_tuning"><code>mlconfgen.rl_fine_tuning</code><a class="headerlink" href="#mlconfgenrl_fine_tuning" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>RLFineTuner</code> — the trainer used by <code>fine_tune</code>; usable directly for custom sampling functions.</li>
+<li><code>EDMAdapter</code> — the trainable adapter applied to EDM outputs.</li>
+<li><code>reinvent_score_wrapper.ReinventScoreWrapper(config_path, fmt=Format.TOML)</code> — REINVENT4 scoring as a scoring function.</li>
+</ul>
+<hr />
+<h2 id="mlconfgenutils"><code>mlconfgen.utils</code><a class="headerlink" href="#mlconfgenutils" title="Permanent link">&para;</a></h2>
+<p>Frequently useful helpers (all importable from <code>mlconfgen.utils</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WeightsManager(cache_dir=None)</code></td>
+<td><code>resolve(filename, force_download=False)</code>, <code>clear_cache()</code>, <code>list_available_weights(suffixes)</code>.</td>
+</tr>
+<tr>
+<td><code>align_mol_to_principal_frame(mol)</code></td>
+<td><code>(context, shift, rotation, aligned_coord)</code> for a molecule.</td>
+</tr>
+<tr>
+<td><code>get_moment_of_inertia_tensor(coord)</code></td>
+<td>MOI tensor of a point cloud.</td>
+</tr>
+<tr>
+<td><code>apply_transform(coord, shift, rotation)</code> / <code>inverse_coord_transform(...)</code></td>
+<td>Apply / undo the principal-frame transform.</td>
+</tr>
+<tr>
+<td><code>extract_fragment(mol, atom_idx: set)</code></td>
+<td>Sub-molecule with coordinates.</td>
+</tr>
+<tr>
+<td><code>split_molecule_size_constrained(mol, min_size, max_size, ...)</code></td>
+<td>Fragment sets used by IFM.</td>
+</tr>
+<tr>
+<td><code>set_conformer_positions(mol, coord)</code></td>
+<td>Write coordinates into a molecule's conformer.</td>
+</tr>
+<tr>
+<td><code>canonicalise(mol)</code></td>
+<td>Reorder atoms canonically (the order AdjMatSeer expects).</td>
+</tr>
+<tr>
+<td><code>standardize_mol(mol, optimize_geometry=True, ifm_mode=False)</code></td>
+<td>Standardisation pipeline; returns <code>None</code> on failure.</td>
+</tr>
+<tr>
+<td><code>is_valid_mol(mol)</code></td>
+<td><code>1.0</code> / <code>0.0</code> sanitisation check.</td>
+</tr>
+<tr>
+<td><code>samples_to_rdkit_mol(positions, one_hot, node_mask, atom_decoder)</code></td>
+<td>Raw EDM tensors → bond-less molecules.</td>
+</tr>
+<tr>
+<td><code>random_context(size=1, seed=None)</code></td>
+<td>Random <code>{"context": [...], "n_atoms": n}</code> seed.</td>
+</tr>
+</tbody>
+</table>
+<p>Constants: <code>DIMENSION = 42</code>, <code>NUM_BOND_TYPES = 5</code>, <code>MIN_N_NODES = 6</code>, <code>MAX_N_NODES = 39</code>, <code>MIN_FRAG_SIZE = 6</code>, <code>MAX_FRAG_SIZE = 20</code>, <code>CONTEXT_NORMS</code>, <code>ATOM_DECODER</code> (<code>C, N, O, F, P, S, Cl, Br</code>).</p>
+<hr />
+<h2 id="onnx_export-repository-package"><code>onnx_export</code> (repository package)<a class="headerlink" href="#onnx_export-repository-package" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="n">export_to_onnx</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">MLConformerGenerator</span><span class="p">,</span>
+    <span class="n">egnn_save_path</span><span class="o">=</span><span class="s2">"./egnn_chembl_15_39.onnx"</span><span class="p">,</span>
+    <span class="n">adj_mat_seer_save_path</span><span class="o">=</span><span class="s2">"./adj_mat_seer_chembl_15_39.onnx"</span><span class="p">,</span>
+    <span class="n">edm_adapter_save_path</span><span class="o">=</span><span class="s2">"./finetune_checkpoint.onnx"</span><span class="p">,</span>
+    <span class="n">report</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>See <a href="../8_onnx/">ONNX Inference &amp; Export</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.top", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

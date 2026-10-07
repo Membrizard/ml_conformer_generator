@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
 import torch
 from rdkit import Chem
@@ -7,6 +8,23 @@ from rdkit import Chem
 from src.mlconfgen.utils.config import ATOM_DECODER, CONTEXT_NORMS
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+@pytest.fixture
+def seed_rng():
+    np_state = np.random.get_state()
+    torch_state = torch.get_rng_state()
+    cuda_states = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+    np.random.seed(42)
+    torch.manual_seed(42)
+    try:
+        yield 42
+    finally:
+        np.random.set_state(np_state)
+        torch.set_rng_state(torch_state)
+        if cuda_states is not None:
+            torch.cuda.set_rng_state_all(cuda_states)
+
 
 
 def _weights_present(*relative_paths: str) -> bool:

@@ -1,6 +1,6 @@
 # ML Conformer Generator
 [![DOI](https://img.shields.io/badge/DOI-10.1039%2FD5DD00318K-blue)](https://doi.org/10.1039/D5DD00318K)
-[![Docs](https://img.shields.io/badge/docs-membrizard.github.io-blue)](https://membrizard.github.io/ml_conformer_generator/)
+[![Docs](https://img.shields.io/badge/docs-membrizard.github.io-blue)](https://ml_conformer_generator.com)
 
 <img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/logo/mlconfgen_logo.png" width="120" style="display: block; margin: 0 10%;">
 
