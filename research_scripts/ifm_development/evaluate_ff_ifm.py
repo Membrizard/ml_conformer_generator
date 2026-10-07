@@ -1,14 +1,14 @@
 import logging
 import time
-from rdkit import Chem, RDLogger
 
+from rdkit import Chem, RDLogger
 from tqdm import tqdm
 
-
-from src.mlconfgen import evaluate_samples, MLConformerGenerator
-from src.mlconfgen.utils.mol_split import split_molecule_size_constrained, extract_fragment
-from src.mlconfgen.inertial_fragment_matching import ff_inertial_fragment_matching
-
+from src.mlconfgen import MLConformerGenerator, evaluate_samples
+from src.mlconfgen.inertial_fragment_matching import \
+    ff_inertial_fragment_matching
+from src.mlconfgen.utils.mol_split import (extract_fragment,
+                                           split_molecule_size_constrained)
 
 # LOGGING
 RDLogger.DisableLog('rdApp.*')

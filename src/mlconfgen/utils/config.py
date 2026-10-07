@@ -47,6 +47,7 @@ MAX_FRAG_SIZE = 20
 HF_REPO = "Membrizard/ml_conformer_generator"
 
 from pathlib import Path
+
 MLCONFGEN_CACHE = Path.home() / ".mlconfgen_weights"
 
 # Random context seeds

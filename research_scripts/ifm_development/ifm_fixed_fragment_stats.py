@@ -1,7 +1,6 @@
 from rdkit import Chem
-from tqdm import tqdm
-from rdkit import Chem
 from rdkit.Chem.MolStandardize import rdMolStandardize
+from tqdm import tqdm
 
 uncharger = rdMolStandardize.Uncharger()  # default behavior
 

@@ -3,10 +3,8 @@ import time
 
 from rdkit import Chem
 
-from src.mlconfgen import (
-    MLConformerGenerator,
-    evaluate_samples,
-)
+from src.mlconfgen import MLConformerGenerator, evaluate_samples
+
 
 def exact_match(taget, source):
     reader = Chem.SDMolSupplier(taget)

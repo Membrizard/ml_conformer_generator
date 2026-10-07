@@ -1,9 +1,12 @@
+from typing import Tuple
+
 import torch
 from torch import Tensor
 
-from .utils import sample_combined_position_feature_noise, remove_mean_with_mask
 from .egnn import EGNNDynamics
-from typing import Tuple
+from .utils import (remove_mean_with_mask,
+                    sample_combined_position_feature_noise)
+
 
 class EquivariantFlowMatching(torch.nn.Module):
     def __init__(self,

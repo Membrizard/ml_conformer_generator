@@ -4,7 +4,8 @@ from typing import List
 import numpy as np
 from rdkit import Chem
 
-from ..utils.common import apply_transform, set_conformer_positions, random_context
+from ..utils.common import (apply_transform, random_context,
+                            set_conformer_positions)
 from ..utils.config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION,
                             MAX_N_NODES, MIN_N_NODES)
 from ..utils.mol_split import extract_fragment

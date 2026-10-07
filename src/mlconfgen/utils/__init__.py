@@ -1,7 +1,9 @@
 from .common import (apply_transform, bond_type_dict, canonicalise,
-                     elements_decoder, set_conformer_positions, random_context)
+                     elements_decoder, random_context, set_conformer_positions)
 from .config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_FRAG_SIZE,
                      MAX_N_NODES, MIN_FRAG_SIZE, MIN_N_NODES, NUM_BOND_TYPES)
+from .model_utils import (remove_mean_with_mask,
+                          sample_combined_position_feature_noise)
 from .mol_split import extract_fragment, split_molecule_size_constrained
 from .mol_utils import (align_mol_to_principal_frame, concat_masked_and_pad,
                         coord_to_pf_batched, get_context_shape,
@@ -13,7 +15,6 @@ from .mol_utils import (align_mol_to_principal_frame, concat_masked_and_pad,
                         prepare_fragment, prepare_masks, redefine_bonds,
                         samples_to_rdkit_mol)
 from .standardizer import standardize_mol
-from .model_utils import sample_combined_position_feature_noise, remove_mean_with_mask
 from .weights_manager import WeightsManager
 
 __all__ = [

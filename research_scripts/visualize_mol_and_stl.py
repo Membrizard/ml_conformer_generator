@@ -1,7 +1,7 @@
 import numpy as np
 import pyvista as pv
-from rdkit import Chem
 import trimesh
+from rdkit import Chem
 
 
 def align_to_principal_axes(points):

@@ -26,14 +26,9 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.mlconfgen import MLConformerGenerator
-from src.mlconfgen.utils import (
-    get_context_shape,
-    prepare_adj_mat_seer_input,
-    prepare_edm_input,
-    redefine_bonds,
-    samples_to_rdkit_mol,
-    standardize_mol,
-)
+from src.mlconfgen.utils import (get_context_shape, prepare_adj_mat_seer_input,
+                                 prepare_edm_input, redefine_bonds,
+                                 samples_to_rdkit_mol, standardize_mol)
 
 
 def parse_args():
@@ -249,7 +244,8 @@ def run_memory_profiling(generator, ref_mol, n_samples, device):
 
     Requires torchinfo and pandas: pip install torchinfo pandas
     """
-    from memory_profiling.profile_model import profile_adj_mat_seer, profile_egnn
+    from memory_profiling.profile_model import (profile_adj_mat_seer,
+                                                profile_egnn)
 
     ref_mol_nohs = Chem.RemoveHs(ref_mol)
     n_atoms = ref_mol_nohs.GetNumAtoms()

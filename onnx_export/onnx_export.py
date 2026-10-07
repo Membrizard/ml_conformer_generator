@@ -1,8 +1,10 @@
 from pathlib import Path
-
 from typing import Tuple
+
 from mlconfgen import MLConformerGenerator
-from .onnx_export_utils import egnn_onnx_export, adj_mat_seer_onnx_export, edm_adapter_onnx_export
+
+from .onnx_export_utils import (adj_mat_seer_onnx_export,
+                                edm_adapter_onnx_export, egnn_onnx_export)
 
 MOCK_MOLECULES = ("./mol_examples/ceyyag.xyz", "./mol_examples/cpromz.xyz")
 

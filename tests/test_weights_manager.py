@@ -5,9 +5,7 @@ from types import ModuleType
 
 import pytest
 
-from src.mlconfgen import MLConformerGenerator
-from src.mlconfgen import MLConformerGeneratorONNX
-
+from src.mlconfgen import MLConformerGenerator, MLConformerGeneratorONNX
 from src.mlconfgen.utils.weights_manager import WeightsManager
 
 REPO = Path(__file__).resolve().parents[1]
