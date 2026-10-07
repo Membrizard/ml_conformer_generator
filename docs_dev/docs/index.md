@@ -56,7 +56,7 @@ Digital Discovery, 2025. DOI: [10.1039/D5DD00318K](https://doi.org/10.1039/D5DD0
 
 > **Note:** The weights are **not** bundled with either package. They must be supplied as local files, or can be resolved from Hugging Face on first use. See [Model Weights](getting_started/2_model_weights.md).
 
-## Support the Project
+---
 
 ## Support the Project
 
