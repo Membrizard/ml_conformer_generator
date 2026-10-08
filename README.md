@@ -1,6 +1,6 @@
 # ML Conformer Generator
 [![DOI](https://img.shields.io/badge/DOI-10.1039%2FD5DD00318K-blue)](https://doi.org/10.1039/D5DD00318K)
-[![Docs](https://img.shields.io/badge/docs-ml_conformer_generator.com-blue)](https://ml_conformer_generator.com)
+[![Docs](https://img.shields.io/badge/docs-ml-conformer-generator.com-blue)](https://ml-conformer-generator.com)
 
 <img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/logo/mlconfgen_logo.png" width="120" style="display: block; margin: 0 10%;">
 
@@ -9,7 +9,7 @@ is a tool for spatially-aware molecule generation with an Equivariant Diffusion 
 and a Graph Convolutional Network (GCN). It is designed to generate 3D molecular conformations
 that are both chemically valid and spatially similar to a reference shape.
 
-📖 **Documentation:** https://membrizard.github.io/ml_conformer_generator/ — Python and JavaScript guides, parameter reference, model details.
+📖 **Documentation:** https://ml-conformer-generator.com — Python and JavaScript guides, parameter reference, model details.
 
 ---
 
