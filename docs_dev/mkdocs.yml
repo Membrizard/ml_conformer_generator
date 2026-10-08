@@ -1,6 +1,6 @@
 site_name: ML Conformer Generator
 site_description: Spatially-aware molecule generation via Equivariant Diffusion and GCN
-site_url: https://membrizard.github.io/ml_conformer_generator/
+site_url: https://ml-conformer-generator.com/
 repo_url: https://github.com/Membrizard/ml_conformer_generator
 repo_name: Membrizard/ml_conformer_generator
 extra_css:
