@@ -4,8 +4,7 @@ import torch
 from rdkit import Chem
 from torch.nn.utils.rnn import pad_sequence
 
-from .common import (apply_transform, bond_type_dict, canonicalise,
-                     set_conformer_positions)
+from .common import bond_type_dict, canonicalise
 from .config import DIMENSION
 from .molgraph import MolGraph
 

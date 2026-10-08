@@ -5,19 +5,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 import torch
 from rdkit import Chem
-
 from stspeck import speck
-from utils import (
-    apply_custom_styling,
-    container_css,
-    display_search_results,
-    draw_compound_image,
-    generate_samples_button,
-    header_logo,
-    prepare_speck_model,
-    stylable_container,
-    RESULTS_FILEPATH,
-)
+from utils import (RESULTS_FILEPATH, apply_custom_styling, container_css,
+                   display_search_results, draw_compound_image,
+                   generate_samples_button, header_logo, prepare_speck_model,
+                   stylable_container)
 
 # Path to model weights
 

@@ -1,0 +1,62 @@
+site_name: ML Conformer Generator
+site_description: Spatially-aware molecule generation via Equivariant Diffusion and GCN
+site_url: https://membrizard.github.io/ml_conformer_generator/
+repo_url: https://github.com/Membrizard/ml_conformer_generator
+repo_name: Membrizard/ml_conformer_generator
+extra_css:
+  - stylesheets/extra.css
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+theme:
+  favicon: assets/favicon.ico
+  palette:
+    primary: white
+  name: material
+  logo: assets/logo.png
+  font:
+    text: Inter
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.tabs.link
+extra:
+  generator: false
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+nav:
+  - Overview: index.md
+  - Getting Started:
+      - Installation: getting_started/1_installation.md
+      - Model Weights: getting_started/2_model_weights.md
+  - Python Library:
+      - Molecule Generation: python/1_molecule_generation.md
+      - Generation Parameters: python/2_generation_parameters.md
+      - Bond Prediction: python/3_bond_prediction.md
+      - Fixed Fragments: python/4_fixed_fragments.md
+      - Inertial Fragment Matching: python/5_inertial_fragment_matching.md
+      - Shape Similarity & Alignment: python/6_shape_similarity.md
+      - RL Fine-Tuning: python/7_fine_tuning.md
+      - ONNX Inference & Export: python/8_onnx.md
+      - API Reference: python/9_api_reference.md
+  - JavaScript Library:
+      - Quick Start: javascript/1_quick_start.md
+      - Generation: javascript/2_generation.md
+      - Browser Usage: javascript/3_browser.md
+      - Animating Generation: javascript/4_animation.md
+      - API Reference: javascript/5_api_reference.md
+  - Model:
+      - Architecture & Pipeline: model/1_architecture.md
+      - Performance: model/2_performance.md
+  - Projects:
+      - Commercial Projects: projects/1_commercial.md

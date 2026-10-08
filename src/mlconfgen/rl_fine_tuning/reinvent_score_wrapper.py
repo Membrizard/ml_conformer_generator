@@ -7,7 +7,6 @@ from rdkit import Chem
 from ..utils import is_valid_mol
 
 try:
-    import reinvent
     from reinvent.scoring.scorer import Scorer
     from reinvent.utils.config_parse import read_config
 except ImportError as e:

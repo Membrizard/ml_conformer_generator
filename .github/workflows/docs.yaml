@@ -1,0 +1,36 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs_dev/**"
+      - ".github/workflows/docs.yaml"
+  pull_request:
+    paths:
+      - "docs_dev/**"
+      - ".github/workflows/docs.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build static site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install mkdocs-material
+      - name: Build (strict — fails on broken links)
+        # Verify docs_dev builds cleanly. Published site is the committed repo-root docs/
+        # (GitHub Pages: Deploy from a branch → /docs). -d is relative to docs_dev/.
+        run: mkdocs build --strict -f docs_dev/mkdocs.yml -d ../docs

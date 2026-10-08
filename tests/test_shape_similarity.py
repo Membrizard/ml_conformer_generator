@@ -1,11 +1,19 @@
 import torch
 
 from src.mlconfgen.cheminformatics.shape_similarity import (
-    AMPLITUDE, _0th_moment_integral, best_pi_rotation_by_tanimoto,
-    build_neighbor_sets, find_r_cliques_fast, get_alpha,
-    get_shape_quadrupole_for_molecule, i_1st_moment_integral,
-    ii_2nd_moment_integral, product_of_n_gaussians, rotate_coord,
-    tanimoto_score)
+    AMPLITUDE,
+    _0th_moment_integral,
+    best_pi_rotation_by_tanimoto,
+    build_neighbor_sets,
+    find_r_cliques_fast,
+    get_alpha,
+    get_shape_quadrupole_for_molecule,
+    i_1st_moment_integral,
+    ii_2nd_moment_integral,
+    product_of_n_gaussians,
+    rotate_coord,
+    tanimoto_score,
+)
 
 # --- Gaussian math ---
 

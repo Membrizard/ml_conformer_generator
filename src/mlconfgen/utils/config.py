@@ -1,3 +1,5 @@
+from pathlib import Path
+
 # Configuration file for high-level framework parameters
 
 DIMENSION = 42
@@ -42,3 +44,14 @@ MAX_N_NODES = 39
 
 MIN_FRAG_SIZE = 6
 MAX_FRAG_SIZE = 20
+
+# Weights Management
+HF_REPO = "Membrizard/ml_conformer_generator"
+
+MLCONFGEN_CACHE = Path.home() / ".mlconfgen_weights"
+
+# Random context seeds
+
+RANDOM_CONTEXT_SEEDS = "random_molecule_seeds.json"
+
+

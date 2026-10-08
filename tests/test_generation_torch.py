@@ -2,11 +2,14 @@ import pytest
 import torch
 from rdkit import Chem, RDLogger
 
-from src.mlconfgen import (MLConformerGenerator, evaluate_samples,
-                           ff_inertial_fragment_matching,
-                           inertial_fragment_matching)
-from src.mlconfgen.utils import (align_mol_to_principal_frame,
-                                 extract_fragment, set_conformer_positions)
+from src.mlconfgen import (
+    MLConformerGenerator,
+    evaluate_samples,
+    ff_inertial_fragment_matching,
+    inertial_fragment_matching,
+)
+from src.mlconfgen.utils import align_mol_to_principal_frame, extract_fragment, set_conformer_positions
+from tests.conftest import TORCH_WEIGHT_SETS
 
 RDLogger.DisableLog("rdApp.*")
 
@@ -36,26 +39,25 @@ def ifm_device():
     return _device
 
 
-@pytest.fixture(scope="module")
-def generator(device, diffusion_steps):
-    generator = MLConformerGenerator(
-        edm_weights="./edm_moi_chembl_15_39.pt",
-        adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
+@pytest.fixture(scope="module", params=TORCH_WEIGHT_SETS)
+def generator(request, device, diffusion_steps):
+    edm_weights, adj_weights, _ = request.param
+    return MLConformerGenerator(
+        edm_weights=edm_weights,
+        adj_mat_seer_weights=adj_weights,
         device=device,
         diffusion_steps=diffusion_steps,
     )
-    return generator
 
 
 @pytest.fixture(scope="module")
 def ifm_generator(ifm_device, diffusion_steps):
-    generator = MLConformerGenerator(
+    return MLConformerGenerator(
         edm_weights="./edm_moi_chembl_6_39_fragments.pt",
         adj_mat_seer_weights="./adj_mat_seer_chembl_15_39.pt",
         device=ifm_device,
         diffusion_steps=diffusion_steps,
     )
-    return generator
 
 
 @pytest.fixture(scope="module")
@@ -333,3 +335,11 @@ def test_ifm_ff_mol_ref_context(
 
     valid_samples = len(samples) / n_samples
     assert valid_samples > 0.3
+
+
+@pytest.mark.slow
+def test_random_generation(generator, seed_rng):
+    n_samples = 20
+    samples = generator.random(size=n_samples, seed=seed_rng)
+    valid_samples = len(samples) / n_samples
+    assert valid_samples >= 0.2

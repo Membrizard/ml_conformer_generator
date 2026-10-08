@@ -4,16 +4,20 @@ from typing import List
 import numpy as np
 from rdkit import Chem
 
-from ..utils.common import apply_transform, set_conformer_positions
-from ..utils.config import (ATOM_DECODER, CONTEXT_NORMS, DIMENSION,
-                            MAX_N_NODES, MIN_N_NODES)
+from ..utils.common import apply_transform, random_context, set_conformer_positions
+from ..utils.config import ATOM_DECODER, CONTEXT_NORMS, DIMENSION, MAX_N_NODES, MIN_N_NODES
 from ..utils.mol_split import extract_fragment
 from ..utils.standardizer import standardize_mol
+from ..utils.weights_manager import WeightsManager
 from .equivariant_diffusion import EquivariantDiffusionONNX
-from .utils import (align_mol_to_principal_frame_onnx,
-                    prepare_adj_mat_seer_input_onnx, prepare_edm_input_onnx,
-                    prepare_fragment_onnx, redefine_bonds_onnx,
-                    samples_to_rdkit_mol_onnx)
+from .utils import (
+    align_mol_to_principal_frame_onnx,
+    prepare_adj_mat_seer_input_onnx,
+    prepare_edm_input_onnx,
+    prepare_fragment_onnx,
+    redefine_bonds_onnx,
+    samples_to_rdkit_mol_onnx,
+)
 
 
 class MLConformerGeneratorONNX:
@@ -31,8 +35,8 @@ class MLConformerGeneratorONNX:
         max_n_nodes: int = MAX_N_NODES,
         context_norms: dict = CONTEXT_NORMS,
         atom_decoder: dict = ATOM_DECODER,
-        egnn_onnx: str | Path = "./egnn_chembl_15_39.onnx",
-        adj_mat_seer_onnx: str | Path = "./adj_mat_seer_chembl_15_39.onnx",
+        egnn_onnx: str | Path = "egnn_chembl_15_39.onnx",
+        adj_mat_seer_onnx: str | Path = "adj_mat_seer_chembl_15_39.onnx",
         finetune_checkpoint_onnx: str | Path = None,
     ):
         """
@@ -66,18 +70,36 @@ class MLConformerGeneratorONNX:
         self.min_n_nodes = min_n_nodes
         self.max_n_nodes = max_n_nodes
 
+        self.weights_manager = WeightsManager()
+
+        # Resolve path to the requested weights file
+        egnn_weights_path = self.weights_manager.resolve(filename=egnn_onnx)
+        ams_weights_path = self.weights_manager.resolve(filename=adj_mat_seer_onnx)
+
         self.generative_model = EquivariantDiffusionONNX(
-            egnn_onnx=egnn_onnx,
+            egnn_onnx=egnn_weights_path,
             timesteps=diffusion_steps,
             in_node_nf=8,
             noise_precision=1e-5,
         )
 
-        self.adj_mat_seer = onnxruntime.InferenceSession(adj_mat_seer_onnx)
+        self.adj_mat_seer = onnxruntime.InferenceSession(ams_weights_path)
 
         self.edm_adapter = None
         if finetune_checkpoint_onnx:
             self.edm_adapter = onnxruntime.InferenceSession(finetune_checkpoint_onnx)
+
+    def list_weights(self) -> dict[str: list[str]]:
+        """
+        List all available weights compatible with this class in remote and locally.
+        """
+        available_weights = self.weights_manager.list_available_weights(suffixes={".onnx"})
+        return available_weights
+    
+    def clear_cache(self) -> None:
+        """Clear Weights Cache"""
+        self.weights_manager.clear_cache()
+        return None
 
     @staticmethod
     def prepare_inputs(
@@ -345,3 +367,23 @@ class MLConformerGeneratorONNX:
         )
 
         return out
+
+    def random(
+        self, size: int = 1, seed=None, optimize_geometry: bool = True
+    ) -> List[Chem.Mol]:
+        """
+        Generate random molecules using the random context seed.
+        :param size: number of molecules to generate
+        :param seed: random seed to use for sampling
+        :returns: list of generated molecules
+        """
+        context_seed = random_context(seed=seed)
+        context = np.array(context_seed["context"], dtype=np.float32)
+        return self.generate_conformers(
+            n_samples=size,
+            reference_context=context,
+            n_atoms=context_seed["n_atoms"],
+            variance=0,
+            optimize_geometry=optimize_geometry,
+        )
+

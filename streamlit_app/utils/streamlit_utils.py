@@ -6,9 +6,10 @@ import matplotlib
 import streamlit as st
 import streamlit.components.v1 as components
 import torch
-from mlconfgen import MLConformerGenerator, evaluate_samples
 from rdkit import Chem
 from rdkit.Chem import Draw
+
+from mlconfgen import MLConformerGenerator, evaluate_samples
 
 # Support Different Matplotlib interfaces
 try:

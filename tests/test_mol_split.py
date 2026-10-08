@@ -2,9 +2,7 @@ import pytest
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from src.mlconfgen.utils.mol_split import (extract_fragment,
-                                           find_cuttable_bonds,
-                                           split_molecule_size_constrained)
+from src.mlconfgen.utils.mol_split import extract_fragment, find_cuttable_bonds, split_molecule_size_constrained
 
 # --- Helpers ---
 

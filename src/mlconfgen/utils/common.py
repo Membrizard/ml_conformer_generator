@@ -1,14 +1,18 @@
 """
 Shared constants and pure-RDKit functions used by both PyTorch and ONNX code paths.
 """
+import json
+from pathlib import Path
 
+import numpy as np
 from rdkit import Chem
 from rdkit.Chem import rdDetermineBonds
 from rdkit.Geometry import Point3D
 
-from .config import PERMITTED_ELEMENTS
+from .config import PERMITTED_ELEMENTS, RANDOM_CONTEXT_SEEDS
 
 elements_decoder = {x: i for i, x in enumerate(sorted(PERMITTED_ELEMENTS))}
+_SEEDS = None
 
 # allowable node and edge features
 allowable_features = {
@@ -82,3 +86,23 @@ def set_conformer_positions(mol, coord):
         conf.SetAtomPosition(i, Point3D(x, y, z))
 
     return mol
+
+
+def random_context(seed: int| None = None) -> dict:
+    """
+    Pick a random context seed from the pre-defined list of molecule contexts sampled from ChEMBL.
+    :param seed: random seed to use for sampling
+    :returns: random context seed with corresponding n_atoms
+    """
+    global _SEEDS
+    if _SEEDS is None:
+        try:
+            path = Path(__file__).parent / RANDOM_CONTEXT_SEEDS
+            with open(path, "r") as f:
+                _SEEDS = json.load(f)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Random context seeds file not found at {path}")
+
+    rng = np.random.default_rng(seed)
+    return rng.choice(_SEEDS)
+
