@@ -2,82 +2,82 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/getting_started/1_installation/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/getting_started/2_model_weights/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/javascript/1_quick_start/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/javascript/2_generation/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/javascript/3_browser/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/javascript/4_animation/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/javascript/5_api_reference/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/model/1_architecture/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/model/2_performance/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/projects/1_commercial/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/python/1_molecule_generation/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/python/2_generation_parameters/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/python/3_bond_prediction/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/python/4_fixed_fragments/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/python/5_inertial_fragment_matching/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/python/6_shape_similarity/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/python/7_fine_tuning/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/python/8_onnx/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
     <url>
          <loc>https://membrizard.github.io/ml_conformer_generator/python/9_api_reference/</loc>
-         <lastmod>2026-10-07</lastmod>
+         <lastmod>2026-10-08</lastmod>
     </url>
 </urlset>
