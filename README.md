@@ -106,7 +106,7 @@ model.list_weights()   # {"remote": [...], "local": [...]}
 model.clear_cache()    # wipe ~/.mlconfgen_weights
 ```
 
-For a custom cache location use `mlconfgen.utils.WeightsManager(cache_dir=...)`. See [Model Weights](https://membrizard.github.io/ml_conformer_generator/getting_started/2_model_weights/) in the docs.
+For a custom cache location use `mlconfgen.utils.WeightsManager(cache_dir=...)`. See [Model Weights](https://ml-conformer-generator.com/getting_started/2_model_weights/) in the docs.
 
 > The JavaScript package does **not** download weights — pass the ONNX files as local paths or `Uint8Array` buffers.
 
