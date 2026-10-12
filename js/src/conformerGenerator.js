@@ -15,6 +15,7 @@ import {
   standardizeMol,
 } from "./mol.js";
 import { clearRdkitLoader, registerDefaultRdkit, setRdkitLoader } from "./rdkit.js";
+import { WeightsManager } from "./weightsManager.js";
 
 /**
  * ONNX Runtime conformer generator.
@@ -39,6 +40,7 @@ export class MLConformerGenerator {
     maxNNodes = MAX_N_NODES,
     contextNorms = CONTEXT_NORMS,
     atomDecoder = ATOM_DECODER,
+    weightsManager = null,
   }) {
     if (!ort?.Tensor) {
       throw new TypeError(
@@ -54,22 +56,34 @@ export class MLConformerGenerator {
     this.maxNNodes = maxNNodes;
     this.contextNorms = contextNorms;
     this.atomDecoder = atomDecoder;
+    this.weightsManager = weightsManager ?? new WeightsManager();
   }
 
   /**
+   * Weights are given as a file path, a bare file name or model bytes. A bare
+   * name (e.g. `"small_egnn_chembl_15_39.onnx"`) is resolved by the weights
+   * manager: file in the working directory → cache → download from Hugging
+   * Face. See `WeightsManager`.
+   *
    * @param {object} [options]
    * @param {object} options.ort ONNX Runtime namespace (required, e.g. onnxruntime-node)
    * @param {() => Promise<any>} [options.rdkitLoader] custom RDKit loader; defaults to the bundled @rdkit/rdkit
-   * @param {string|Uint8Array} [options.egnnOnnx]
-   * @param {string|Uint8Array} [options.adjMatSeerOnnx]
-   * @param {string|Uint8Array|null} [options.finetuneCheckpointOnnx]
+   * @param {string|Uint8Array} [options.egnnOnnx="egnn_chembl_15_39.onnx"]
+   * @param {string|Uint8Array} [options.adjMatSeerOnnx="adj_mat_seer_chembl_15_39.onnx"]
+   * @param {string|Uint8Array|null} [options.finetuneCheckpointOnnx] passed to
+   *   the ONNX Runtime as is — not resolved through the weights manager
    * @param {number} [options.diffusionSteps]
+   * @param {WeightsManager} [options.weightsManager] manager used to resolve
+   *   weights; when omitted one is built from `cacheDir`, `baseUrl` and `cacheName`
+   * @param {string} [options.cacheDir] see `WeightsManager`
+   * @param {string} [options.baseUrl] see `WeightsManager`
+   * @param {string} [options.cacheName] see `WeightsManager`
    */
   static async create({
     ort,
     rdkitLoader,
-    egnnOnnx = "./egnn_chembl_15_39.onnx",
-    adjMatSeerOnnx = "./adj_mat_seer_chembl_15_39.onnx",
+    egnnOnnx = "egnn_chembl_15_39.onnx",
+    adjMatSeerOnnx = "adj_mat_seer_chembl_15_39.onnx",
     finetuneCheckpointOnnx = null,
     diffusionSteps = 100,
     dimension = DIMENSION,
@@ -77,6 +91,10 @@ export class MLConformerGenerator {
     maxNNodes = MAX_N_NODES,
     contextNorms = CONTEXT_NORMS,
     atomDecoder = ATOM_DECODER,
+    weightsManager = null,
+    cacheDir,
+    baseUrl,
+    cacheName,
   } = {}) {
     if (!ort?.InferenceSession) {
       throw new TypeError(
@@ -94,9 +112,17 @@ export class MLConformerGenerator {
       registerDefaultRdkit();
     }
 
+    const manager =
+      weightsManager ?? new WeightsManager({ cacheDir, baseUrl, cacheName });
+
+    const [egnnModel, adjMatSeerModel] = await Promise.all([
+      manager.resolve(egnnOnnx),
+      manager.resolve(adjMatSeerOnnx),
+    ]);
+
     const loads = [
-      EquivariantDiffusion.create(egnnOnnx, ort, { timesteps: diffusionSteps }),
-      ort.InferenceSession.create(adjMatSeerOnnx),
+      EquivariantDiffusion.create(egnnModel, ort, { timesteps: diffusionSteps }),
+      ort.InferenceSession.create(adjMatSeerModel),
     ];
     if (finetuneCheckpointOnnx) {
       loads.push(ort.InferenceSession.create(finetuneCheckpointOnnx));
@@ -115,7 +141,21 @@ export class MLConformerGenerator {
       maxNNodes,
       contextNorms,
       atomDecoder,
+      weightsManager: manager,
     });
+  }
+
+  /**
+   * ONNX weights available on Hugging Face and in the local cache.
+   * @returns {Promise<{ remote: string[], local: string[], remoteError?: Error }>}
+   */
+  async listWeights() {
+    return this.weightsManager.listAvailableWeights({ suffixes: [".onnx"] });
+  }
+
+  /** Delete every cached weights file. */
+  async clearCache() {
+    await this.weightsManager.clearCache();
   }
 
   /**

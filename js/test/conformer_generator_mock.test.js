@@ -6,9 +6,8 @@
  * return deterministic tensors. This locks the wiring — tensor packing, mask
  * prep, decoding, bond slicing — so a refactor can't silently rewire it.
  *
- * Requires `onnxruntime-node` to be INSTALLED (conformerGenerator.js statically
- * imports it), but does NOT require the NC-ND weights. Once the static import is
- * removed (review §2/§10) this becomes runnable with zero native deps.
+ * Needs neither `onnxruntime-node` nor the model weights. Weights resolution
+ * goes through a pass-through stub manager, so nothing touches the network.
  *
  * Run: node --test test/conformer_generator_mock.test.js
  */
@@ -66,6 +65,13 @@ function adjSession() {
   };
 }
 
+/** Pass-through weights manager: hands the name straight to the mock ORT. */
+const stubWeightsManager = {
+  async resolve(nameOrPath) {
+    return nameOrPath;
+  },
+};
+
 const mockOrt = {
   Tensor: MockTensor,
   InferenceSession: {
@@ -83,6 +89,7 @@ describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
       egnnOnnx: "egnn.onnx",
       adjMatSeerOnnx: "adj.onnx",
       diffusionSteps: 5,
+      weightsManager: stubWeightsManager,
     });
   }
 
@@ -107,6 +114,7 @@ describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
       egnnOnnx: "egnn.onnx",
       adjMatSeerOnnx: "adj.onnx",
       diffusionSteps: 5,
+      weightsManager: stubWeightsManager,
     });
 
     seed(42);
@@ -134,6 +142,7 @@ describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
       egnnOnnx: "egnn.onnx",
       adjMatSeerOnnx: "adj.onnx",
       diffusionSteps: 5,
+      weightsManager: stubWeightsManager,
     });
     const opts = {
       referenceContext: [89.8693, 210.783, 217.7825],
@@ -155,6 +164,7 @@ describe("MLConformerGenerator pipeline (mock ORT, no weights)", () => {
       egnnOnnx: "egnn.onnx",
       adjMatSeerOnnx: "adj.onnx",
       diffusionSteps: 5,
+      weightsManager: stubWeightsManager,
     });
 
     seed(3);
