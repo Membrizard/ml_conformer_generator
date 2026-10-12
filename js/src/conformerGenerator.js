@@ -14,6 +14,7 @@ import {
   samplesToMolecules,
   standardizeMol,
 } from "./mol.js";
+import { randomContext } from "./randomContext.js";
 import { clearRdkitLoader, registerDefaultRdkit, setRdkitLoader } from "./rdkit.js";
 import { WeightsManager } from "./weightsManager.js";
 
@@ -74,10 +75,13 @@ export class MLConformerGenerator {
    *   the ONNX Runtime as is — not resolved through the weights manager
    * @param {number} [options.diffusionSteps]
    * @param {WeightsManager} [options.weightsManager] manager used to resolve
-   *   weights; when omitted one is built from `cacheDir`, `baseUrl` and `cacheName`
+   *   weights; when omitted one is built from `cacheDir`, `baseUrl`,
+   *   `cacheName` and `onProgress`
    * @param {string} [options.cacheDir] see `WeightsManager`
    * @param {string} [options.baseUrl] see `WeightsManager`
    * @param {string} [options.cacheName] see `WeightsManager`
+   * @param {(p: { file: string, loaded: number, total: number|null }) => void} [options.onProgress]
+   *   weights download progress; see `WeightsManager`
    */
   static async create({
     ort,
@@ -95,6 +99,7 @@ export class MLConformerGenerator {
     cacheDir,
     baseUrl,
     cacheName,
+    onProgress,
   } = {}) {
     if (!ort?.InferenceSession) {
       throw new TypeError(
@@ -113,7 +118,8 @@ export class MLConformerGenerator {
     }
 
     const manager =
-      weightsManager ?? new WeightsManager({ cacheDir, baseUrl, cacheName });
+      weightsManager ??
+      new WeightsManager({ cacheDir, baseUrl, cacheName, onProgress });
 
     const [egnnModel, adjMatSeerModel] = await Promise.all([
       manager.resolve(egnnOnnx),
@@ -324,6 +330,36 @@ export class MLConformerGenerator {
       if (std) valid.push(std);
     }
     return valid;
+  }
+
+  /**
+   * Generate molecules from a random context: a shape picked from a bundled
+   * list of ChEMBL molecule contexts (see `randomContext`), with the number of
+   * heavy atoms fixed to that molecule's (`variance: 0`). Mirrors Python
+   * `random()`, minus `optimize_geometry` — MMFF is not available in RDKit.js.
+   *
+   * `seed` only fixes which context is picked, and is not cross-compatible
+   * with Python seeds. The diffusion noise follows the global `seed(n)`, as in
+   * Python, so a fully reproducible run needs both.
+   *
+   * @param {object} [options]
+   * @param {number} [options.size=1] molecules to sample; with `filterInvalid`
+   *   (the default) invalid ones are dropped, so fewer may be returned
+   * @param {number|null} [options.seed=null] context seed, integer in [0, 2**32)
+   * @param {number} [options.resampleSteps] forwarded to `generateConformers`,
+   *   as are `filterInvalid` and `keepLargestFragment`
+   * @returns {Promise<object[]>}
+   */
+  async random({ size = 1, seed = null, ...options } = {}) {
+    const { context, nAtoms } = randomContext(seed);
+    return this.generateConformers({
+      ...options,
+      referenceConformer: null,
+      referenceContext: context,
+      nAtoms,
+      nSamples: size,
+      variance: 0,
+    });
   }
 
   /**

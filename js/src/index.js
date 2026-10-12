@@ -17,8 +17,10 @@ import { MLConformerGenerator } from "./conformerGenerator.js";
  * @param {string} [options.cacheDir]  Weights cache directory (Node).
  * @param {string} [options.baseUrl]  Download location for bare file names.
  * @param {string} [options.cacheName]  Cache API cache name (browser).
+ * @param {Function} [options.onProgress]  Weights download progress callback,
+ *   called with `{ file, loaded, total }`.
  * @returns {Promise<object>}  A ready generator exposing `generateConformers(...)`,
- *   `listWeights()` and `clearCache()`.
+ *   `random(...)`, `listWeights()` and `clearCache()`.
  */
 export async function createGenerator(options = {}) {
   return MLConformerGenerator.create(options);
@@ -32,6 +34,7 @@ export {
   standardizeMol,
 } from "./mol.js";
 export { seed, NumpyRandomState } from "./numpyRandom.js";
+export { randomContext } from "./randomContext.js";
 export { WeightsManager } from "./weightsManager.js";
 
 export {
