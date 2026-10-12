@@ -24,11 +24,13 @@ export {
   standardizeMol,
 } from "./mol.js";
 export { seed, NumpyRandomState } from "./numpyRandom.js";
+export { WeightsManager } from "./weightsManager.js";
 
 export {
   ATOM_DECODER,
   CONTEXT_NORMS,
   DIMENSION,
+  HF_REPO,
   MAX_N_NODES,
   MIN_N_NODES,
 } from "./constants.js";

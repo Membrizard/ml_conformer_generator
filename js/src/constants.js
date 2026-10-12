@@ -35,6 +35,16 @@ export const ELEMENT_TO_Z = Object.freeze({
   Br: 35,
 });
 
+/** Hugging Face repository hosting the model weights. */
+export const HF_REPO = "Membrizard/ml_conformer_generator";
+export const HF_BASE_URL = "https://huggingface.co";
+
+/**
+ * Weights cache directory name under the user's home directory — the same
+ * location the Python `WeightsManager` uses, so both share downloads.
+ */
+export const CACHE_DIR_NAME = ".mlconfgen_weights";
+
 /** Approximate covalent radii (Å) for distance-based connectivity. */
 export const COVALENT_RADII = Object.freeze({
   6: 0.76,
