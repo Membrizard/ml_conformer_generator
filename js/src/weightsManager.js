@@ -2,16 +2,17 @@ import { CACHE_DIR_NAME, HF_BASE_URL, HF_REPO } from "./constants.js";
 
 /**
  * Resolves model weights by name, mirroring the Python `WeightsManager`:
- * existing path → cache (`~/.mlconfgen_weights/<name>`) → download from the
- * Hugging Face repo.
+ * existing path → cache → download from `baseUrl` (the Hugging Face repo by
+ * default).
  *
- * Node: downloads are cached on disk. The cache directory is shared with the
- * Python package, and so is the `.lock` file guarding a download, so the two
- * can run side by side.
+ * Node: downloads are cached on disk under `~/.mlconfgen_weights`. The cache
+ * directory is shared with the Python package, and so is the `.lock` file
+ * guarding a download, so the two can run side by side.
  *
- * Browser: a bare file name is fetched from Hugging Face on every call and
- * returned as bytes — there is no persistent cache. Any other string (a URL
- * or a relative path) is passed through for the ONNX Runtime to load.
+ * Browser: a bare file name is fetched from `baseUrl` and cached with the
+ * Cache API (HTTPS or localhost only; the browser may evict it). Without the
+ * Cache API it is fetched on every call. A relative path or URL is passed to
+ * onnxruntime-web unchanged, i.e. self-hosted weights work exactly as before.
  *
  * Node built-ins are imported lazily so the module stays bundler-safe.
  */
@@ -23,6 +24,9 @@ const IS_NODE =
 const BARE_NAME = /^[\w.-]+\.onnx$/;
 
 const LOCK_POLL_MS = 200;
+
+export const DEFAULT_BASE_URL = `${HF_BASE_URL}/${HF_REPO}/resolve/main`;
+export const DEFAULT_CACHE_NAME = "mlconfgen-weights";
 
 let nodeModulesPromise = null;
 
@@ -42,25 +46,37 @@ export function isBareWeightsName(name) {
   return typeof name === "string" && BARE_NAME.test(name);
 }
 
-/** Download URL of a weights file in the Hugging Face repo. */
-export function weightsUrl(name) {
-  return `${HF_BASE_URL}/${HF_REPO}/resolve/main/${encodeURIComponent(name)}`;
-}
-
 export class WeightsManager {
   /**
    * @param {object} [options]
    * @param {string} [options.cacheDir] cache directory (Node). Defaults to the
    *   `MLCONFGEN_CACHE` environment variable, then `~/.mlconfgen_weights`.
+   * @param {string} [options.baseUrl] where bare names are downloaded from;
+   *   defaults to the Hugging Face repo
+   * @param {string} [options.cacheName="mlconfgen-weights"] Cache API cache
+   *   name (browser)
    * @param {(p: { file: string, loaded: number, total: number|null }) => void} [options.onProgress]
    *   called as download bytes arrive; `total` is null when the size is unknown
    * @param {number} [options.lockTimeout=60000] ms to wait for another
-   *   process's download of the same file before giving up
+   *   process's download of the same file before giving up (Node)
    */
-  constructor({ cacheDir = null, onProgress = null, lockTimeout = 60_000 } = {}) {
+  constructor({
+    cacheDir = null,
+    baseUrl = DEFAULT_BASE_URL,
+    cacheName = DEFAULT_CACHE_NAME,
+    onProgress = null,
+    lockTimeout = 60_000,
+  } = {}) {
     this.cacheDir = cacheDir;
+    this.baseUrl = baseUrl.replace(/\/+$/, "");
+    this.cacheName = cacheName;
     this.onProgress = onProgress;
     this.lockTimeout = lockTimeout;
+  }
+
+  /** Download URL of a weights file. */
+  weightsUrl(name) {
+    return `${this.baseUrl}/${encodeURIComponent(name)}`;
   }
 
   /** Absolute cache directory (Node only). */
@@ -81,7 +97,8 @@ export class WeightsManager {
    *
    * Byte buffers are returned unchanged. In Node a string resolves to a file
    * path: an existing file is used as is, a bare file name is looked up in the
-   * cache and downloaded on a miss, anything else is an error.
+   * cache and downloaded on a miss, anything else is an error. In the browser
+   * a bare file name resolves to its bytes; other strings pass through.
    *
    * @param {string|Uint8Array|ArrayBuffer} nameOrPath
    * @param {object} [options]
@@ -90,7 +107,7 @@ export class WeightsManager {
    */
   async resolve(nameOrPath, { forceDownload = false } = {}) {
     if (typeof nameOrPath !== "string") return nameOrPath;
-    if (!IS_NODE) return this.#resolveBrowser(nameOrPath);
+    if (!IS_NODE) return this.#resolveBrowser(nameOrPath, forceDownload);
 
     const { fs, path } = await nodeModules();
 
@@ -120,56 +137,99 @@ export class WeightsManager {
   /**
    * List weights files on Hugging Face and in the local cache.
    *
+   * `remote` always lists the Hugging Face repo, regardless of `baseUrl`.
+   * A failed Hugging Face request does not hide the local list: `remote` is
+   * then empty and `remoteError` holds the error, so callers can decide
+   * whether it matters.
+   *
+   * `local` holds paths relative to the cache directory in Node, and the file
+   * names stored in the `cacheName` Cache API cache in the browser.
+   *
    * @param {object} [options]
    * @param {Iterable<string>} [options.suffixes=[".pt", ".onnx"]]
-   * @returns {Promise<{ remote: string[], local: string[] }>} `local` is
-   *   relative to the cache directory, and always empty in the browser
+   * @returns {Promise<{ remote: string[], local: string[], remoteError?: Error }>}
    */
   async listAvailableWeights({ suffixes = [".pt", ".onnx"] } = {}) {
     const wanted = new Set([...suffixes].map((s) => s.toLowerCase()));
     const keep = (name) => wanted.has(suffixOf(name));
 
-    const url = `${HF_BASE_URL}/api/models/${HF_REPO}`;
-    const res = await getFetch()(url);
-    if (!res.ok) {
-      throw new Error(
-        `Could not list weights at ${url}: HTTP ${res.status} ${res.statusText}`,
-      );
-    }
-    const info = await res.json();
-    const remote = (info.siblings ?? [])
-      .map((s) => s.rfilename)
-      .filter(keep);
+    const out = { remote: [], local: [] };
 
-    let local = [];
+    const url = `${HF_BASE_URL}/api/models/${HF_REPO}`;
+    try {
+      const res = await getFetch()(url);
+      if (!res.ok) {
+        throw new Error(
+          `Could not list weights at ${url}: HTTP ${res.status} ${res.statusText}`,
+        );
+      }
+      const info = await res.json();
+      out.remote = (info.siblings ?? []).map((s) => s.rfilename).filter(keep);
+    } catch (err) {
+      out.remoteError = err;
+    }
+
     if (IS_NODE) {
       const { fs, path } = await nodeModules();
       const cacheDir = await this.getCacheDir();
-      local = (await walkFiles(fs, path, cacheDir))
+      out.local = (await walkFiles(fs, path, cacheDir))
         .map((p) => path.relative(cacheDir, p))
         .filter(keep);
+    } else {
+      const cache = await this.#openBrowserCache();
+      if (cache) {
+        out.local = (await cache.keys())
+          .map((req) => lastPathSegment(req.url))
+          .filter(keep);
+      }
     }
 
-    return { remote, local };
+    return out;
   }
 
-  /** Delete every cached weights file (Node). No-op in the browser. */
+  /**
+   * Delete every cached weights file: the cache directory in Node, the
+   * `cacheName` Cache API cache in the browser.
+   */
   async clearCache() {
-    if (!IS_NODE) return;
+    if (!IS_NODE) {
+      if (typeof globalThis.caches?.delete === "function") {
+        await globalThis.caches.delete(this.cacheName);
+      }
+      return;
+    }
     const { fs } = await nodeModules();
     const cacheDir = await this.getCacheDir();
     await fs.rm(cacheDir, { recursive: true, force: true });
     await fs.mkdir(cacheDir, { recursive: true });
   }
 
-  async #resolveBrowser(nameOrPath) {
+  async #resolveBrowser(nameOrPath, forceDownload) {
     if (!isBareWeightsName(nameOrPath)) return nameOrPath;
+
+    const url = this.weightsUrl(nameOrPath);
+    const cache = await this.#openBrowserCache();
+
+    if (cache && !forceDownload) {
+      const hit = await cache.match(url);
+      if (hit) return new Uint8Array(await hit.arrayBuffer());
+    }
+
+    const res = await this.#fetchWeights(nameOrPath);
+    // Caching is best effort: a failed put (quota, private mode) must not
+    // fail the load.
+    const stored = cache
+      ? cache.put(url, res.clone()).catch(() => {})
+      : Promise.resolve();
+
     const chunks = [];
     let size = 0;
-    for await (const chunk of this.#fetchChunks(nameOrPath)) {
+    for await (const chunk of this.#readChunks(nameOrPath, res)) {
       chunks.push(chunk);
       size += chunk.length;
     }
+    await stored;
+
     const out = new Uint8Array(size);
     let offset = 0;
     for (const chunk of chunks) {
@@ -179,13 +239,24 @@ export class WeightsManager {
     return out;
   }
 
+  /** The Cache API cache, or null where it is unavailable. */
+  async #openBrowserCache() {
+    if (typeof globalThis.caches?.open !== "function") return null;
+    try {
+      return await globalThis.caches.open(this.cacheName);
+    } catch {
+      return null;
+    }
+  }
+
   /** Stream to `<name>.part`, then rename so readers never see a partial file. */
   async #download(fs, name, cachePath) {
     const partPath = `${cachePath}.part`;
     let handle = null;
     try {
       handle = await fs.open(partPath, "w");
-      for await (const chunk of this.#fetchChunks(name)) {
+      const res = await this.#fetchWeights(name);
+      for await (const chunk of this.#readChunks(name, res)) {
         await handle.write(chunk);
       }
       await handle.close();
@@ -194,18 +265,23 @@ export class WeightsManager {
     } catch (err) {
       if (handle) await handle.close().catch(() => {});
       await fs.rm(partPath, { force: true });
-      throw new Error(`Could not resolve path to the weights file: ${name}`, {
-        cause: err,
-      });
+      throw new Error(
+        `Could not resolve path to the weights file: ${name}: ${err.message}`,
+        { cause: err },
+      );
     }
   }
 
-  async *#fetchChunks(name) {
-    const url = weightsUrl(name);
+  async #fetchWeights(name) {
+    const url = this.weightsUrl(name);
     const res = await getFetch()(url);
     if (!res.ok || !res.body) {
       throw new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
     }
+    return res;
+  }
+
+  async *#readChunks(name, res) {
     const total = Number(res.headers.get("content-length")) || null;
     let loaded = 0;
     let finished = false;
@@ -292,6 +368,12 @@ function suffixOf(name) {
   const base = name.slice(name.search(/[^\\/]*$/));
   const dot = base.lastIndexOf(".");
   return dot > 0 ? base.slice(dot).toLowerCase() : "";
+}
+
+/** Decoded file name at the end of a URL. */
+function lastPathSegment(url) {
+  const { pathname } = new URL(url);
+  return decodeURIComponent(pathname.slice(pathname.lastIndexOf("/") + 1));
 }
 
 function stripSuffix(name) {
