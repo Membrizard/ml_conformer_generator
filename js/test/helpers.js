@@ -21,19 +21,36 @@ const Z_MAP = {
   I: 53,
 };
 
-/** Resolve ONNX weights from env, package dir, or repo root. */
-export function resolveOnnxPaths() {
+const WEIGHT_SETS = {
+  full: {
+    egnn: "egnn_chembl_15_39.onnx",
+    adj: "adj_mat_seer_chembl_15_39.onnx",
+  },
+  small: {
+    egnn: "small_egnn_chembl_15_39.onnx",
+    adj: "small_adj_mat_seer_obabel_15_39.onnx",
+  },
+};
+
+/**
+ * Resolve ONNX weights from the package dir or repo root. For the full set,
+ * the EGNN_ONNX / ADJ_ONNX env vars take precedence.
+ * @param {"full"|"small"} [variant="full"]
+ */
+export function resolveOnnxPaths(variant = "full") {
+  const names = WEIGHT_SETS[variant];
+  const fromEnv = variant === "full";
   const egnn =
-    process.env.EGNN_ONNX ||
+    (fromEnv && process.env.EGNN_ONNX) ||
     firstExisting([
-      join(PACKAGE_ROOT, "egnn_chembl_15_39.onnx"),
-      join(REPO_ROOT, "egnn_chembl_15_39.onnx"),
+      join(PACKAGE_ROOT, names.egnn),
+      join(REPO_ROOT, names.egnn),
     ]);
   const adj =
-    process.env.ADJ_ONNX ||
+    (fromEnv && process.env.ADJ_ONNX) ||
     firstExisting([
-      join(PACKAGE_ROOT, "adj_mat_seer_chembl_15_39.onnx"),
-      join(REPO_ROOT, "adj_mat_seer_chembl_15_39.onnx"),
+      join(PACKAGE_ROOT, names.adj),
+      join(REPO_ROOT, names.adj),
     ]);
   return { egnn, adj, available: Boolean(egnn && adj) };
 }

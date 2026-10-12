@@ -59,6 +59,8 @@ export class WeightsManager {
    *   called as download bytes arrive; `total` is null when the size is unknown
    * @param {number} [options.lockTimeout=60000] ms to wait for another
    *   process's download of the same file before giving up (Node)
+   * @param {boolean} [options.isNode] override runtime detection, e.g. to
+   *   exercise the browser behaviour under Node
    */
   constructor({
     cacheDir = null,
@@ -66,7 +68,9 @@ export class WeightsManager {
     cacheName = DEFAULT_CACHE_NAME,
     onProgress = null,
     lockTimeout = 60_000,
+    isNode = IS_NODE,
   } = {}) {
+    this.isNode = isNode;
     this.cacheDir = cacheDir;
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.cacheName = cacheName;
@@ -81,7 +85,7 @@ export class WeightsManager {
 
   /** Absolute cache directory (Node only). */
   async getCacheDir() {
-    if (!IS_NODE) {
+    if (!this.isNode) {
       throw new Error("The weights cache directory is only available in Node.");
     }
     const { path, os } = await nodeModules();
@@ -107,7 +111,7 @@ export class WeightsManager {
    */
   async resolve(nameOrPath, { forceDownload = false } = {}) {
     if (typeof nameOrPath !== "string") return nameOrPath;
-    if (!IS_NODE) return this.#resolveBrowser(nameOrPath, forceDownload);
+    if (!this.isNode) return this.#resolveBrowser(nameOrPath, forceDownload);
 
     const { fs, path } = await nodeModules();
 
@@ -169,7 +173,7 @@ export class WeightsManager {
       out.remoteError = err;
     }
 
-    if (IS_NODE) {
+    if (this.isNode) {
       const { fs, path } = await nodeModules();
       const cacheDir = await this.getCacheDir();
       out.local = (await walkFiles(fs, path, cacheDir))
@@ -192,7 +196,7 @@ export class WeightsManager {
    * `cacheName` Cache API cache in the browser.
    */
   async clearCache() {
-    if (!IS_NODE) {
+    if (!this.isNode) {
       if (typeof globalThis.caches?.delete === "function") {
         await globalThis.caches.delete(this.cacheName);
       }
