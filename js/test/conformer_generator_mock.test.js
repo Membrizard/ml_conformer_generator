@@ -16,7 +16,8 @@ import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
-import { createGenerator, randomContext, WeightsManager } from "../src/index.js";
+import { createGenerator, WeightsManager } from "../src/index.js";
+import { randomContext } from "../src/randomContext.js";
 import { DIMENSION } from "../src/constants.js";
 import { seed } from "../src/numpyRandom.js";
 
@@ -404,6 +405,8 @@ describe("MLConformerGenerator weights resolution (mock ORT, stubbed fetch)", ()
       createGenerator({ ort: recordingOrt, egnnOnnx: "./nope/egnn.onnx" }),
       /Weights file not found/,
     );
+    // Give a concurrently started download time to show up.
+    await new Promise((r) => setTimeout(r, 50));
     assert.equal(fetched.length, 0);
     assert.deepEqual(await readdir(dir), []);
   });

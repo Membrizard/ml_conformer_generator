@@ -568,7 +568,7 @@ describe("WeightsManager (browser)", () => {
   afterEach(restoreGlobals);
 
   function browserManager(options = {}) {
-    return new WeightsManager({ isNode: false, ...options });
+    return new WeightsManager({ _isNode: false, ...options });
   }
 
   it("fetches a bare name on a miss and stores it in the named cache", async () => {

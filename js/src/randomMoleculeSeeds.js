@@ -3,7 +3,10 @@
  *
  * Generated from the Python package's
  * `src/mlconfgen/utils/random_molecule_seeds.json` (`n_atoms` renamed to
- * `nAtoms`). Do not edit by hand — regenerate when that file changes.
+ * `nAtoms`). Do not edit by hand; when that file changes, regenerate from
+ * `js/` with:
+ *
+ *   node -e 'const fs=require("fs"),f="src/randomMoleculeSeeds.js",seeds=require("../src/mlconfgen/utils/random_molecule_seeds.json"),head=fs.readFileSync(f,"utf8").split("\nexport default")[0];fs.writeFileSync(f,head+"\nexport default Object.freeze([\n"+seeds.map((s)=>`  { context: [${s.context.join(", ")}], nAtoms: ${s.n_atoms} },\n`).join("")+"]);\n")'
  */
 export default Object.freeze([
   { context: [114.49176025390625, 277.1076354980469, 336.68365478515625], nAtoms: 24 },

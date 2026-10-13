@@ -14,7 +14,6 @@ import {
   samplesToMolecules,
   standardizeMol,
 } from "./mol.js";
-import { randomContext } from "./randomContext.js";
 import { clearRdkitLoader, registerDefaultRdkit, setRdkitLoader } from "./rdkit.js";
 import { WeightsManager } from "./weightsManager.js";
 
@@ -334,9 +333,9 @@ export class MLConformerGenerator {
 
   /**
    * Generate molecules from a random context: a shape picked from a bundled
-   * list of ChEMBL molecule contexts (see `randomContext`), with the number of
-   * heavy atoms fixed to that molecule's (`variance: 0`). Mirrors Python
-   * `random()`, minus `optimize_geometry` — MMFF is not available in RDKit.js.
+   * list of ChEMBL molecule contexts, with the number of heavy atoms fixed to
+   * that molecule's (`variance: 0`). Mirrors Python `random()`, minus
+   * `optimize_geometry` — MMFF is not available in RDKit.js.
    *
    * `seed` only fixes which context is picked, and is not cross-compatible
    * with Python seeds. The diffusion noise follows the global `seed(n)`, as in
@@ -351,6 +350,9 @@ export class MLConformerGenerator {
    * @returns {Promise<object[]>}
    */
   async random({ size = 1, seed = null, ...options } = {}) {
+    // Loaded on first use, so bundles that never call random() can leave the
+    // ~200 KB seed list in a separate chunk.
+    const { randomContext } = await import("./randomContext.js");
     const { context, nAtoms } = randomContext(seed);
     return this.generateConformers({
       ...options,

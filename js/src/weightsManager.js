@@ -14,7 +14,8 @@ import { CACHE_DIR_NAME, HF_BASE_URL, HF_REPO } from "./constants.js";
  * Cache API it is fetched on every call. A relative path or URL is passed to
  * onnxruntime-web unchanged, i.e. self-hosted weights work exactly as before.
  *
- * Node built-ins are imported lazily so the module stays bundler-safe.
+ * Node built-ins are imported dynamically, inside Node-only code, as in
+ * `rdkit.js`. esbuild browser builds need `--external:node:*`.
  */
 
 const IS_NODE =
@@ -25,24 +26,26 @@ const BARE_NAME = /^[\w.-]+\.onnx$/;
 
 const LOCK_POLL_MS = 200;
 
-export const DEFAULT_BASE_URL = `${HF_BASE_URL}/${HF_REPO}/resolve/main`;
-export const DEFAULT_CACHE_NAME = "mlconfgen-weights";
+const DEFAULT_BASE_URL = `${HF_BASE_URL}/${HF_REPO}/resolve/main`;
+const DEFAULT_CACHE_NAME = "mlconfgen-weights";
 
 let nodeModulesPromise = null;
 
 function nodeModules() {
   if (!nodeModulesPromise) {
+    // The comments keep webpack and Vite from resolving these for browser
+    // builds; this code only runs in Node.
     nodeModulesPromise = Promise.all([
-      import("node:fs/promises"),
-      import("node:path"),
-      import("node:os"),
+      import(/* webpackIgnore: true */ /* @vite-ignore */ "node:fs/promises"),
+      import(/* webpackIgnore: true */ /* @vite-ignore */ "node:path"),
+      import(/* webpackIgnore: true */ /* @vite-ignore */ "node:os"),
     ]).then(([fs, path, os]) => ({ fs, path, os }));
   }
   return nodeModulesPromise;
 }
 
 /** `true` when `name` is a plain weights file name with no path component. */
-export function isBareWeightsName(name) {
+function isBareWeightsName(name) {
   return typeof name === "string" && BARE_NAME.test(name);
 }
 
@@ -64,8 +67,6 @@ export class WeightsManager {
    * @param {number} [options.lockTimeout=60000] ms to wait for another
    *   process's download of the same file before giving up (Node). The wait
    *   restarts whenever that download makes progress.
-   * @param {boolean} [options.isNode] override runtime detection, e.g. to
-   *   exercise the browser behaviour under Node
    */
   constructor({
     cacheDir = null,
@@ -73,9 +74,9 @@ export class WeightsManager {
     cacheName = DEFAULT_CACHE_NAME,
     onProgress = null,
     lockTimeout = 60_000,
-    isNode = IS_NODE,
+    _isNode = IS_NODE, // test hook: exercise the browser path under Node
   } = {}) {
-    this.isNode = isNode;
+    this._isNode = _isNode;
     this.cacheDir = cacheDir;
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.cacheName = cacheName;
@@ -84,13 +85,13 @@ export class WeightsManager {
   }
 
   /** Download URL of a weights file. */
-  weightsUrl(name) {
+  #weightsUrl(name) {
     return `${this.baseUrl}/${encodeURIComponent(name)}`;
   }
 
   /** Absolute cache directory (Node only). */
   async getCacheDir() {
-    if (!this.isNode) {
+    if (!this._isNode) {
       throw new Error("The weights cache directory is only available in Node.");
     }
     const { path, os } = await nodeModules();
@@ -116,7 +117,7 @@ export class WeightsManager {
    */
   async resolve(nameOrPath, { forceDownload = false } = {}) {
     if (typeof nameOrPath !== "string") return nameOrPath;
-    if (!this.isNode) return this.#resolveBrowser(nameOrPath, forceDownload);
+    if (!this._isNode) return this.#resolveBrowser(nameOrPath, forceDownload);
 
     const { fs, path, os } = await nodeModules();
 
@@ -179,7 +180,7 @@ export class WeightsManager {
       out.remoteError = err;
     }
 
-    if (this.isNode) {
+    if (this._isNode) {
       const { fs, path } = await nodeModules();
       const cacheDir = await this.getCacheDir();
       out.local = (await walkFiles(fs, path, cacheDir))
@@ -205,7 +206,7 @@ export class WeightsManager {
    * root, the home directory or the working directory.
    */
   async clearCache() {
-    if (!this.isNode) {
+    if (!this._isNode) {
       if (typeof globalThis.caches?.delete === "function") {
         await globalThis.caches.delete(this.cacheName);
       }
@@ -231,7 +232,7 @@ export class WeightsManager {
   async #resolveBrowser(nameOrPath, forceDownload) {
     if (!isBareWeightsName(nameOrPath)) return nameOrPath;
 
-    const url = this.weightsUrl(nameOrPath);
+    const url = this.#weightsUrl(nameOrPath);
     const cache = await this.#openBrowserCache();
 
     if (cache && !forceDownload) {
@@ -315,7 +316,7 @@ export class WeightsManager {
   }
 
   async #fetchWeights(name) {
-    const url = this.weightsUrl(name);
+    const url = this.#weightsUrl(name);
     const res = await getFetch()(url);
     if (!res.ok || !res.body) {
       throw new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);

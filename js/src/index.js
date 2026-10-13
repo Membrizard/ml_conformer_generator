@@ -34,7 +34,6 @@ export {
   standardizeMol,
 } from "./mol.js";
 export { seed, NumpyRandomState } from "./numpyRandom.js";
-export { randomContext } from "./randomContext.js";
 export { WeightsManager } from "./weightsManager.js";
 
 export {
