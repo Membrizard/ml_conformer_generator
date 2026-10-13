@@ -132,31 +132,42 @@ Largest fragment (or `null` for disconnected molecules when `keepLargestFragment
 Resolves weights by name: existing path → cache → download. The JS counterpart of the Python `mlconfgen.utils.WeightsManager`.
 
 ```js
-new WeightsManager({ cacheDir, baseUrl, cacheName = "mlconfgen-weights", onProgress, lockTimeout = 60000 })
+new WeightsManager({ cacheDir, baseUrl, cacheName = "mlconfgen-weights", onProgress, lockTimeout = 60000, staleGraceMs = 5000 })
 ```
 
 | Option | Description |
 |---|---|
 | `cacheDir` | Cache directory (Node). Defaults to the `MLCONFGEN_CACHE` env var, then `~/.mlconfgen_weights`. |
-| `baseUrl` | Download location for bare file names. Defaults to `https://huggingface.co/Membrizard/ml_conformer_generator/resolve/main`. A mirror must serve the files uncompressed with `Content-Length` (`Content-Encoding` is not visible cross-origin). |
+| `baseUrl` | Download location for bare file names. Defaults to `https://huggingface.co/Membrizard/ml_conformer_generator/resolve/main`. A mirror's `Content-Length` enables the size check and the progress `total`; without it downloads still work. A cross-origin mirror must serve the files uncompressed or expose `Content-Encoding` (`Access-Control-Expose-Headers`): a hidden encoding makes the size check fail. |
 | `cacheName` | Cache API cache name (browser). |
 | `onProgress` | `({ file, loaded, total }) => void`, called as download bytes arrive. |
 | `lockTimeout` | Milliseconds to wait for another process's download of the same file (Node). The wait restarts whenever that download makes progress; see [Locking](#locking). |
+| `staleGraceMs` | Milliseconds the `<name>.part` of a lock whose process no longer exists must stay unchanged before the lock is reclaimed (Node); see [Locking](#locking). |
 
 ### `resolve(nameOrPath, { forceDownload = false }) → Promise<string | Uint8Array>`
 
 Byte buffers are returned unchanged. In Node an existing file path is returned as is; a bare file name (`*.onnx`, no directory part) is returned as its cache path, downloaded first on a miss or with `forceDownload`; any other string throws. In the browser a bare file name resolves to its bytes (from the Cache API, or fetched and cached); any other string is returned unchanged for onnxruntime-web to load.
 
-A download is written to `<name>.part` and renamed when complete. When the server sends `Content-Length`, a body of a different size fails the download.
+A download is written to `<name>.part` and renamed when complete. When the server sends `Content-Length`, a body of a different size fails the download. Before the rename, the download checks that `<name>.part` is still the file it created (same inode). If another process replaced or removed it, the download fails and leaves that file alone.
 
 #### Locking
 
 In Node a download holds `<stem>.lock` in the cache directory (e.g. `egnn_chembl_15_39.lock`), the same lock file the Python package uses:
 
-- The lock file contains `<pid>@<hostname>` of the downloading process.
-- A waiting process reclaims a lock left by a process that no longer exists on the same host, e.g. after Ctrl-C during a download. A lock holding only a PID counts as same-host.
+- The lock file contains `<pid>@<hostname>` of the downloading process. When the download ends, the process removes the lock only if it still holds its own `<pid>@<hostname>`.
+- A waiting process reclaims a lock only when both hold:
+    - the lock's PID no longer exists on this host. A lock holding only a PID counts as same-host;
+    - the holder's `<name>.part` is absent or has not changed for `staleGraceMs` (5 s). This keeps a live download from being taken over when its PID is not visible, e.g. from a container with its own PID namespace but the same hostname.
+- After Ctrl-C during a download, the next process therefore takes over about 5 s after the last write to `<name>.part`.
 - Locks from other hosts, and the Python package's empty locks, are waited on.
-- The wait times out after `lockTimeout` ms without progress. Each change to the holder's `<name>.part` file restarts the timer, so a long download does not time out its waiters.
+- The wait times out after `lockTimeout` ms without progress. Each change to the holder's `<name>.part` restarts the timer, so a long download by another JS process does not time out its waiters. The Python package does not write `<name>.part`, so a JS process waiting on a Python download times out after `lockTimeout`.
+
+Known gaps:
+
+- Two processes that reclaim the same stale lock at the same moment may both download; one of them may fail, and a rerun recovers.
+- Releasing reads the lock and then deletes it. A takeover that lands between the two loses its lock, so a third process may start another download.
+
+The `.part` check above bounds the effect of both. A download whose `<name>.part` was replaced fails instead of putting another process's unfinished file into the cache, and a rerun recovers. Only a takeover in the instant between that check and the rename gets past it. Both gaps need a holder that crashed or whose PID is not visible, plus a window a few system calls wide.
 
 ### `listAvailableWeights({ suffixes = [".pt", ".onnx"] }) → Promise<{ remote, local, remoteError? }>`
 
@@ -164,7 +175,7 @@ In Node a download holds `<stem>.lock` in the cache directory (e.g. `egnn_chembl
 
 ### `clearCache() → Promise<void>`
 
-Removes the cache directory's contents (Node) or deletes the Cache API cache (browser). In Node it refuses to clear a cache directory that is the filesystem root, the home directory or the working directory.
+Removes the cache directory's contents (Node) or deletes the Cache API cache (browser). In Node it refuses to clear a cache directory that is the filesystem root, the home or working directory, or a parent of either. Symlinks are resolved first.
 
 ### `getCacheDir() → Promise<string>`
 
@@ -217,5 +228,5 @@ Tensors are plain `{ data: Float32Array, shape: number[] }` objects. `nodeMask` 
 | `TypeError` | `ort` missing/invalid; invalid `predictBonds` value; `filterInvalid` with `predictBonds: "never"`. |
 | `RangeError` | Empty heavy-atom range after clamping; malformed `Molecule` positions; V2000 overflow; `random` seed outside `[0, 2**32)`. |
 | `RdkitLoadError` | RDKit loader configured but failed to initialise (`error.name === "RdkitLoadError"`). |
-| `Error` | Neither reference form supplied to `prepareInputs`; weights file not found (`Weights file not found: …`); download failed, in Node or the browser (`Could not resolve path to the weights file: <name>: <cause>`, with `error.cause`; the cause may be an HTTP error or `Size mismatch for <name>: …`); `clearCache()` on the filesystem root, home or working directory (`Refusing to clear …`). |
+| `Error` | Neither reference form supplied to `prepareInputs`; weights file not found (`Weights file not found: …`); download failed, in Node or the browser (`Could not resolve path to the weights file: <name>: <cause>`, with `error.cause`; the cause may be an HTTP error, `Size mismatch for <name>: …` or `Another process replaced or removed <name>.part …`); `clearCache()` on the filesystem root, the home or working directory, or a parent of either (`Refusing to clear …`). |
 | `TimeoutError` | Another process held the download lock for `lockTimeout` ms without progress on its download (`error.name === "TimeoutError"`). |

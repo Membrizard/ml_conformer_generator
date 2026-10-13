@@ -58,9 +58,10 @@ export class WeightsManager {
    * @param {string} [options.cacheDir] cache directory (Node). Defaults to the
    *   `MLCONFGEN_CACHE` environment variable, then `~/.mlconfgen_weights`.
    * @param {string} [options.baseUrl] where bare names are downloaded from;
-   *   defaults to the Hugging Face repo. A mirror must serve the files
-   *   uncompressed with `Content-Length` (`Content-Encoding` is not visible
-   *   cross-origin, so a compressed body fails the size check).
+   *   defaults to the Hugging Face repo. A mirror's `Content-Length` enables
+   *   the size check and the progress `total`. A cross-origin mirror must
+   *   serve the files uncompressed or expose `Content-Encoding`: a hidden
+   *   encoding makes the size check fail.
    * @param {string} [options.cacheName="mlconfgen-weights"] Cache API cache
    *   name (browser)
    * @param {(p: { file: string, loaded: number, total: number|null }) => void} [options.onProgress]

@@ -99,9 +99,10 @@ Options for the cache and download location (on `createGenerator` or `WeightsMan
 - `cacheDir` — cache directory (Node). Defaults to the `MLCONFGEN_CACHE` environment
   variable (JS only), then `~/.mlconfgen_weights`.
 - `baseUrl` — where bare names are downloaded from, e.g. a self-hosted mirror. Defaults
-  to the Hugging Face repo. A mirror must serve the files uncompressed with
-  `Content-Length` (`Content-Encoding` is not visible cross-origin, so a compressed body
-  fails the size check).
+  to the Hugging Face repo. If the mirror sends `Content-Length`, downloads are checked
+  against it and progress reports a `total`; without it they still work. A cross-origin
+  mirror must serve the files uncompressed or expose `Content-Encoding`
+  (`Access-Control-Expose-Headers`), since a hidden encoding makes the size check fail.
 - `cacheName` — Cache API cache name in the browser (default `"mlconfgen-weights"`).
 - `onProgress` — called as download bytes arrive.
 
@@ -117,6 +118,19 @@ const path = await wm.resolve("egnn_chembl_15_39.onnx");
 await wm.resolve("egnn_chembl_15_39.onnx", { forceDownload: true });
 await wm.listAvailableWeights({ suffixes: [".onnx"] });
 ```
+
+In Node, concurrent downloads of a file share Python's `<stem>.lock` in the cache:
+
+- A JS process writes `<pid>@<hostname>` into the lock and, when done, removes it only
+  if it still holds that.
+- A waiter reclaims a lock only when its PID no longer exists on this host and the
+  holder's `<name>.part` is absent or has not changed for `staleGraceMs` (5 s). After a
+  Ctrl-C mid-download, the next run therefore takes over about 5 s later.
+- Locks from other hosts and Python's empty locks are waited on. The wait (`lockTimeout`,
+  60 s) restarts whenever a JS holder's `<name>.part` grows. Python writes no `.part`,
+  so a JS process waiting on a Python download times out after 60 s.
+- Two processes reclaiming the same stale lock at once may both download; one may fail,
+  and a rerun recovers.
 
 ## Random molecules
 

@@ -6,7 +6,7 @@ The package core is runtime-neutral. In the browser (or any WebAssembly environm
 npm install mlconfgen onnxruntime-web
 ```
 
-Node built-ins are only imported dynamically, in Node-only code. Vite and webpack handle this as is; esbuild browser builds need `--external:node:*`.
+Node built-ins are only imported dynamically, in Node-only code, and marked for bundlers to skip. Vite and webpack build the package as is, without warnings (verified with Vite 8 and webpack 5). esbuild browser builds need `--external:node:*`.
 
 ---
 
@@ -53,7 +53,7 @@ const gen = await createGenerator({
 const gen2 = await createGenerator({ ort, baseUrl: "https://example.org/models" });
 ```
 
-A `baseUrl` server must serve the files uncompressed with `Content-Length`. The download is checked against that length, and a cross-origin page cannot see `Content-Encoding`.
+If a `baseUrl` server sends `Content-Length`, the download is checked against it and progress reports a `total`; without it the download still works. A cross-origin server must serve the files uncompressed or expose `Content-Encoding` via `Access-Control-Expose-Headers`. Otherwise the page takes the compressed length for the file size, and the check fails. A download that fails the check is not kept in the cache.
 
 ### Weights from the user's machine
 
