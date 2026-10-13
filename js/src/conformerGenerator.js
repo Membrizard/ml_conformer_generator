@@ -121,10 +121,10 @@ export class MLConformerGenerator {
       weightsManager ??
       new WeightsManager({ cacheDir, baseUrl, cacheName, onProgress });
 
-    const [egnnModel, adjMatSeerModel] = await Promise.all([
-      manager.resolve(egnnOnnx),
-      manager.resolve(adjMatSeerOnnx),
-    ]);
+    // One after the other, as in Python: a failed EGNN lookup must not leave
+    // an AdjMatSeer download running after create() has rejected.
+    const egnnModel = await manager.resolve(egnnOnnx);
+    const adjMatSeerModel = await manager.resolve(adjMatSeerOnnx);
 
     const loads = [
       EquivariantDiffusion.create(egnnModel, ort, { timesteps: diffusionSteps }),

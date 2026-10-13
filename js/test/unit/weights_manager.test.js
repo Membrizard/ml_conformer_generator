@@ -1,7 +1,8 @@
 /**
  * WeightsManager unit tests. Fully offline: `globalThis.fetch` (and, for the
  * browser path, `globalThis.caches`) are stubbed, and every test gets its own
- * temporary cache directory.
+ * temporary cache directory. Node tests run from an empty working directory,
+ * since a weights file in the cwd would otherwise win over the cache.
  */
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
@@ -95,15 +96,21 @@ function restoreGlobals() {
 }
 
 describe("WeightsManager (Node)", () => {
+  const originalCwd = process.cwd();
   let dir;
+  let cwd;
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), "mlconfgen-wm-"));
+    cwd = await mkdtemp(join(tmpdir(), "mlconfgen-cwd-"));
+    process.chdir(cwd);
   });
 
   afterEach(async () => {
+    process.chdir(originalCwd);
     restoreGlobals();
     await rm(dir, { recursive: true, force: true });
+    await rm(cwd, { recursive: true, force: true });
   });
 
   it("downloads a bare name on a cache miss from the Hugging Face URL", async () => {

@@ -268,8 +268,11 @@ describe("MLConformerGenerator weights resolution (mock ORT, stubbed fetch)", ()
     "https://huggingface.co/Membrizard/ml_conformer_generator/resolve/main";
   const realFetch = globalThis.fetch;
   const realEnvCache = process.env.MLCONFGEN_CACHE;
+  const originalCwd = process.cwd();
 
   let dir;
+  /** Empty working directory, so weights next to the package can't win over the cache. */
+  let cwd;
   let fetched;
   /** Models handed to `InferenceSession.create`, in call order. */
   let created;
@@ -286,6 +289,8 @@ describe("MLConformerGenerator weights resolution (mock ORT, stubbed fetch)", ()
 
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), "mlconfgen-gen-"));
+    cwd = await mkdtemp(join(tmpdir(), "mlconfgen-cwd-"));
+    process.chdir(cwd);
     process.env.MLCONFGEN_CACHE = dir;
     fetched = [];
     created = [];
@@ -308,10 +313,12 @@ describe("MLConformerGenerator weights resolution (mock ORT, stubbed fetch)", ()
   });
 
   afterEach(async () => {
+    process.chdir(originalCwd);
     globalThis.fetch = realFetch;
     if (realEnvCache === undefined) delete process.env.MLCONFGEN_CACHE;
     else process.env.MLCONFGEN_CACHE = realEnvCache;
     await rm(dir, { recursive: true, force: true });
+    await rm(cwd, { recursive: true, force: true });
   });
 
   it("create() with no options builds a manager with defaults", async () => {
@@ -333,9 +340,9 @@ describe("MLConformerGenerator weights resolution (mock ORT, stubbed fetch)", ()
       join(dir, "egnn_chembl_15_39.onnx"),
       join(dir, "adj_mat_seer_chembl_15_39.onnx"),
     ]);
-    assert.deepEqual(fetched.sort(), [
-      `${HF_RESOLVE}/adj_mat_seer_chembl_15_39.onnx`,
+    assert.deepEqual(fetched, [
       `${HF_RESOLVE}/egnn_chembl_15_39.onnx`,
+      `${HF_RESOLVE}/adj_mat_seer_chembl_15_39.onnx`,
     ]);
   });
 
@@ -392,11 +399,13 @@ describe("MLConformerGenerator weights resolution (mock ORT, stubbed fetch)", ()
     assert.equal(gen.weightsManager, own);
   });
 
-  it("rejects a missing weights path", async () => {
+  it("rejects a missing weights path without starting other downloads", async () => {
     await assert.rejects(
       createGenerator({ ort: recordingOrt, egnnOnnx: "./nope/egnn.onnx" }),
       /Weights file not found/,
     );
+    assert.equal(fetched.length, 0);
+    assert.deepEqual(await readdir(dir), []);
   });
 
   it("listWeights lists .onnx only, and clearCache empties the cache", async () => {

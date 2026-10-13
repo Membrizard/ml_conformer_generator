@@ -1,8 +1,9 @@
 /**
  * Slow ONNX generation tests mirroring tests/test_generation_onnx.py.
  *
- * Requires ChemBL ONNX weights next to the package (or via EGNN_ONNX / ADJ_ONNX).
- * Also runs against the distilled small_* weights when they are present.
+ * Requires ChemBL ONNX weights next to the package, in the repo root or in
+ * ~/.mlconfgen_weights (or via EGNN_ONNX / ADJ_ONNX). Also runs against the
+ * distilled small_* weights when they are present in the same places.
  * Fixed-fragment / IFM paths from the Python suite are not ported yet.
  */
 import assert from "node:assert/strict";
@@ -24,8 +25,8 @@ for (const variant of ["full", "small"]) {
   const skipReason = onnx.available
     ? false
     : variant === "full"
-      ? "ONNX weights not found (set EGNN_ONNX / ADJ_ONNX or place models in js/)"
-      : "small_* ONNX weights not found (place them in js/)";
+      ? "ONNX weights not found (set EGNN_ONNX / ADJ_ONNX, or place models in js/ or ~/.mlconfgen_weights)"
+      : "small_* ONNX weights not found (place them in js/ or ~/.mlconfgen_weights)";
 
   describe(`ONNX generation, ${variant} weights (slow)`, { skip: skipReason }, () => {
     /** @type {MLConformerGenerator} */
