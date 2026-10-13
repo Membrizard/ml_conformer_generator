@@ -95,7 +95,9 @@ Options for the cache and download location (on `createGenerator` or `WeightsMan
 - `cacheDir` — cache directory (Node). Defaults to the `MLCONFGEN_CACHE` environment
   variable (JS only), then `~/.mlconfgen_weights`.
 - `baseUrl` — where bare names are downloaded from, e.g. a self-hosted mirror. Defaults
-  to the Hugging Face repo.
+  to the Hugging Face repo. A mirror must serve the files uncompressed with
+  `Content-Length` (`Content-Encoding` is not visible cross-origin, so a compressed body
+  fails the size check).
 - `cacheName` — Cache API cache name in the browser (default `"mlconfgen-weights"`).
 - `onProgress` — called as download bytes arrive.
 

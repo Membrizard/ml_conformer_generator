@@ -47,18 +47,23 @@ export function isBareWeightsName(name) {
 }
 
 export class WeightsManager {
+  #warnedCachePut = false;
+
   /**
    * @param {object} [options]
    * @param {string} [options.cacheDir] cache directory (Node). Defaults to the
    *   `MLCONFGEN_CACHE` environment variable, then `~/.mlconfgen_weights`.
    * @param {string} [options.baseUrl] where bare names are downloaded from;
-   *   defaults to the Hugging Face repo
+   *   defaults to the Hugging Face repo. A mirror must serve the files
+   *   uncompressed with `Content-Length` (`Content-Encoding` is not visible
+   *   cross-origin, so a compressed body fails the size check).
    * @param {string} [options.cacheName="mlconfgen-weights"] Cache API cache
    *   name (browser)
    * @param {(p: { file: string, loaded: number, total: number|null }) => void} [options.onProgress]
    *   called as download bytes arrive; `total` is null when the size is unknown
    * @param {number} [options.lockTimeout=60000] ms to wait for another
-   *   process's download of the same file before giving up (Node)
+   *   process's download of the same file before giving up (Node). The wait
+   *   restarts whenever that download makes progress.
    * @param {boolean} [options.isNode] override runtime detection, e.g. to
    *   exercise the browser behaviour under Node
    */
@@ -113,7 +118,7 @@ export class WeightsManager {
     if (typeof nameOrPath !== "string") return nameOrPath;
     if (!this.isNode) return this.#resolveBrowser(nameOrPath, forceDownload);
 
-    const { fs, path } = await nodeModules();
+    const { fs, path, os } = await nodeModules();
 
     if (await isFile(fs, nameOrPath)) return nameOrPath;
 
@@ -129,10 +134,11 @@ export class WeightsManager {
 
     // Same lock name as Python (`Path.with_suffix(".lock")`).
     const lockPath = path.join(cacheDir, `${stripSuffix(nameOrPath)}.lock`);
-    await this.#withLock(fs, lockPath, async () => {
+    const partPath = `${cachePath}.part`;
+    await this.#withLock(fs, os.hostname(), lockPath, partPath, async () => {
       // Another process may have finished the download while we waited.
       if (!forceDownload && (await isFile(fs, cachePath))) return;
-      await this.#download(fs, nameOrPath, cachePath);
+      await this.#download(fs, nameOrPath, cachePath, partPath);
     });
 
     return cachePath;
@@ -194,6 +200,9 @@ export class WeightsManager {
   /**
    * Delete every cached weights file: the cache directory in Node, the
    * `cacheName` Cache API cache in the browser.
+   *
+   * In Node this refuses to delete a cache directory that is the filesystem
+   * root, the home directory or the working directory.
    */
   async clearCache() {
     if (!this.isNode) {
@@ -202,8 +211,19 @@ export class WeightsManager {
       }
       return;
     }
-    const { fs } = await nodeModules();
+    const { fs, path, os } = await nodeModules();
     const cacheDir = await this.getCacheDir();
+    const target = await realpathOr(fs, cacheDir);
+    const guarded = await Promise.all(
+      [path.parse(target).root, os.homedir(), process.cwd()].map((p) =>
+        realpathOr(fs, path.resolve(p)),
+      ),
+    );
+    if (guarded.includes(target)) {
+      throw new Error(
+        `Refusing to clear ${cacheDir}: it is the filesystem root, the home directory or the working directory.`,
+      );
+    }
     await fs.rm(cacheDir, { recursive: true, force: true });
     await fs.mkdir(cacheDir, { recursive: true });
   }
@@ -219,28 +239,46 @@ export class WeightsManager {
       if (hit) return new Uint8Array(await hit.arrayBuffer());
     }
 
-    const res = await this.#fetchWeights(nameOrPath);
+    try {
+      return await this.#fetchBytes(nameOrPath, url, cache);
+    } catch (err) {
+      throw downloadError(nameOrPath, err);
+    }
+  }
+
+  async #fetchBytes(name, url, cache) {
+    const res = await this.#fetchWeights(name);
     // Caching is best effort: a failed put (quota, private mode) must not
     // fail the load.
     const stored = cache
-      ? cache.put(url, res.clone()).catch(() => {})
-      : Promise.resolve();
+      ? cache.put(url, res.clone()).then(
+          () => null,
+          (err) => err,
+        )
+      : Promise.resolve(null);
 
+    // With a known size, chunks are copied into one buffer as they arrive,
+    // so the weights are not held twice.
+    const total = contentLength(res);
+    const out = total === null ? null : new Uint8Array(total);
     const chunks = [];
     let size = 0;
-    for await (const chunk of this.#readChunks(nameOrPath, res)) {
-      chunks.push(chunk);
+    for await (const chunk of this.#readChunks(name, res)) {
+      if (out) out.set(chunk, size);
+      else chunks.push(chunk);
       size += chunk.length;
     }
-    await stored;
 
-    const out = new Uint8Array(size);
-    let offset = 0;
-    for (const chunk of chunks) {
-      out.set(chunk, offset);
-      offset += chunk.length;
+    const putError = await stored;
+    if (putError && !this.#warnedCachePut) {
+      this.#warnedCachePut = true;
+      console.warn(
+        `mlconfgen: could not store ${name} in the "${this.cacheName}" cache ` +
+          `(${putError.name}: ${putError.message}); it will be downloaded again next time.`,
+      );
     }
-    return out;
+
+    return out ?? concat(chunks, size);
   }
 
   /** The Cache API cache, or null where it is unavailable. */
@@ -254,11 +292,14 @@ export class WeightsManager {
   }
 
   /** Stream to `<name>.part`, then rename so readers never see a partial file. */
-  async #download(fs, name, cachePath) {
-    const partPath = `${cachePath}.part`;
+  async #download(fs, name, cachePath, partPath) {
     let handle = null;
     try {
-      handle = await fs.open(partPath, "w");
+      // We hold the lock, so whatever is at `.part` is a leftover. Remove it
+      // and create the file exclusively, so a planted symlink is never
+      // followed.
+      await fs.rm(partPath, { force: true });
+      handle = await fs.open(partPath, "wx");
       const res = await this.#fetchWeights(name);
       for await (const chunk of this.#readChunks(name, res)) {
         await handle.write(chunk);
@@ -269,10 +310,7 @@ export class WeightsManager {
     } catch (err) {
       if (handle) await handle.close().catch(() => {});
       await fs.rm(partPath, { force: true });
-      throw new Error(
-        `Could not resolve path to the weights file: ${name}: ${err.message}`,
-        { cause: err },
-      );
+      throw downloadError(name, err);
     }
   }
 
@@ -286,7 +324,7 @@ export class WeightsManager {
   }
 
   async *#readChunks(name, res) {
-    const total = Number(res.headers.get("content-length")) || null;
+    const total = contentLength(res);
     let loaded = 0;
     let finished = false;
     const reader = res.body.getReader();
@@ -295,8 +333,14 @@ export class WeightsManager {
         const { done, value } = await reader.read();
         if (done) break;
         loaded += value.length;
+        if (total !== null && loaded > total) break;
         this.onProgress?.({ file: name, loaded, total });
         yield value;
+      }
+      if (total !== null && loaded !== total) {
+        throw new Error(
+          `Size mismatch for ${name}: expected ${total} bytes, received ${loaded}.`,
+        );
       }
       finished = true;
     } finally {
@@ -306,8 +350,16 @@ export class WeightsManager {
     }
   }
 
-  async #withLock(fs, lockPath, fn) {
-    const start = Date.now();
+  /**
+   * Run `fn` holding `lockPath`. The lock holds `<pid>@<hostname>`, so a lock
+   * left by a killed process on this host can be recognised and removed.
+   * Locks from other hosts and Python's empty locks are waited on. The wait
+   * times out after `lockTimeout` ms without progress on `partPath`, the file
+   * the holder downloads into.
+   */
+  async #withLock(fs, hostname, lockPath, partPath, fn) {
+    let start = Date.now();
+    let lastPartMtime = null;
     let handle;
     for (;;) {
       try {
@@ -316,6 +368,21 @@ export class WeightsManager {
       } catch (err) {
         if (err.code !== "EEXIST") throw err;
       }
+      if (await isStaleLock(fs, lockPath, hostname)) {
+        // Move the lock aside before deleting it. ENOENT means another
+        // waiter reclaimed it first.
+        const stalePath = `${lockPath}.stale-${process.pid}`;
+        try {
+          await fs.rename(lockPath, stalePath);
+          await fs.rm(stalePath, { force: true });
+        } catch (err) {
+          if (err.code !== "ENOENT") throw err;
+        }
+        continue;
+      }
+      const partMtime = await mtimeOf(fs, partPath);
+      if (partMtime !== null && partMtime !== lastPartMtime) start = Date.now();
+      lastPartMtime = partMtime;
       if (Date.now() - start > this.lockTimeout) {
         const err = new Error(
           `Timeout waiting for lock ${lockPath} — delete it if no other download is running.`,
@@ -327,11 +394,79 @@ export class WeightsManager {
     }
 
     try {
-      await handle.close();
+      try {
+        await handle.writeFile(`${process.pid}@${hostname}`);
+      } finally {
+        await handle.close();
+      }
       return await fn();
     } finally {
       await fs.rm(lockPath, { force: true });
     }
+  }
+}
+
+function downloadError(name, cause) {
+  return new Error(
+    `Could not resolve path to the weights file: ${name}: ${cause.message}`,
+    { cause },
+  );
+}
+
+/**
+ * Body size from `content-length`, or null when unknown. A compressed body is
+ * decoded by `fetch`, so its `content-length` does not match what we read.
+ */
+function contentLength(res) {
+  const encoding = res.headers.get("content-encoding");
+  if (encoding && encoding !== "identity") return null;
+  return Number(res.headers.get("content-length")) || null;
+}
+
+function concat(chunks, size) {
+  const out = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return out;
+}
+
+/**
+ * `true` when the lock holds the PID of a process on this host that no longer
+ * exists. A bare `<pid>` is taken to be from this host.
+ */
+async function isStaleLock(fs, lockPath, hostname) {
+  let text;
+  try {
+    text = (await fs.readFile(lockPath, "utf8")).trim();
+  } catch {
+    return false;
+  }
+  const match = /^(\d+)(?:@(.+))?$/.exec(text);
+  if (!match || (match[2] !== undefined && match[2] !== hostname)) return false;
+  try {
+    process.kill(Number(match[1]), 0);
+    return false;
+  } catch (err) {
+    return err.code === "ESRCH";
+  }
+}
+
+async function mtimeOf(fs, p) {
+  try {
+    return (await fs.stat(p)).mtimeMs;
+  } catch {
+    return null;
+  }
+}
+
+async function realpathOr(fs, p) {
+  try {
+    return await fs.realpath(p);
+  } catch {
+    return p;
   }
 }
 
