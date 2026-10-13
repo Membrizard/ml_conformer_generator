@@ -85,6 +85,8 @@ See [Generation](2_generation.md#randomoptions) for details, including why `rand
 
 `seed(n)` seeds a NumPy-compatible `RandomState` (MT19937) used for all noise draws. With the same seed and weights, `randn` draws match `np.random.seed(n)` in Python, so runs are comparable across the two implementations. Unseeded runs are initialised from crypto entropy.
 
+`gen.random()` needs its own `seed` as well, since that picks the context: `seed(1); await gen.random({ size: 5, seed: 7 })` is reproducible.
+
 ---
 
 ## Run the Examples

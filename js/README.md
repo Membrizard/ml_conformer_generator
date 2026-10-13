@@ -66,13 +66,17 @@ and licensed under Apache 2.0 (see
 [`LICENSE-MODEL`](https://github.com/Membrizard/ml_conformer_generator/blob/main/LICENSE-MODEL)).
 
 `egnnOnnx` and `adjMatSeerOnnx` accept a file path, a bare file name or the model bytes
-(`Uint8Array`). In Node a string is resolved the same way as in the Python package:
+(`Uint8Array`). In Node a string is resolved in the same order as in the Python package:
 
 1. an existing file path is used as is;
 2. otherwise a bare file name is looked up in the cache — `~/.mlconfgen_weights`, the
    same directory the Python package uses;
 3. if it is not cached it is downloaded from Hugging Face into the cache. Concurrent
    downloads of the same file are guarded by a lock file shared with Python.
+
+Two deliberate differences from Python: a path that is not a bare name and does not exist
+fails at once (`Weights file not found`) instead of being looked up on Hugging Face, and
+only `*.onnx` file names count as bare names.
 
 ```js
 // Distilled weights, by name
@@ -121,9 +125,6 @@ ChEMBL molecule shapes, with the heavy-atom count of the picked molecule:
 
 ```js
 const mols = await gen.random({ size: 5, seed: 7 });
-
-import { randomContext } from "mlconfgen";
-const { context, nAtoms } = randomContext(7); // the context random({ seed: 7 }) uses
 ```
 
 `seed` only fixes which context is picked; the diffusion noise follows the global
@@ -146,8 +147,10 @@ const gen = await createGenerator({ ort });
 ```
 
 In the browser a bare name is fetched from `baseUrl` and cached with the Cache API
-(HTTPS or localhost only; the browser may evict it). A relative path or URL is passed to
-onnxruntime-web unchanged, i.e. self-hosted weights work exactly as before:
+(HTTPS or localhost only; the browser may evict it). A bare name is not page-relative:
+for weights served by your app, use `./egnn_chembl_15_39.onnx` or an absolute path.
+Paths with a directory part (`./…`, `/…`) and URLs are passed to onnxruntime-web
+unchanged:
 
 ```js
 const gen = await createGenerator({

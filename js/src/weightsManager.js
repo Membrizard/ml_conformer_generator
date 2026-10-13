@@ -1,9 +1,9 @@
 import { CACHE_DIR_NAME, HF_BASE_URL, HF_REPO } from "./constants.js";
 
 /**
- * Resolves model weights by name, mirroring the Python `WeightsManager`:
- * existing path → cache → download from `baseUrl` (the Hugging Face repo by
- * default).
+ * Resolves model weights by name, in the same order as the Python
+ * `WeightsManager`: existing path → cache → download from `baseUrl` (the
+ * Hugging Face repo by default).
  *
  * Node: downloads are cached on disk under `~/.mlconfgen_weights`. The cache
  * directory is shared with the Python package, and so is the `.lock` file
@@ -11,8 +11,9 @@ import { CACHE_DIR_NAME, HF_BASE_URL, HF_REPO } from "./constants.js";
  *
  * Browser: a bare file name is fetched from `baseUrl` and cached with the
  * Cache API (HTTPS or localhost only; the browser may evict it). Without the
- * Cache API it is fetched on every call. A relative path or URL is passed to
- * onnxruntime-web unchanged, i.e. self-hosted weights work exactly as before.
+ * Cache API it is fetched on every call. A bare name is not page-relative:
+ * paths with a directory part (`./…`, `/…`) and URLs are passed to
+ * onnxruntime-web unchanged.
  *
  * Node built-ins are imported dynamically, inside Node-only code, as in
  * `rdkit.js`. esbuild browser builds need `--external:node:*`.

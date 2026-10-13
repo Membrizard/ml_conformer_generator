@@ -41,7 +41,7 @@ const gen = await createGenerator({
 
 ### Weights resolution
 
-In Node a string is resolved as in the Python package: an existing file path is used as is; otherwise a bare file name is looked up in the cache and, on a miss, downloaded from `baseUrl` into it. Downloads go to a `.part` file that is renamed when complete, and a lock file shared with the Python package keeps concurrent processes from downloading the same file twice. In the browser see [Browser Usage](3_browser.md#weights-in-the-browser).
+In Node a string is resolved in the same order as in the Python package: an existing file path is used as is; otherwise a bare file name is looked up in the cache and, on a miss, downloaded from `baseUrl` into it. Downloads go to a `.part` file that is renamed when complete, and a lock file shared with the Python package keeps concurrent processes from downloading the same file twice. In the browser see [Browser Usage](3_browser.md#weights-in-the-browser).
 
 Distilled weights are loaded by name:
 
@@ -141,8 +141,6 @@ const mols = await gen.random({ size: 5, seed: 7 });
 ```
 
 > **Seeds are not compatible with the Python package.** Python picks the context with `numpy.random.default_rng` (PCG64); the JS package uses its NumPy-compatible MT19937, so the same `seed` picks different contexts in the two.
-
-The underlying pick is available as `randomContext(seed)`, which returns `{ context: Float32Array(3), nAtoms }` and leaves the global random state untouched.
 
 ---
 

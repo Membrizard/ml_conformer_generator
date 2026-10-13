@@ -12,7 +12,6 @@ import {
   standardizeMol,
   seed,
   NumpyRandomState,
-  randomContext,
   WeightsManager,
   ATOM_DECODER,
   CONTEXT_NORMS,
@@ -54,7 +53,7 @@ Full pipeline: EDM → AdjMatSeer → optional standardisation and validity filt
 
 ### `random({ size = 1, seed = null, ...options }) → Promise<Molecule[]>`
 
-Generates `size` samples from a context picked by `randomContext(seed)`, with `variance: 0`. `resampleSteps`, `filterInvalid` and `keepLargestFragment` are passed to `generateConformers`. Seeds are not compatible with the Python package; see [Generation](2_generation.md#randomoptions).
+Generates `size` samples from a context picked from the bundled list of ChEMBL molecule contexts, with `variance: 0`. `seed` (an integer in `[0, 2**32)`, or `null` for a random pick) fixes the pick, using its own generator, so the global `seed()` state is untouched. `resampleSteps`, `filterInvalid` and `keepLargestFragment` are passed to `generateConformers`. The seed list is loaded on the first call. Seeds are not compatible with the Python package; see [Generation](2_generation.md#randomoptions).
 
 ### `listWeights() → Promise<{ remote: string[], local: string[], remoteError?: Error }>`
 
@@ -139,14 +138,25 @@ new WeightsManager({ cacheDir, baseUrl, cacheName = "mlconfgen-weights", onProgr
 | Option | Description |
 |---|---|
 | `cacheDir` | Cache directory (Node). Defaults to the `MLCONFGEN_CACHE` env var, then `~/.mlconfgen_weights`. |
-| `baseUrl` | Download location for bare file names. Defaults to `https://huggingface.co/Membrizard/ml_conformer_generator/resolve/main`. |
+| `baseUrl` | Download location for bare file names. Defaults to `https://huggingface.co/Membrizard/ml_conformer_generator/resolve/main`. A mirror must serve the files uncompressed with `Content-Length` (`Content-Encoding` is not visible cross-origin). |
 | `cacheName` | Cache API cache name (browser). |
 | `onProgress` | `({ file, loaded, total }) => void`, called as download bytes arrive. |
-| `lockTimeout` | Milliseconds to wait for another process's download of the same file (Node). |
+| `lockTimeout` | Milliseconds to wait for another process's download of the same file (Node). The wait restarts whenever that download makes progress; see [Locking](#locking). |
 
 ### `resolve(nameOrPath, { forceDownload = false }) → Promise<string | Uint8Array>`
 
 Byte buffers are returned unchanged. In Node an existing file path is returned as is; a bare file name (`*.onnx`, no directory part) is returned as its cache path, downloaded first on a miss or with `forceDownload`; any other string throws. In the browser a bare file name resolves to its bytes (from the Cache API, or fetched and cached); any other string is returned unchanged for onnxruntime-web to load.
+
+A download is written to `<name>.part` and renamed when complete. When the server sends `Content-Length`, a body of a different size fails the download.
+
+#### Locking
+
+In Node a download holds `<stem>.lock` in the cache directory (e.g. `egnn_chembl_15_39.lock`), the same lock file the Python package uses:
+
+- The lock file contains `<pid>@<hostname>` of the downloading process.
+- A waiting process reclaims a lock left by a process that no longer exists on the same host, e.g. after Ctrl-C during a download. A lock holding only a PID counts as same-host.
+- Locks from other hosts, and the Python package's empty locks, are waited on.
+- The wait times out after `lockTimeout` ms without progress. Each change to the holder's `<name>.part` file restarts the timer, so a long download does not time out its waiters.
 
 ### `listAvailableWeights({ suffixes = [".pt", ".onnx"] }) → Promise<{ remote, local, remoteError? }>`
 
@@ -154,17 +164,11 @@ Byte buffers are returned unchanged. In Node an existing file path is returned a
 
 ### `clearCache() → Promise<void>`
 
-Removes the cache directory's contents (Node) or deletes the Cache API cache (browser).
+Removes the cache directory's contents (Node) or deletes the Cache API cache (browser). In Node it refuses to clear a cache directory that is the filesystem root, the home directory or the working directory.
 
 ### `getCacheDir() → Promise<string>`
 
 Absolute cache directory (Node only).
-
----
-
-## `randomContext(seed = null) → { context: Float32Array(3), nAtoms }`
-
-Picks a context from the bundled list of ChEMBL molecule contexts. Uses its own generator, so the global `seed()` state is untouched. `seed` is an integer in `[0, 2**32)` or `null`; anything else throws `RangeError`. Not seed-compatible with Python's `random_context`.
 
 ---
 
@@ -211,7 +215,7 @@ Tensors are plain `{ data: Float32Array, shape: number[] }` objects. `nodeMask` 
 | Error | Raised when |
 |---|---|
 | `TypeError` | `ort` missing/invalid; invalid `predictBonds` value; `filterInvalid` with `predictBonds: "never"`. |
-| `RangeError` | Empty heavy-atom range after clamping; malformed `Molecule` positions; V2000 overflow; `random` / `randomContext` seed outside `[0, 2**32)`. |
+| `RangeError` | Empty heavy-atom range after clamping; malformed `Molecule` positions; V2000 overflow; `random` seed outside `[0, 2**32)`. |
 | `RdkitLoadError` | RDKit loader configured but failed to initialise (`error.name === "RdkitLoadError"`). |
-| `Error` | Neither reference form supplied to `prepareInputs`; weights file not found (`Weights file not found: …`) or download failed (`Could not resolve path to the weights file: <name>: <cause>`, with `error.cause`). |
-| `TimeoutError` | Another process held the download lock for longer than `lockTimeout` (`error.name === "TimeoutError"`). |
+| `Error` | Neither reference form supplied to `prepareInputs`; weights file not found (`Weights file not found: …`); download failed, in Node or the browser (`Could not resolve path to the weights file: <name>: <cause>`, with `error.cause`; the cause may be an HTTP error or `Size mismatch for <name>: …`); `clearCache()` on the filesystem root, home or working directory (`Refusing to clear …`). |
+| `TimeoutError` | Another process held the download lock for `lockTimeout` ms without progress on its download (`error.name === "TimeoutError"`). |

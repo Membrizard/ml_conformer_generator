@@ -6,15 +6,19 @@ The package core is runtime-neutral. In the browser (or any WebAssembly environm
 npm install mlconfgen onnxruntime-web
 ```
 
+Node built-ins are only imported dynamically, in Node-only code. Vite and webpack handle this as is; esbuild browser builds need `--external:node:*`.
+
 ---
 
 ## Weights in the Browser
 
-`egnnOnnx` and `adjMatSeerOnnx` accept a bare file name, a relative path or URL, or the model bytes:
+`egnnOnnx` and `adjMatSeerOnnx` accept a bare file name, a path with a directory part or a URL, or the model bytes:
 
 - **Bare name** (the defaults, e.g. `"egnn_chembl_15_39.onnx"`) → fetched from `baseUrl` (the Hugging Face repo by default) and cached with the Cache API (HTTPS or localhost only; the browser may evict it). Where the Cache API is unavailable the file is fetched on every load.
-- **Relative path or URL** → passed to onnxruntime-web unchanged, i.e. self-hosted weights work exactly as before.
+- **Path with a directory part (`./…`, `/…`) or URL** → passed to onnxruntime-web unchanged.
 - **`Uint8Array`** → used as is.
+
+A bare name is not page-relative. Before this release, `egnnOnnx: "egnn_chembl_15_39.onnx"` loaded the file from the page's own origin; now it is fetched from `baseUrl`. For weights served by your app, use `"./egnn_chembl_15_39.onnx"` or an absolute path.
 
 ```js
 import { createGenerator, seed } from "mlconfgen";
@@ -48,6 +52,8 @@ const gen = await createGenerator({
 // Bare names from your own server, cached with the Cache API
 const gen2 = await createGenerator({ ort, baseUrl: "https://example.org/models" });
 ```
+
+A `baseUrl` server must serve the files uncompressed with `Content-Length`. The download is checked against that length, and a cross-origin page cannot see `Content-Encoding`.
 
 ### Weights from the user's machine
 

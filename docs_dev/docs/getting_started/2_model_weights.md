@@ -80,7 +80,7 @@ path = wm.resolve("edm_moi_chembl_15_39.pt", force_download=True)
 
 ## JavaScript: Automatic Resolution
 
-The npm package resolves ONNX weights the same way through its own `WeightsManager`. In Node:
+The npm package resolves ONNX weights in the same order through its own `WeightsManager`. In Node:
 
 1. If the value is an existing **local path**, it is used as is.
 2. Otherwise a bare file name is looked up in the **local cache** — `~/.mlconfgen_weights`, shared with the Python package (override with the `cacheDir` option or the `MLCONFGEN_CACHE` environment variable).
