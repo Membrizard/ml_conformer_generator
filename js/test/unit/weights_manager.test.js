@@ -8,18 +8,21 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import {
+  appendFile,
   lstat,
   mkdir,
   mkdtemp,
   readdir,
   readFile,
+  rename,
   rm,
   symlink,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 import { createRequire, syncBuiltinESMExports } from "node:module";
 import { homedir, hostname, tmpdir } from "node:os";
-import { join, parse } from "node:path";
+import { dirname, join, parse, sep } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
 import { WeightsManager } from "../../src/weightsManager.js";
@@ -34,6 +37,12 @@ const LOCK = "egnn_chembl_15_39.lock";
 /** PID of a process that has already exited. */
 function deadPid() {
   return spawnSync(process.execPath, ["-e", ""]).pid;
+}
+
+/** Backdate the mtime of `p` well past the default `staleGraceMs`. */
+async function makeIdle(p) {
+  const past = new Date(Date.now() - 60_000);
+  await utimes(p, past, past);
 }
 
 const realFetch = globalThis.fetch;
@@ -77,8 +86,11 @@ function stubFetch(handler = null) {
   return calls;
 }
 
-/** Map-backed stand-in for the Cache API (`open/match/put/keys/delete`). */
-function stubCaches() {
+/**
+ * Map-backed stand-in for the Cache API (`open/match/put/keys/delete`).
+ * `putDelayMs` delays storing a body after `put` has read it.
+ */
+function stubCaches({ putDelayMs = 0 } = {}) {
   const stores = new Map();
   globalThis.caches = {
     async open(name) {
@@ -90,10 +102,15 @@ function stubCaches() {
           return body ? new Response(body) : undefined;
         },
         async put(url, res) {
-          store.set(url, new Uint8Array(await res.arrayBuffer()));
+          const body = new Uint8Array(await res.arrayBuffer());
+          await new Promise((r) => setTimeout(r, putDelayMs));
+          store.set(url, body);
         },
         async keys() {
           return [...store.keys()].map((u) => new Request(u));
+        },
+        async delete(url) {
+          return store.delete(url);
         },
       };
     },
@@ -211,6 +228,31 @@ describe("WeightsManager (Node)", () => {
     await new WeightsManager({ cacheDir: dir }).resolve(EGNN);
     assert.equal(lockSeen, `${process.pid}@${hostname()}`);
   });
+
+  for (const [label, takeOver, left] of [
+    [
+      "leaves a lock that another process took over during the download in place",
+      () => writeFile(join(dir, LOCK), `${process.pid + 1}@${hostname()}`),
+      [EGNN, LOCK],
+    ],
+    ["finishes when its lock is removed during the download", async () => {}, [EGNN]],
+  ]) {
+    it(label, async () => {
+      stubFetch(async () => {
+        // A process that reclaimed the lock moved ours aside first.
+        await rm(join(dir, LOCK));
+        await takeOver();
+        return bytesResponse();
+      });
+
+      assert.equal(await new WeightsManager({ cacheDir: dir }).resolve(EGNN), join(dir, EGNN));
+
+      assert.deepEqual((await readdir(dir)).sort(), left.sort());
+      if (left.includes(LOCK)) {
+        assert.equal(await readFile(join(dir, LOCK), "utf8"), `${process.pid + 1}@${hostname()}`);
+      }
+    });
+  }
 
   it("does not follow a symlink planted at <name>.part", async () => {
     stubFetch();
@@ -367,14 +409,18 @@ describe("WeightsManager (Node)", () => {
     assert.equal(calls.length, 0);
   });
 
-  for (const [label, content] of [
-    ["on this host", () => `${deadPid()}@${hostname()}`],
-    ["as a bare PID (taken as this host)", () => String(deadPid())],
+  for (const [label, content, withPart] of [
+    ["on this host, with an idle .part", () => `${deadPid()}@${hostname()}`, true],
+    ["as a bare PID (taken as this host), with an idle .part", () => String(deadPid()), true],
+    ["on this host, with no .part", () => `${deadPid()}@${hostname()}`, false],
   ]) {
     it(`removes a lock left by a process that no longer exists, ${label}`, async () => {
       const calls = stubFetch();
       await writeFile(join(dir, LOCK), content());
-      await writeFile(join(dir, `${EGNN}.part`), "leftover");
+      if (withPart) {
+        await writeFile(join(dir, `${EGNN}.part`), "leftover");
+        await makeIdle(join(dir, `${EGNN}.part`));
+      }
       const wm = new WeightsManager({ cacheDir: dir, lockTimeout: 300 });
 
       assert.equal(await wm.resolve(EGNN), join(dir, EGNN));
@@ -384,6 +430,94 @@ describe("WeightsManager (Node)", () => {
       assert.deepEqual([...(await readFile(join(dir, EGNN)))], BYTES);
     });
   }
+
+  it("waits on a lock with a dead PID while its .part keeps growing", async () => {
+    // A holder in another PID namespace with the same hostname looks dead
+    // here, but its download still makes progress.
+    const calls = stubFetch();
+    const part = join(dir, `${EGNN}.part`);
+    await writeFile(join(dir, LOCK), `${deadPid()}@${hostname()}`);
+    await writeFile(part, "");
+    const holder = (async () => {
+      for (let i = 0; i < 8; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        await appendFile(part, "x");
+      }
+      await rename(part, join(dir, EGNN));
+      await rm(join(dir, LOCK));
+    })();
+
+    const resolved = await new WeightsManager({ cacheDir: dir }).resolve(EGNN);
+    await holder;
+
+    assert.equal(await readFile(resolved, "utf8"), "xxxxxxxx");
+    assert.equal(calls.length, 0);
+    assert.deepEqual(await readdir(dir), [EGNN]);
+  });
+
+  for (const [label, swap, left] of [
+    [
+      "replaces",
+      async (part) => {
+        await rm(part);
+        await writeFile(part, "other");
+      },
+      [`${EGNN}.part`],
+    ],
+    ["removes", (part) => rm(part), []],
+  ]) {
+    it(`fails without touching <name>.part when another process ${label} it mid-download`, async () => {
+      const part = join(dir, `${EGNN}.part`);
+      stubFetch(() => {
+        let step = 0;
+        const body = new ReadableStream({
+          async pull(controller) {
+            step += 1;
+            if (step === 1) controller.enqueue(new Uint8Array([1, 2]));
+            else if (step === 2) {
+              await swap(part);
+              controller.enqueue(new Uint8Array([3, 4]));
+            } else controller.close();
+          },
+        });
+        return new Response(body);
+      });
+
+      await assert.rejects(
+        new WeightsManager({ cacheDir: dir }).resolve(EGNN),
+        /: Another process replaced or removed .*\.part during the download; try again\.$/,
+      );
+
+      assert.deepEqual(await readdir(dir), left);
+      if (left.length) assert.equal(await readFile(part, "utf8"), "other");
+    });
+  }
+
+  it("leaves a replaced <name>.part alone when its own download then fails", async () => {
+    const part = join(dir, `${EGNN}.part`);
+    stubFetch(() => {
+      let step = 0;
+      const body = new ReadableStream({
+        async pull(controller) {
+          step += 1;
+          if (step === 1) {
+            await rm(part);
+            await writeFile(part, "other");
+            controller.enqueue(new Uint8Array([1, 2]));
+          } else controller.error(new Error("connection reset"));
+        },
+      });
+      return new Response(body);
+    });
+
+    await assert.rejects(
+      new WeightsManager({ cacheDir: dir }).resolve(EGNN),
+      /connection reset/,
+    );
+
+    assert.deepEqual(await readdir(dir), [`${EGNN}.part`]);
+    assert.equal(await readFile(part, "utf8"), "other");
+  });
 
   it("lets one of two concurrent waiters reclaim a stale lock", async () => {
     const calls = stubFetch(async () => {
@@ -526,25 +660,66 @@ describe("WeightsManager (Node)", () => {
   for (const [label, target] of [
     ["the filesystem root", () => parse(process.cwd()).root],
     ["the home directory", () => homedir()],
+    ["the home directory with a trailing slash", () => homedir() + sep],
+    ["the parent of the home directory", () => dirname(homedir())],
     ["the working directory", () => process.cwd()],
+    ["the parent of the working directory", () => dirname(process.cwd())],
+    [
+      "a symlink to the working directory",
+      async () => {
+        await symlink(cwd, join(dir, "link"));
+        return join(dir, "link");
+      },
+    ],
   ]) {
     it(`clearCache refuses to delete ${label}`, async () => {
+      const cacheDir = await target();
       const rmCalls = await withRmDisabled(async () => {
-        const wm = new WeightsManager({ cacheDir: target() });
+        const wm = new WeightsManager({ cacheDir });
         await assert.rejects(wm.clearCache(), /^Error: Refusing to clear /);
       });
       assert.deepEqual(rmCalls, []);
     });
   }
 
-  it("clearCache refuses a cache directory of '.' from MLCONFGEN_CACHE", async () => {
-    process.env.MLCONFGEN_CACHE = ".";
-    await writeFile(join(cwd, "keep.txt"), "x");
-    const rmCalls = await withRmDisabled(async () => {
-      await assert.rejects(new WeightsManager().clearCache(), /Refusing to clear/);
+  it("clearCache refuses the parent of a home directory reached through a symlink", async () => {
+    // `os.homedir()` is $HOME, which may be a symlink.
+    const realHome = join(dir, "real", "home");
+    await mkdir(realHome, { recursive: true });
+    await symlink(realHome, join(dir, "home-link"));
+    const realEnvHome = process.env.HOME;
+    process.env.HOME = join(dir, "home-link");
+    try {
+      const rmCalls = await withRmDisabled(async () => {
+        const wm = new WeightsManager({ cacheDir: join(dir, "real") });
+        await assert.rejects(wm.clearCache(), /Refusing to clear/);
+      });
+      assert.deepEqual(rmCalls, []);
+    } finally {
+      if (realEnvHome === undefined) delete process.env.HOME;
+      else process.env.HOME = realEnvHome;
+    }
+  });
+
+  for (const value of [".", ".."]) {
+    it(`clearCache refuses a cache directory of '${value}' from MLCONFGEN_CACHE`, async () => {
+      process.env.MLCONFGEN_CACHE = value;
+      await writeFile(join(cwd, "keep.txt"), "x");
+      const rmCalls = await withRmDisabled(async () => {
+        await assert.rejects(new WeightsManager().clearCache(), /Refusing to clear/);
+      });
+      assert.deepEqual(rmCalls, []);
+      assert.ok(existsSync(join(cwd, "keep.txt")));
     });
-    assert.deepEqual(rmCalls, []);
-    assert.ok(existsSync(join(cwd, "keep.txt")));
+  }
+
+  it("clearCache clears a cache directory inside the working directory", async () => {
+    // Like the default `~/.mlconfgen_weights` inside the home directory.
+    stubFetch();
+    const wm = new WeightsManager({ cacheDir: join(cwd, "weights") });
+    await wm.resolve(EGNN);
+    await wm.clearCache();
+    assert.deepEqual(await readdir(join(cwd, "weights")), []);
   });
 
   it("takes the cache directory from MLCONFGEN_CACHE, and cacheDir over it", async () => {
@@ -720,19 +895,30 @@ describe("WeightsManager (browser)", () => {
     assert.deepEqual([...(await browserManager().resolve(EGNN))], BYTES);
   });
 
-  it("rejects a body longer than its content-length", async () => {
-    stubCaches();
-    stubFetch(
-      () =>
-        new Response(new Uint8Array([1, 2, 3, 4, 5, 6]), {
-          headers: { "content-length": "4" },
-        }),
-    );
-    await assert.rejects(
-      browserManager().resolve(EGNN),
-      /Size mismatch for egnn_chembl_15_39\.onnx: expected 4 bytes, received 6\.$/,
-    );
-  });
+  for (const [label, body] of [
+    ["shorter", [1, 2]],
+    ["longer", [1, 2, 3, 4, 5, 6]],
+  ]) {
+    it(`rejects a body ${label} than its content-length and does not cache it`, async () => {
+      const stores = stubCaches({ putDelayMs: 20 });
+      const calls = stubFetch(
+        () =>
+          new Response(new Uint8Array(body), {
+            headers: { "content-length": "4" },
+          }),
+      );
+      const wm = browserManager();
+      const mismatch = new RegExp(
+        `Size mismatch for egnn_chembl_15_39\\.onnx: expected 4 bytes, received ${body.length}\\.$`,
+      );
+
+      await assert.rejects(wm.resolve(EGNN), mismatch);
+      await new Promise((r) => setTimeout(r, 50)); // let a late `put` land
+      assert.equal(stores.get("mlconfgen-weights").has(URL_EGNN), false);
+      await assert.rejects(wm.resolve(EGNN), mismatch);
+      assert.equal(calls.length, 2);
+    });
+  }
 
   it("falls back to a plain fetch without the Cache API", async () => {
     delete globalThis.caches;

@@ -68,6 +68,9 @@ export class WeightsManager {
    * @param {number} [options.lockTimeout=60000] ms to wait for another
    *   process's download of the same file before giving up (Node). The wait
    *   restarts whenever that download makes progress.
+   * @param {number} [options.staleGraceMs=5000] a lock whose process no
+   *   longer exists on this host is removed only once its `<name>.part` file
+   *   is absent or has not changed for this many ms (Node).
    */
   constructor({
     cacheDir = null,
@@ -75,6 +78,7 @@ export class WeightsManager {
     cacheName = DEFAULT_CACHE_NAME,
     onProgress = null,
     lockTimeout = 60_000,
+    staleGraceMs = 5_000,
     _isNode = IS_NODE, // test hook: exercise the browser path under Node
   } = {}) {
     this._isNode = _isNode;
@@ -83,6 +87,7 @@ export class WeightsManager {
     this.cacheName = cacheName;
     this.onProgress = onProgress;
     this.lockTimeout = lockTimeout;
+    this.staleGraceMs = staleGraceMs;
   }
 
   /** Download URL of a weights file. */
@@ -204,7 +209,7 @@ export class WeightsManager {
    * `cacheName` Cache API cache in the browser.
    *
    * In Node this refuses to delete a cache directory that is the filesystem
-   * root, the home directory or the working directory.
+   * root, or the home or working directory or one of their parents.
    */
   async clearCache() {
     if (!this._isNode) {
@@ -221,9 +226,9 @@ export class WeightsManager {
         realpathOr(fs, path.resolve(p)),
       ),
     );
-    if (guarded.includes(target)) {
+    if (guarded.some((p) => contains(path, target, p))) {
       throw new Error(
-        `Refusing to clear ${cacheDir}: it is the filesystem root, the home directory or the working directory.`,
+        `Refusing to clear ${cacheDir}: it is the filesystem root, or the home or working directory or one of their parents.`,
       );
     }
     await fs.rm(cacheDir, { recursive: true, force: true });
@@ -265,10 +270,24 @@ export class WeightsManager {
     const out = total === null ? null : new Uint8Array(total);
     const chunks = [];
     let size = 0;
-    for await (const chunk of this.#readChunks(name, res)) {
-      if (out) out.set(chunk, size);
-      else chunks.push(chunk);
-      size += chunk.length;
+    try {
+      for await (const chunk of this.#readChunks(name, res)) {
+        if (out) out.set(chunk, size);
+        else chunks.push(chunk);
+        size += chunk.length;
+      }
+    } catch (err) {
+      // `put` reads its own copy of the body to the end, so a body that
+      // failed the size check would be served from the cache next time.
+      if (cache) {
+        await stored;
+        try {
+          await cache.delete(url);
+        } catch {
+          // Best effort, like `put`.
+        }
+      }
+      throw err;
     }
 
     const putError = await stored;
@@ -296,22 +315,35 @@ export class WeightsManager {
   /** Stream to `<name>.part`, then rename so readers never see a partial file. */
   async #download(fs, name, cachePath, partPath) {
     let handle = null;
+    let ino = null; // of the `.part` this call created
     try {
       // We hold the lock, so whatever is at `.part` is a leftover. Remove it
       // and create the file exclusively, so a planted symlink is never
       // followed.
       await fs.rm(partPath, { force: true });
       handle = await fs.open(partPath, "wx");
+      ino = (await handle.stat({ bigint: true })).ino;
       const res = await this.#fetchWeights(name);
       for await (const chunk of this.#readChunks(name, res)) {
         await handle.write(chunk);
       }
       await handle.close();
       handle = null;
+      // A process that took over the lock may have replaced `.part`; renaming
+      // it would publish that process's unfinished file.
+      if ((await inodeOf(fs, partPath)) !== ino) {
+        ino = null;
+        throw new Error(
+          `Another process replaced or removed ${partPath} during the download; try again.`,
+        );
+      }
       await fs.rename(partPath, cachePath);
     } catch (err) {
       if (handle) await handle.close().catch(() => {});
-      await fs.rm(partPath, { force: true });
+      // Remove `.part` only while it is still ours.
+      if (ino !== null && (await inodeOf(fs, partPath)) === ino) {
+        await fs.rm(partPath, { force: true });
+      }
       throw downloadError(name, err);
     }
   }
@@ -354,10 +386,15 @@ export class WeightsManager {
 
   /**
    * Run `fn` holding `lockPath`. The lock holds `<pid>@<hostname>`, so a lock
-   * left by a killed process on this host can be recognised and removed.
-   * Locks from other hosts and Python's empty locks are waited on. The wait
-   * times out after `lockTimeout` ms without progress on `partPath`, the file
-   * the holder downloads into.
+   * left by a killed process on this host can be recognised. A waiter removes
+   * it only when both hold: the PID is dead on this host, and `partPath`, the
+   * file the holder downloads into, is absent or unchanged for
+   * `staleGraceMs`. The second check keeps a live download from being taken
+   * over when its PID is not visible here, e.g. from another PID namespace
+   * with the same hostname. Locks from other hosts and Python's empty locks
+   * are waited on. The wait times out after `lockTimeout` ms without progress
+   * on `partPath`. When `fn` settles, the lock is removed only if it still
+   * holds our `<pid>@<hostname>`.
    */
   async #withLock(fs, hostname, lockPath, partPath, fn) {
     let start = Date.now();
@@ -370,7 +407,10 @@ export class WeightsManager {
       } catch (err) {
         if (err.code !== "EEXIST") throw err;
       }
-      if (await isStaleLock(fs, lockPath, hostname)) {
+      const partMtime = await mtimeOf(fs, partPath);
+      const partIdle =
+        partMtime === null || Date.now() - partMtime >= this.staleGraceMs;
+      if (partIdle && (await isStaleLock(fs, lockPath, hostname))) {
         // Move the lock aside before deleting it. ENOENT means another
         // waiter reclaimed it first.
         const stalePath = `${lockPath}.stale-${process.pid}`;
@@ -382,7 +422,6 @@ export class WeightsManager {
         }
         continue;
       }
-      const partMtime = await mtimeOf(fs, partPath);
       if (partMtime !== null && partMtime !== lastPartMtime) start = Date.now();
       lastPartMtime = partMtime;
       if (Date.now() - start > this.lockTimeout) {
@@ -395,15 +434,22 @@ export class WeightsManager {
       await new Promise((r) => setTimeout(r, LOCK_POLL_MS));
     }
 
+    const owner = `${process.pid}@${hostname}`;
+    let written = false;
     try {
       try {
-        await handle.writeFile(`${process.pid}@${hostname}`);
+        await handle.writeFile(owner);
+        written = true;
       } finally {
         await handle.close();
       }
       return await fn();
     } finally {
-      await fs.rm(lockPath, { force: true });
+      // Remove the lock only while it is still ours: a process that took it
+      // over may hold it now. A lock we failed to write is ours regardless.
+      if (!written || (await lockOwner(fs, lockPath)) === owner) {
+        await fs.rm(lockPath, { force: true });
+      }
     }
   }
 }
@@ -456,12 +502,38 @@ async function isStaleLock(fs, lockPath, hostname) {
   }
 }
 
+/** Content of a lock file, or null when it is gone. */
+async function lockOwner(fs, lockPath) {
+  try {
+    return await fs.readFile(lockPath, "utf8");
+  } catch (err) {
+    if (err.code === "ENOENT") return null;
+    throw err;
+  }
+}
+
 async function mtimeOf(fs, p) {
   try {
     return (await fs.stat(p)).mtimeMs;
   } catch {
     return null;
   }
+}
+
+async function inodeOf(fs, p) {
+  try {
+    return (await fs.lstat(p, { bigint: true })).ino;
+  } catch {
+    return null;
+  }
+}
+
+/** `true` when `p` is `dir` or lies inside it. */
+function contains(path, dir, p) {
+  const rel = path.relative(dir, p);
+  return (
+    rel !== ".." && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel)
+  );
 }
 
 async function realpathOr(fs, p) {
