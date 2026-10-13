@@ -12,9 +12,12 @@ import {
   standardizeMol,
   seed,
   NumpyRandomState,
+  randomContext,
+  WeightsManager,
   ATOM_DECODER,
   CONTEXT_NORMS,
   DIMENSION,
+  HF_REPO,
   MAX_N_NODES,
   MIN_N_NODES,
 } from "mlconfgen";
@@ -24,9 +27,9 @@ import {
 
 ## `createGenerator(options) → Promise<MLConformerGenerator>`
 
-Loads the ONNX sessions and returns a ready generator. See [Generation](2_generation.md#creategeneratoroptions) for all options.
+Resolves the weights through a [`WeightsManager`](#weightsmanager) (downloading them on first use), loads the ONNX sessions and returns a ready generator. See [Generation](2_generation.md#creategeneratoroptions) for all options.
 
-Throws `TypeError` if `ort` is missing or does not expose `InferenceSession`.
+Throws `TypeError` if `ort` is missing or does not expose `InferenceSession`, and an `Error` if a weights file cannot be resolved.
 
 ---
 
@@ -35,8 +38,10 @@ Throws `TypeError` if `ort` is missing or does not expose `InferenceSession`.
 Returned by `createGenerator`; can also be constructed directly from pre-created sessions:
 
 ```js
-new MLConformerGenerator({ ort, generativeModel, adjMatSeer, edmAdapter = null, dimension, minNNodes, maxNNodes, contextNorms, atomDecoder })
+new MLConformerGenerator({ ort, generativeModel, adjMatSeer, edmAdapter = null, dimension, minNNodes, maxNNodes, contextNorms, atomDecoder, weightsManager = new WeightsManager() })
 ```
+
+`weightsManager` is used by `listWeights` and `clearCache`.
 
 ### `generateConformers(options) → Promise<Molecule[]>`
 
@@ -46,6 +51,18 @@ Full pipeline: EDM → AdjMatSeer → optional standardisation and validity filt
 { referenceConformer, referenceContext, nAtoms, nSamples = 10, variance = 2,
   resampleSteps = 0, keepLargestFragment = true, filterInvalid = true }
 ```
+
+### `random({ size = 1, seed = null, ...options }) → Promise<Molecule[]>`
+
+Generates `size` samples from a context picked by `randomContext(seed)`, with `variance: 0`. `resampleSteps`, `filterInvalid` and `keepLargestFragment` are passed to `generateConformers`. Seeds are not compatible with the Python package; see [Generation](2_generation.md#randomoptions).
+
+### `listWeights() → Promise<{ remote: string[], local: string[], remoteError?: Error }>`
+
+`.onnx` weights on Hugging Face and in the cache (`WeightsManager.listAvailableWeights({ suffixes: [".onnx"] })`).
+
+### `clearCache() → Promise<void>`
+
+Deletes every cached weights file.
 
 ### `animateGeneration(options) → AsyncGenerator<{ step, total, molecules }>`
 
@@ -111,6 +128,46 @@ Largest fragment (or `null` for disconnected molecules when `keepLargestFragment
 
 ---
 
+## `WeightsManager`
+
+Resolves weights by name: existing path → cache → download. The JS counterpart of the Python `mlconfgen.utils.WeightsManager`.
+
+```js
+new WeightsManager({ cacheDir, baseUrl, cacheName = "mlconfgen-weights", onProgress, lockTimeout = 60000 })
+```
+
+| Option | Description |
+|---|---|
+| `cacheDir` | Cache directory (Node). Defaults to the `MLCONFGEN_CACHE` env var, then `~/.mlconfgen_weights`. |
+| `baseUrl` | Download location for bare file names. Defaults to `https://huggingface.co/Membrizard/ml_conformer_generator/resolve/main`. |
+| `cacheName` | Cache API cache name (browser). |
+| `onProgress` | `({ file, loaded, total }) => void`, called as download bytes arrive. |
+| `lockTimeout` | Milliseconds to wait for another process's download of the same file (Node). |
+
+### `resolve(nameOrPath, { forceDownload = false }) → Promise<string | Uint8Array>`
+
+Byte buffers are returned unchanged. In Node an existing file path is returned as is; a bare file name (`*.onnx`, no directory part) is returned as its cache path, downloaded first on a miss or with `forceDownload`; any other string throws. In the browser a bare file name resolves to its bytes (from the Cache API, or fetched and cached); any other string is returned unchanged for onnxruntime-web to load.
+
+### `listAvailableWeights({ suffixes = [".pt", ".onnx"] }) → Promise<{ remote, local, remoteError? }>`
+
+`remote` lists the Hugging Face repo (regardless of `baseUrl`); `local` lists the cache directory (relative paths) in Node and the Cache API cache (file names) in the browser. A failed Hugging Face request sets `remoteError` and leaves `remote` empty.
+
+### `clearCache() → Promise<void>`
+
+Removes the cache directory's contents (Node) or deletes the Cache API cache (browser).
+
+### `getCacheDir() → Promise<string>`
+
+Absolute cache directory (Node only).
+
+---
+
+## `randomContext(seed = null) → { context: Float32Array(3), nAtoms }`
+
+Picks a context from the bundled list of ChEMBL molecule contexts. Uses its own generator, so the global `seed()` state is untouched. `seed` is an integer in `[0, 2**32)` or `null`; anything else throws `RangeError`. Not seed-compatible with Python's `random_context`.
+
+---
+
 ## Random Number Generation
 
 ### `seed(value = null)`
@@ -145,6 +202,7 @@ Tensors are plain `{ data: Float32Array, shape: number[] }` objects. `nodeMask` 
 | `MIN_N_NODES` / `MAX_N_NODES` | `15` / `39` |
 | `ATOM_DECODER` | `{ 0: "C", 1: "N", 2: "O", 3: "F", 4: "P", 5: "S", 6: "Cl", 7: "Br" }` |
 | `CONTEXT_NORMS` | `{ mean: [105.0766, 473.1938, 537.4675], mad: [52.0409, 219.7475, 232.9718] }` |
+| `HF_REPO` | `"Membrizard/ml_conformer_generator"` — Hugging Face repo hosting the weights |
 
 ---
 
@@ -153,6 +211,7 @@ Tensors are plain `{ data: Float32Array, shape: number[] }` objects. `nodeMask` 
 | Error | Raised when |
 |---|---|
 | `TypeError` | `ort` missing/invalid; invalid `predictBonds` value; `filterInvalid` with `predictBonds: "never"`. |
-| `RangeError` | Empty heavy-atom range after clamping; malformed `Molecule` positions; V2000 overflow. |
+| `RangeError` | Empty heavy-atom range after clamping; malformed `Molecule` positions; V2000 overflow; `random` / `randomContext` seed outside `[0, 2**32)`. |
 | `RdkitLoadError` | RDKit loader configured but failed to initialise (`error.name === "RdkitLoadError"`). |
-| `Error` | Neither reference form supplied to `prepareInputs`. |
+| `Error` | Neither reference form supplied to `prepareInputs`; weights file not found (`Weights file not found: …`) or download failed (`Could not resolve path to the weights file: <name>: <cause>`, with `error.cause`). |
+| `TimeoutError` | Another process held the download lock for longer than `lockTimeout` (`error.name === "TimeoutError"`). |

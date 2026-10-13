@@ -1,7 +1,7 @@
 # Generation
 *(Detailed Guide)*
 
-This document covers `createGenerator` options, `generateConformers` parameters, the returned `Molecule` objects, and the lower-level pipeline methods.
+This document covers `createGenerator` options, `generateConformers` and `random` parameters, the returned `Molecule` objects, and the lower-level pipeline methods.
 
 ---
 
@@ -10,34 +10,57 @@ This document covers `createGenerator` options, `generateConformers` parameters,
 ```js
 const gen = await createGenerator({
   ort,                                        // required
-  egnnOnnx: "./egnn_chembl_15_39.onnx",
-  adjMatSeerOnnx: "./adj_mat_seer_chembl_15_39.onnx",
+  egnnOnnx: "egnn_chembl_15_39.onnx",
+  adjMatSeerOnnx: "adj_mat_seer_chembl_15_39.onnx",
   finetuneCheckpointOnnx: null,
   diffusionSteps: 100,
   rdkitLoader: undefined,
+  cacheDir: undefined,                        // ~/.mlconfgen_weights
+  baseUrl: undefined,                         // Hugging Face repo
+  cacheName: "mlconfgen-weights",
+  onProgress: undefined,
+  weightsManager: undefined,
 });
 ```
 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `ort` | object | — | ONNX Runtime namespace: `import * as ort from "onnxruntime-node"` or an `onnxruntime-web` build. ✅ required |
-| `egnnOnnx` | string / `Uint8Array` | `./egnn_chembl_15_39.onnx` | EGNN denoiser model — file path (Node) or model bytes. |
-| `adjMatSeerOnnx` | string / `Uint8Array` | `./adj_mat_seer_chembl_15_39.onnx` | AdjMatSeer model. |
-| `finetuneCheckpointOnnx` | string / `Uint8Array` / null | `null` | Optional EDM adapter exported from an RL fine-tuning checkpoint. |
+| `egnnOnnx` | string / `Uint8Array` | `egnn_chembl_15_39.onnx` | EGNN denoiser model — file path, bare file name (resolved and downloaded on first use, see below) or model bytes. |
+| `adjMatSeerOnnx` | string / `Uint8Array` | `adj_mat_seer_chembl_15_39.onnx` | AdjMatSeer model, same forms. |
+| `finetuneCheckpointOnnx` | string / `Uint8Array` / null | `null` | Optional EDM adapter exported from an RL fine-tuning checkpoint. Path or bytes; not resolved through the weights manager. |
 | `diffusionSteps` | int | `100` | Number of denoising steps. |
 | `rdkitLoader` | `() => Promise<RDKitModule>` | bundled | Custom RDKit.js loader; see [Browser Usage](3_browser.md). |
+| `cacheDir` | string | `MLCONFGEN_CACHE` env var, then `~/.mlconfgen_weights` | Weights cache directory (Node). |
+| `baseUrl` | string | Hugging Face repo | Where bare file names are downloaded from, e.g. a self-hosted mirror. |
+| `cacheName` | string | `"mlconfgen-weights"` | Cache API cache name (browser). |
+| `onProgress` | `({ file, loaded, total }) => void` | — | Download progress; `total` is `null` when the size is unknown. |
+| `weightsManager` | `WeightsManager` | built from the four options above | Custom manager; when given, those options are ignored. |
 | `minNNodes` / `maxNNodes` | int | `15` / `39` | Hard clamp on heavy-atom counts. |
 | `dimension`, `contextNorms`, `atomDecoder` | | | Model constants; override only for custom weights. |
 
-Distilled weights are loaded the same way:
+### Weights resolution
+
+In Node a string is resolved as in the Python package: an existing file path is used as is; otherwise a bare file name is looked up in the cache and, on a miss, downloaded from `baseUrl` into it. Downloads go to a `.part` file that is renamed when complete, and a lock file shared with the Python package keeps concurrent processes from downloading the same file twice. In the browser see [Browser Usage](3_browser.md#weights-in-the-browser).
+
+Distilled weights are loaded by name:
 
 ```js
 const gen = await createGenerator({
   ort,
-  egnnOnnx: "./small_egnn_chembl_15_39.onnx",
-  adjMatSeerOnnx: "./small_adj_mat_seer_obabel_15_39.onnx",
+  egnnOnnx: "small_egnn_chembl_15_39.onnx",
+  adjMatSeerOnnx: "small_adj_mat_seer_obabel_15_39.onnx",
 });
 ```
+
+The generator exposes the cache:
+
+```js
+await gen.listWeights(); // { remote: [...], local: [...] } — .onnx files only
+await gen.clearCache();  // remove every cached file
+```
+
+`remote` always lists the Hugging Face repo, whatever `baseUrl` is. If that request fails, `remote` is empty, `remoteError` holds the error and `local` is still filled in. See [Model Weights](../getting_started/2_model_weights.md#javascript-automatic-resolution) for the full list of files.
 
 ---
 
@@ -93,6 +116,33 @@ Additional forward/backward resampling per denoising step. Improves sample quali
 With `filterInvalid: true` (default) each sample goes through `standardizeMol`: largest-fragment selection (or rejection of disconnected samples when `keepLargestFragment: false`), followed by RDKit sanitisation. Bond orders and aromaticity are refreshed from RDKit's output. With `filterInvalid: false` the raw bonded molecules are returned (largest fragment only, if requested) and nothing is dropped.
 
 > **Note:** MMFF94 geometry optimisation from the Python pipeline is not available in RDKit.js; returned coordinates are the raw diffusion output.
+
+---
+
+## `random(options)`
+
+Generates molecules from a random context: a shape picked from a bundled list of molecule contexts sampled from ChEMBL, with the heavy-atom count fixed to that molecule's (`variance: 0`).
+
+```js
+const mols = await gen.random({ size: 5, seed: 7 });
+```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `size` | int | `1` | Number of samples to draw. With `filterInvalid` (default) invalid samples are dropped, so fewer may be returned. |
+| `seed` | int / null | `null` | Picks the context; an integer in `[0, 2**32)`, or `null` for a random pick. |
+| `resampleSteps`, `filterInvalid`, `keepLargestFragment` | | | Passed to `generateConformers`. |
+
+`seed` only fixes which context is picked. The diffusion noise follows the global `seed(n)`, as in Python, so a fully reproducible run needs both:
+
+```js
+seed(1);
+const mols = await gen.random({ size: 5, seed: 7 });
+```
+
+> **Seeds are not compatible with the Python package.** Python picks the context with `numpy.random.default_rng` (PCG64); the JS package uses its NumPy-compatible MT19937, so the same `seed` picks different contexts in the two.
+
+The underlying pick is available as `randomContext(seed)`, which returns `{ context: Float32Array(3), nAtoms }` and leaves the global random state untouched.
 
 ---
 
@@ -155,8 +205,8 @@ An RL fine-tuning checkpoint exported with `export_to_onnx` ([Python docs](../py
 ```js
 const gen = await createGenerator({
   ort,
-  egnnOnnx: "./egnn_chembl_15_39.onnx",
-  adjMatSeerOnnx: "./adj_mat_seer_chembl_15_39.onnx",
+  egnnOnnx: "egnn_chembl_15_39.onnx",
+  adjMatSeerOnnx: "adj_mat_seer_chembl_15_39.onnx",
   finetuneCheckpointOnnx: "./finetune_checkpoint.onnx",
 });
 ```
@@ -168,5 +218,6 @@ The adapter is applied after sampling in `generateConformers` / `edmSamples`. Us
 ## Limitations
 
 - Fixed-fragment inpainting and Inertial Fragment Matching are not ported; use the Python library for those.
-- No MMFF94 geometry optimisation.
+- No MMFF94 geometry optimisation, so `random()` has no `optimize_geometry` option.
+- `random()` seeds differ from the Python package's (see above).
 - `MIN_N_NODES` is `15` in the JS package (the Python default is `6` to accommodate the fragment model).

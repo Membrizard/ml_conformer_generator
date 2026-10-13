@@ -12,10 +12,7 @@ npm install mlconfgen onnxruntime-node
 
 The package bundles `@rdkit/rdkit` (used for canonical atom ordering and sanitisation) and expects you to supply the ONNX Runtime. Node 18+.
 
-Download the ONNX weights from Hugging Face and keep them next to your application (see [Model Weights](../getting_started/2_model_weights.md)):
-
-- `egnn_chembl_15_39.onnx`
-- `adj_mat_seer_chembl_15_39.onnx`
+The ONNX weights are not part of the npm package: they are downloaded from Hugging Face on first use and cached in `~/.mlconfgen_weights`, the same cache the Python package uses (see [Model Weights](../getting_started/2_model_weights.md#javascript-automatic-resolution)).
 
 ---
 
@@ -27,12 +24,8 @@ import * as ort from "onnxruntime-node";
 
 seed(42);
 
-const gen = await createGenerator({
-  ort,
-  egnnOnnx: "./egnn_chembl_15_39.onnx",
-  adjMatSeerOnnx: "./adj_mat_seer_chembl_15_39.onnx",
-  diffusionSteps: 100,
-});
+// Default weights, downloaded on first run
+const gen = await createGenerator({ ort, diffusionSteps: 100 });
 
 const mols = await gen.generateConformers({
   referenceContext: [89.87, 210.78, 217.78], // principal MOI components
@@ -47,7 +40,17 @@ for (const mol of mols) {
 }
 ```
 
-`createGenerator(options)` loads both ONNX sessions and returns an `MLConformerGenerator`. `generateConformers` returns an array of `Molecule` objects that passed validity filtering.
+`createGenerator(options)` resolves the weights, loads both ONNX sessions and returns an `MLConformerGenerator`. `generateConformers` returns an array of `Molecule` objects that passed validity filtering.
+
+To use the distilled weights, pass their names:
+
+```js
+const gen = await createGenerator({
+  ort,
+  egnnOnnx: "small_egnn_chembl_15_39.onnx",
+  adjMatSeerOnnx: "small_adj_mat_seer_obabel_15_39.onnx",
+});
+```
 
 ---
 
@@ -63,6 +66,18 @@ const mols = await gen.generateConformers({
 ```
 
 `positions` may be a flat array, a `Float32Array`, or an array of `[x, y, z]` triples. `nAtoms` defaults to the number of points.
+
+---
+
+## Random Molecules
+
+Generate from a random shape picked from a bundled list of ChEMBL molecules:
+
+```js
+const mols = await gen.random({ size: 5, seed: 7 });
+```
+
+See [Generation](2_generation.md#randomoptions) for details, including why `random()` seeds differ from the Python package.
 
 ---
 
@@ -89,7 +104,7 @@ Both examples read `EGNN_ONNX` / `ADJ_ONNX` environment variables for weight pat
 
 ```bash
 npm test          # fast unit tests
-npm run test:slow # ONNX generation (needs weights)
+npm run test:slow # ONNX generation (needs weights in js/, the repo root or ~/.mlconfgen_weights)
 npm run test:all
 
 npm run smoke     # local trajectory viewer at http://localhost:3847
@@ -100,5 +115,5 @@ npm run smoke     # local trajectory viewer at http://localhost:3847
 ## Next
 
 - [Generation](2_generation.md) — all options and the `Molecule` object
-- [Browser Usage](3_browser.md) — `onnxruntime-web`, loading weights client-side
+- [Browser Usage](3_browser.md) — `onnxruntime-web`, weights in the browser
 - [Animating Generation](4_animation.md) — per-step trajectories

@@ -23,10 +23,8 @@ cd js
 npm install
 ```
 
-Place the ONNX weights next to your app (or pass absolute paths). **Weights are not published on npm** (CC BY-NC-ND); download / export them separately:
-
-- `egnn_chembl_15_39.onnx`
-- `adj_mat_seer_chembl_15_39.onnx`
+Model weights are not part of the npm package. They are downloaded from Hugging Face on
+first use and cached — see [Model weights](#model-weights).
 
 ## Quick start
 
@@ -36,12 +34,8 @@ import * as ort from "onnxruntime-node";
 
 seed(42);
 
-const gen = await createGenerator({
-  ort,
-  egnnOnnx: "./egnn_chembl_15_39.onnx",
-  adjMatSeerOnnx: "./adj_mat_seer_chembl_15_39.onnx",
-  diffusionSteps: 100,
-});
+// Default weights, downloaded to ~/.mlconfgen_weights on first run
+const gen = await createGenerator({ ort, diffusionSteps: 100 });
 
 const mols = await gen.generateConformers({
   referenceContext: [89.87, 210.78, 217.78], // MOI eigenvalues
@@ -57,7 +51,86 @@ for (const mol of mols) {
 
 `createGenerator(options)` takes the ONNX Runtime namespace as the `ort` option.
 
-### Browser
+## Model weights
+
+| File | Model |
+|---|---|
+| `egnn_chembl_15_39.onnx` | EGNN denoiser (core) — default `egnnOnnx` |
+| `adj_mat_seer_chembl_15_39.onnx` | AdjMatSeer (core) — default `adjMatSeerOnnx` |
+| `small_egnn_chembl_15_39.onnx` | EGNN denoiser (distilled) |
+| `small_adj_mat_seer_obabel_15_39.onnx` | AdjMatSeer (distilled, OpenBabel bond perception) |
+
+The weights are hosted at
+[huggingface.co/Membrizard/ml_conformer_generator](https://huggingface.co/Membrizard/ml_conformer_generator)
+and licensed under Apache 2.0 (see
+[`LICENSE-MODEL`](https://github.com/Membrizard/ml_conformer_generator/blob/main/LICENSE-MODEL)).
+
+`egnnOnnx` and `adjMatSeerOnnx` accept a file path, a bare file name or the model bytes
+(`Uint8Array`). In Node a string is resolved the same way as in the Python package:
+
+1. an existing file path is used as is;
+2. otherwise a bare file name is looked up in the cache — `~/.mlconfgen_weights`, the
+   same directory the Python package uses;
+3. if it is not cached it is downloaded from Hugging Face into the cache. Concurrent
+   downloads of the same file are guarded by a lock file shared with Python.
+
+```js
+// Distilled weights, by name
+const gen = await createGenerator({
+  ort,
+  egnnOnnx: "small_egnn_chembl_15_39.onnx",
+  adjMatSeerOnnx: "small_adj_mat_seer_obabel_15_39.onnx",
+  onProgress: ({ file, loaded, total }) => console.log(file, loaded, total),
+});
+
+await gen.listWeights(); // { remote: [...], local: [...] } — .onnx files
+await gen.clearCache();  // removes everything in the cache
+```
+
+`listWeights()` always lists the Hugging Face repo as `remote`; if that request fails,
+`remote` is empty and `remoteError` holds the error, while `local` is still filled in.
+
+Options for the cache and download location (on `createGenerator` or `WeightsManager`):
+
+- `cacheDir` — cache directory (Node). Defaults to the `MLCONFGEN_CACHE` environment
+  variable (JS only), then `~/.mlconfgen_weights`.
+- `baseUrl` — where bare names are downloaded from, e.g. a self-hosted mirror. Defaults
+  to the Hugging Face repo.
+- `cacheName` — Cache API cache name in the browser (default `"mlconfgen-weights"`).
+- `onProgress` — called as download bytes arrive.
+
+`finetuneCheckpointOnnx` is not resolved this way — pass a path or bytes, as before.
+
+For direct control, use the manager on its own:
+
+```js
+import { WeightsManager } from "mlconfgen";
+
+const wm = new WeightsManager({ cacheDir: "/shared/mlconfgen_weights" });
+const path = await wm.resolve("egnn_chembl_15_39.onnx");
+await wm.resolve("egnn_chembl_15_39.onnx", { forceDownload: true });
+await wm.listAvailableWeights({ suffixes: [".onnx"] });
+```
+
+## Random molecules
+
+`random()` generates molecules from a context picked at random from a bundled list of
+ChEMBL molecule shapes, with the heavy-atom count of the picked molecule:
+
+```js
+const mols = await gen.random({ size: 5, seed: 7 });
+
+import { randomContext } from "mlconfgen";
+const { context, nAtoms } = randomContext(7); // the context random({ seed: 7 }) uses
+```
+
+`seed` only fixes which context is picked; the diffusion noise follows the global
+`seed(n)`, so a fully reproducible run needs both. **Seeds are not compatible with the
+Python package:** Python picks with `numpy.random.default_rng` (PCG64), this package with
+a NumPy-compatible MT19937, so the same `seed` picks different contexts in the two.
+Geometry optimisation (`optimize_geometry` in Python) is not available.
+
+## Browser
 
 To run in the browser (or any WebAssembly build), install `onnxruntime-web` and pass it
 instead:
@@ -66,14 +139,30 @@ instead:
 import { createGenerator } from "mlconfgen";
 import * as ort from "onnxruntime-web";
 
-// Weights loaded from the user's own machine (e.g. an <input type="file">),
-// so they are never uploaded or re-hosted.
+// Default weights, fetched from Hugging Face and cached in the browser
+const gen = await createGenerator({ ort });
+```
+
+In the browser a bare name is fetched from `baseUrl` and cached with the Cache API
+(HTTPS or localhost only; the browser may evict it). A relative path or URL is passed to
+onnxruntime-web unchanged, i.e. self-hosted weights work exactly as before:
+
+```js
 const gen = await createGenerator({
+  ort,
+  egnnOnnx: "/models/egnn_chembl_15_39.onnx",
+  adjMatSeerOnnx: "/models/adj_mat_seer_chembl_15_39.onnx",
+});
+
+// …or bytes, e.g. files the user picked with an <input type="file">
+const gen2 = await createGenerator({
   ort,
   egnnOnnx: new Uint8Array(await egnnFile.arrayBuffer()),
   adjMatSeerOnnx: new Uint8Array(await adjFile.arrayBuffer()),
 });
 ```
+
+`gen.clearCache()` deletes the Cache API cache.
 
 RDKit is resolved automatically for the runtime it finds, so no extra wiring is needed
 under a bundler (Vite, webpack, …), from a `<script>` tag that defines a global
@@ -86,10 +175,6 @@ const gen = await createGenerator({
   rdkitLoader: () => initRDKitModule({ locateFile: () => "/wasm/RDKit_minimal.wasm" }),
 });
 ```
-
-The weights are **not** published on npm and are licensed CC BY-NC-ND — download them
-from Hugging Face and keep them local to your machine or application. Point
-`egnnOnnx` / `adjMatSeerOnnx` at those local files, as in the example above.
 
 You can pass coordinates and let the package compute the context:
 
@@ -112,12 +197,14 @@ returning an empty result set.
 
 ```bash
 cd js
-npm test          # fast unit tests
+npm test          # fast unit tests (offline)
 npm run test:slow # ONNX generation (needs weights)
 npm run test:all
 ```
 
-Optional env vars for model paths: `EGNN_ONNX`, `ADJ_ONNX`.
+The slow tests look for the weights in `js/`, the repository root and
+`~/.mlconfgen_weights`, and run once per weight set found (core and distilled). Optional
+env vars for the core model paths: `EGNN_ONNX`, `ADJ_ONNX`.
 
 ## Smoke UI
 
@@ -137,4 +224,5 @@ Optional env vars: `PORT`, `EGNN_ONNX`, `ADJ_ONNX`.
 - **Validity** — `generateConformers` defaults to `filterInvalid: true`.
 - **RNG / float64** — same `seed(n)` as `np.random.seed(n)`.
 - **Fine-tune adapter** — pass `finetuneCheckpointOnnx` for the optional EDM adapter.
+- **`random()` seeds** — not cross-compatible with Python seeds (see [Random molecules](#random-molecules)).
 - Fixed-fragment inpainting / IFM merge from the Python API are not ported.
