@@ -835,6 +835,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="createGenerator(options)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#weights-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weights resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -912,6 +929,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#randomoptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        random(options)
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1296,6 +1324,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="createGenerator(options)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#weights-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weights resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1377,6 +1422,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#randomoptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        random(options)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-molecule-object" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1442,16 +1498,21 @@
 
 <h1 id="generation">Generation<a class="headerlink" href="#generation" title="Permanent link">&para;</a></h1>
 <p><em>(Detailed Guide)</em></p>
-<p>This document covers <code>createGenerator</code> options, <code>generateConformers</code> parameters, the returned <code>Molecule</code> objects, and the lower-level pipeline methods.</p>
+<p>This document covers <code>createGenerator</code> options, <code>generateConformers</code> and <code>random</code> parameters, the returned <code>Molecule</code> objects, and the lower-level pipeline methods.</p>
 <hr />
 <h2 id="creategeneratoroptions"><code>createGenerator(options)</code><a class="headerlink" href="#creategeneratoroptions" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">gen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">ort</span><span class="p">,</span><span class="w">                                        </span><span class="c1">// required</span>
-<span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"./egnn_chembl_15_39.onnx"</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"./adj_mat_seer_chembl_15_39.onnx"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"egnn_chembl_15_39.onnx"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"adj_mat_seer_chembl_15_39.onnx"</span><span class="p">,</span>
 <span class="w">  </span><span class="nx">finetuneCheckpointOnnx</span><span class="o">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span>
 <span class="w">  </span><span class="nx">diffusionSteps</span><span class="o">:</span><span class="w"> </span><span class="mf">100</span><span class="p">,</span>
 <span class="w">  </span><span class="nx">rdkitLoader</span><span class="o">:</span><span class="w"> </span><span class="kc">undefined</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">cacheDir</span><span class="o">:</span><span class="w"> </span><span class="kc">undefined</span><span class="p">,</span><span class="w">                        </span><span class="c1">// ~/.mlconfgen_weights</span>
+<span class="w">  </span><span class="nx">baseUrl</span><span class="o">:</span><span class="w"> </span><span class="kc">undefined</span><span class="p">,</span><span class="w">                         </span><span class="c1">// Hugging Face repo</span>
+<span class="w">  </span><span class="nx">cacheName</span><span class="o">:</span><span class="w"> </span><span class="s2">"mlconfgen-weights"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">onProgress</span><span class="o">:</span><span class="w"> </span><span class="kc">undefined</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">weightsManager</span><span class="o">:</span><span class="w"> </span><span class="kc">undefined</span><span class="p">,</span>
 <span class="p">});</span>
 </code></pre></div>
 <table>
@@ -1473,20 +1534,20 @@
 <tr>
 <td><code>egnnOnnx</code></td>
 <td>string / <code>Uint8Array</code></td>
-<td><code>./egnn_chembl_15_39.onnx</code></td>
-<td>EGNN denoiser model — file path (Node) or model bytes.</td>
+<td><code>egnn_chembl_15_39.onnx</code></td>
+<td>EGNN denoiser model — file path, bare file name (resolved and downloaded on first use, see below) or model bytes.</td>
 </tr>
 <tr>
 <td><code>adjMatSeerOnnx</code></td>
 <td>string / <code>Uint8Array</code></td>
-<td><code>./adj_mat_seer_chembl_15_39.onnx</code></td>
-<td>AdjMatSeer model.</td>
+<td><code>adj_mat_seer_chembl_15_39.onnx</code></td>
+<td>AdjMatSeer model, same forms.</td>
 </tr>
 <tr>
 <td><code>finetuneCheckpointOnnx</code></td>
 <td>string / <code>Uint8Array</code> / null</td>
 <td><code>null</code></td>
-<td>Optional EDM adapter exported from an RL fine-tuning checkpoint.</td>
+<td>Optional EDM adapter exported from an RL fine-tuning checkpoint. Path or bytes; not resolved through the weights manager.</td>
 </tr>
 <tr>
 <td><code>diffusionSteps</code></td>
@@ -1499,6 +1560,36 @@
 <td><code>() =&gt; Promise&lt;RDKitModule&gt;</code></td>
 <td>bundled</td>
 <td>Custom RDKit.js loader; see <a href="../3_browser/">Browser Usage</a>.</td>
+</tr>
+<tr>
+<td><code>cacheDir</code></td>
+<td>string</td>
+<td><code>MLCONFGEN_CACHE</code> env var, then <code>~/.mlconfgen_weights</code></td>
+<td>Weights cache directory (Node).</td>
+</tr>
+<tr>
+<td><code>baseUrl</code></td>
+<td>string</td>
+<td>Hugging Face repo</td>
+<td>Where bare file names are downloaded from, e.g. a self-hosted mirror.</td>
+</tr>
+<tr>
+<td><code>cacheName</code></td>
+<td>string</td>
+<td><code>"mlconfgen-weights"</code></td>
+<td>Cache API cache name (browser).</td>
+</tr>
+<tr>
+<td><code>onProgress</code></td>
+<td><code>({ file, loaded, total }) =&gt; void</code></td>
+<td>—</td>
+<td>Download progress; <code>total</code> is <code>null</code> when the size is unknown.</td>
+</tr>
+<tr>
+<td><code>weightsManager</code></td>
+<td><code>WeightsManager</code></td>
+<td>built from the four options above</td>
+<td>Custom manager; when given, those options are ignored.</td>
 </tr>
 <tr>
 <td><code>minNNodes</code> / <code>maxNNodes</code></td>
@@ -1514,13 +1605,20 @@
 </tr>
 </tbody>
 </table>
-<p>Distilled weights are loaded the same way:</p>
+<h3 id="weights-resolution">Weights resolution<a class="headerlink" href="#weights-resolution" title="Permanent link">&para;</a></h3>
+<p>In Node a string is resolved in the same order as in the Python package: an existing file path is used as is; otherwise a bare file name is looked up in the cache and, on a miss, downloaded from <code>baseUrl</code> into it. Downloads go to a <code>.part</code> file that is renamed when complete, and a lock file shared with the Python package keeps concurrent processes from downloading the same file twice. In the browser see <a href="../3_browser/#weights-in-the-browser">Browser Usage</a>.</p>
+<p>Distilled weights are loaded by name:</p>
 <div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">gen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">ort</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"./small_egnn_chembl_15_39.onnx"</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"./small_adj_mat_seer_obabel_15_39.onnx"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"small_egnn_chembl_15_39.onnx"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"small_adj_mat_seer_obabel_15_39.onnx"</span><span class="p">,</span>
 <span class="p">});</span>
 </code></pre></div>
+<p>The generator exposes the cache:</p>
+<div class="highlight"><pre><span></span><code><span class="k">await</span><span class="w"> </span><span class="nx">gen</span><span class="p">.</span><span class="nx">listWeights</span><span class="p">();</span><span class="w"> </span><span class="c1">// { remote: [...], local: [...] } — .onnx files only</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">gen</span><span class="p">.</span><span class="nx">clearCache</span><span class="p">();</span><span class="w">  </span><span class="c1">// remove every cached file</span>
+</code></pre></div>
+<p><code>remote</code> always lists the Hugging Face repo, whatever <code>baseUrl</code> is. If that request fails, <code>remote</code> is empty, <code>remoteError</code> holds the error and <code>local</code> is still filled in. See <a href="../../getting_started/2_model_weights/#javascript-automatic-resolution">Model Weights</a> for the full list of files.</p>
 <hr />
 <h2 id="generateconformersoptions"><code>generateConformers(options)</code><a class="headerlink" href="#generateconformersoptions" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">mols</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">gen</span><span class="p">.</span><span class="nx">generateConformers</span><span class="p">({</span>
@@ -1620,6 +1718,48 @@
 <p><strong>Note:</strong> MMFF94 geometry optimisation from the Python pipeline is not available in RDKit.js; returned coordinates are the raw diffusion output.</p>
 </blockquote>
 <hr />
+<h2 id="randomoptions"><code>random(options)</code><a class="headerlink" href="#randomoptions" title="Permanent link">&para;</a></h2>
+<p>Generates molecules from a random context: a shape picked from a bundled list of molecule contexts sampled from ChEMBL, with the heavy-atom count fixed to that molecule's (<code>variance: 0</code>).</p>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">mols</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">gen</span><span class="p">.</span><span class="nx">random</span><span class="p">({</span><span class="w"> </span><span class="nx">size</span><span class="o">:</span><span class="w"> </span><span class="mf">5</span><span class="p">,</span><span class="w"> </span><span class="nx">seed</span><span class="o">:</span><span class="w"> </span><span class="mf">7</span><span class="w"> </span><span class="p">});</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>size</code></td>
+<td>int</td>
+<td><code>1</code></td>
+<td>Number of samples to draw. With <code>filterInvalid</code> (default) invalid samples are dropped, so fewer may be returned.</td>
+</tr>
+<tr>
+<td><code>seed</code></td>
+<td>int / null</td>
+<td><code>null</code></td>
+<td>Picks the context; an integer in <code>[0, 2**32)</code>, or <code>null</code> for a random pick.</td>
+</tr>
+<tr>
+<td><code>resampleSteps</code>, <code>filterInvalid</code>, <code>keepLargestFragment</code></td>
+<td></td>
+<td></td>
+<td>Passed to <code>generateConformers</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><code>seed</code> only fixes which context is picked. The diffusion noise follows the global <code>seed(n)</code>, as in Python, so a fully reproducible run needs both:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">seed</span><span class="p">(</span><span class="mf">1</span><span class="p">);</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">mols</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">gen</span><span class="p">.</span><span class="nx">random</span><span class="p">({</span><span class="w"> </span><span class="nx">size</span><span class="o">:</span><span class="w"> </span><span class="mf">5</span><span class="p">,</span><span class="w"> </span><span class="nx">seed</span><span class="o">:</span><span class="w"> </span><span class="mf">7</span><span class="w"> </span><span class="p">});</span>
+</code></pre></div>
+<blockquote>
+<p><strong>Seeds are not compatible with the Python package.</strong> Python picks the context with <code>numpy.random.default_rng</code> (PCG64); the JS package uses its NumPy-compatible MT19937, so the same <code>seed</code> picks different contexts in the two.</p>
+</blockquote>
+<hr />
 <h2 id="the-molecule-object">The <code>Molecule</code> Object<a class="headerlink" href="#the-molecule-object" title="Permanent link">&para;</a></h2>
 <p>Lightweight container for heavy atoms, coordinates and bonds.</p>
 <table>
@@ -1695,8 +1835,8 @@
 <p>An RL fine-tuning checkpoint exported with <code>export_to_onnx</code> (<a href="../../python/8_onnx/#exporting-a-fine-tuning-checkpoint">Python docs</a>) can be applied as an EDM adapter:</p>
 <div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">gen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">ort</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"./egnn_chembl_15_39.onnx"</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"./adj_mat_seer_chembl_15_39.onnx"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"egnn_chembl_15_39.onnx"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"adj_mat_seer_chembl_15_39.onnx"</span><span class="p">,</span>
 <span class="w">  </span><span class="nx">finetuneCheckpointOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"./finetune_checkpoint.onnx"</span><span class="p">,</span>
 <span class="p">});</span>
 </code></pre></div>
@@ -1705,7 +1845,8 @@
 <h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Fixed-fragment inpainting and Inertial Fragment Matching are not ported; use the Python library for those.</li>
-<li>No MMFF94 geometry optimisation.</li>
+<li>No MMFF94 geometry optimisation, so <code>random()</code> has no <code>optimize_geometry</code> option.</li>
+<li><code>random()</code> seeds differ from the Python package's (see above).</li>
 <li><code>MIN_N_NODES</code> is <code>15</code> in the JS package (the Python default is <code>6</code> to accommodate the fragment model).</li>
 </ul>
 

@@ -855,13 +855,52 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#loading-weights-client-side" class="md-nav__link">
+  <a href="#weights-in-the-browser" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Loading Weights Client-Side
+        Weights in the Browser
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Weights in the Browser">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#self-hosted-weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-hosted weights
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#weights-from-the-users-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weights from the user's machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache management
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1216,13 +1255,52 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#loading-weights-client-side" class="md-nav__link">
+  <a href="#weights-in-the-browser" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Loading Weights Client-Side
+        Weights in the Browser
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Weights in the Browser">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#self-hosted-weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-hosted weights
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#weights-from-the-users-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Weights from the user's machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cache-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache management
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1300,29 +1378,56 @@
 <p>The package core is runtime-neutral. In the browser (or any WebAssembly environment) install <code>onnxruntime-web</code> and pass it as <code>ort</code>; everything else is unchanged.</p>
 <div class="highlight"><pre><span></span><code>npm<span class="w"> </span>install<span class="w"> </span>mlconfgen<span class="w"> </span>onnxruntime-web
 </code></pre></div>
+<p>Node built-ins are only imported dynamically, in Node-only code, and marked for bundlers to skip. Vite and webpack build the package as is, without warnings (verified with Vite 8 and webpack 5). esbuild browser builds need <code>--external:node:*</code>.</p>
 <hr />
-<h2 id="loading-weights-client-side">Loading Weights Client-Side<a class="headerlink" href="#loading-weights-client-side" title="Permanent link">&para;</a></h2>
-<p>The weights are not published on npm. A common pattern is to let the user pick the ONNX files from their own machine so that they are never uploaded or re-hosted:</p>
+<h2 id="weights-in-the-browser">Weights in the Browser<a class="headerlink" href="#weights-in-the-browser" title="Permanent link">&para;</a></h2>
+<p><code>egnnOnnx</code> and <code>adjMatSeerOnnx</code> accept a bare file name, a path with a directory part or a URL, or the model bytes:</p>
+<ul>
+<li><strong>Bare name</strong> (the defaults, e.g. <code>"egnn_chembl_15_39.onnx"</code>) → fetched from <code>baseUrl</code> (the Hugging Face repo by default) and cached with the Cache API (HTTPS or localhost only; the browser may evict it). Where the Cache API is unavailable the file is fetched on every load.</li>
+<li><strong>Path with a directory part (<code>./…</code>, <code>/…</code>) or URL</strong> → passed to onnxruntime-web unchanged.</li>
+<li><strong><code>Uint8Array</code></strong> → used as is.</li>
+</ul>
+<p>A bare name is not page-relative. Before this release, <code>egnnOnnx: "egnn_chembl_15_39.onnx"</code> loaded the file from the page's own origin; now it is fetched from <code>baseUrl</code>. For weights served by your app, use <code>"./egnn_chembl_15_39.onnx"</code> or an absolute path.</p>
 <div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">,</span><span class="w"> </span><span class="nx">seed</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">"mlconfgen"</span><span class="p">;</span>
 <span class="k">import</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="kr">as</span><span class="w"> </span><span class="nx">ort</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">"onnxruntime-web"</span><span class="p">;</span>
 
-<span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">egnnFile</span><span class="p">,</span><span class="w"> </span><span class="nx">adjFile</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">fileInput</span><span class="p">.</span><span class="nx">files</span><span class="p">;</span><span class="w">   </span><span class="c1">// &lt;input type="file" multiple&gt;</span>
+<span class="c1">// Default weights from Hugging Face, cached after the first load</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">gen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">ort</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">diffusionSteps</span><span class="o">:</span><span class="w"> </span><span class="mf">50</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">onProgress</span><span class="o">:</span><span class="w"> </span><span class="p">({</span><span class="w"> </span><span class="nx">file</span><span class="p">,</span><span class="w"> </span><span class="nx">loaded</span><span class="p">,</span><span class="w"> </span><span class="nx">total</span><span class="w"> </span><span class="p">})</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">file</span><span class="p">,</span><span class="w"> </span><span class="nx">loaded</span><span class="p">,</span><span class="w"> </span><span class="nx">total</span><span class="p">),</span>
+<span class="p">});</span>
+
+<span class="nx">seed</span><span class="p">(</span><span class="mf">42</span><span class="p">);</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">mols</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">gen</span><span class="p">.</span><span class="nx">random</span><span class="p">({</span><span class="w"> </span><span class="nx">size</span><span class="o">:</span><span class="w"> </span><span class="mf">4</span><span class="w"> </span><span class="p">});</span>
+</code></pre></div>
+<p>The core weights are about 185 MB, so the first load takes a while; later loads are served from the cache.</p>
+<h3 id="self-hosted-weights">Self-hosted weights<a class="headerlink" href="#self-hosted-weights" title="Permanent link">&para;</a></h3>
+<p>Serve the ONNX files yourself and pass their paths, or point <code>baseUrl</code> at your server so that bare names are fetched (and cached) from there:</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Paths, loaded by onnxruntime-web directly</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">gen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">ort</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"/models/egnn_chembl_15_39.onnx"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"/models/adj_mat_seer_chembl_15_39.onnx"</span><span class="p">,</span>
+<span class="p">});</span>
+
+<span class="c1">// Bare names from your own server, cached with the Cache API</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">gen2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span><span class="w"> </span><span class="nx">ort</span><span class="p">,</span><span class="w"> </span><span class="nx">baseUrl</span><span class="o">:</span><span class="w"> </span><span class="s2">"https://example.org/models"</span><span class="w"> </span><span class="p">});</span>
+</code></pre></div>
+<p>If a <code>baseUrl</code> server sends <code>Content-Length</code>, the download is checked against it and progress reports a <code>total</code>; without it the download still works. A cross-origin server must serve the files uncompressed or expose <code>Content-Encoding</code> via <code>Access-Control-Expose-Headers</code>. Otherwise the page takes the compressed length for the file size, and the check fails. A download that fails the check is not kept in the cache.</p>
+<h3 id="weights-from-the-users-machine">Weights from the user's machine<a class="headerlink" href="#weights-from-the-users-machine" title="Permanent link">&para;</a></h3>
+<p>To let users pick the ONNX files from their own machine, pass the bytes:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="p">[</span><span class="nx">egnnFile</span><span class="p">,</span><span class="w"> </span><span class="nx">adjFile</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">fileInput</span><span class="p">.</span><span class="nx">files</span><span class="p">;</span><span class="w">   </span><span class="c1">// &lt;input type="file" multiple&gt;</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">gen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">ort</span><span class="p">,</span>
 <span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Uint8Array</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="nx">egnnFile</span><span class="p">.</span><span class="nx">arrayBuffer</span><span class="p">()),</span>
 <span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nb">Uint8Array</span><span class="p">(</span><span class="k">await</span><span class="w"> </span><span class="nx">adjFile</span><span class="p">.</span><span class="nx">arrayBuffer</span><span class="p">()),</span>
-<span class="w">  </span><span class="nx">diffusionSteps</span><span class="o">:</span><span class="w"> </span><span class="mf">50</span><span class="p">,</span>
-<span class="p">});</span>
-
-<span class="nx">seed</span><span class="p">(</span><span class="mf">42</span><span class="p">);</span>
-<span class="kd">const</span><span class="w"> </span><span class="nx">mols</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">gen</span><span class="p">.</span><span class="nx">generateConformers</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">referenceContext</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="mf">89.87</span><span class="p">,</span><span class="w"> </span><span class="mf">210.78</span><span class="p">,</span><span class="w"> </span><span class="mf">217.78</span><span class="p">],</span>
-<span class="w">  </span><span class="nx">nAtoms</span><span class="o">:</span><span class="w"> </span><span class="mf">20</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">nSamples</span><span class="o">:</span><span class="w"> </span><span class="mf">4</span><span class="p">,</span>
 <span class="p">});</span>
 </code></pre></div>
-<p><code>egnnOnnx</code>, <code>adjMatSeerOnnx</code> and <code>finetuneCheckpointOnnx</code> accept <code>Uint8Array</code> buffers in place of paths. Buffers fetched from your own server (<code>fetch(url).then(r =&gt; r.arrayBuffer())</code>) work the same way.</p>
+<p><code>finetuneCheckpointOnnx</code> accepts a path or bytes in the same way.</p>
+<h3 id="cache-management">Cache management<a class="headerlink" href="#cache-management" title="Permanent link">&para;</a></h3>
+<p><code>gen.listWeights()</code> lists the files on Hugging Face as <code>remote</code> and the files in the Cache API cache as <code>local</code>. <code>gen.clearCache()</code> deletes the cache. Use <code>cacheName</code> to keep weights of different apps on the same origin apart.</p>
 <hr />
 <h2 id="rdkit-in-the-browser">RDKit in the Browser<a class="headerlink" href="#rdkit-in-the-browser" title="Permanent link">&para;</a></h2>
 <p>The bundled <code>@rdkit/rdkit</code> is resolved automatically for the runtime it finds. Three setups are supported, tried in order:</p>

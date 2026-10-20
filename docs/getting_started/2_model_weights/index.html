@@ -451,10 +451,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#javascript-local-files" class="md-nav__link">
+  <a href="#javascript-automatic-resolution" class="md-nav__link">
     <span class="md-ellipsis">
       
-        JavaScript: Local Files
+        JavaScript: Automatic Resolution
       
     </span>
   </a>
@@ -1266,10 +1266,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#javascript-local-files" class="md-nav__link">
+  <a href="#javascript-automatic-resolution" class="md-nav__link">
     <span class="md-ellipsis">
       
-        JavaScript: Local Files
+        JavaScript: Automatic Resolution
       
     </span>
   </a>
@@ -1418,15 +1418,27 @@
 <span class="n">path</span> <span class="o">=</span> <span class="n">wm</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="s2">"edm_moi_chembl_15_39.pt"</span><span class="p">,</span> <span class="n">force_download</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 </code></pre></div>
 <hr />
-<h2 id="javascript-local-files">JavaScript: Local Files<a class="headerlink" href="#javascript-local-files" title="Permanent link">&para;</a></h2>
-<p>The npm package does not download weights. Download the ONNX files from Hugging Face and pass them to <code>createGenerator</code> as file paths (Node) or <code>Uint8Array</code> buffers (browser):</p>
-<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">gen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span>
+<h2 id="javascript-automatic-resolution">JavaScript: Automatic Resolution<a class="headerlink" href="#javascript-automatic-resolution" title="Permanent link">&para;</a></h2>
+<p>The npm package resolves ONNX weights in the same order through its own <code>WeightsManager</code>. In Node:</p>
+<ol>
+<li>If the value is an existing <strong>local path</strong>, it is used as is.</li>
+<li>Otherwise a bare file name is looked up in the <strong>local cache</strong> — <code>~/.mlconfgen_weights</code>, shared with the Python package (override with the <code>cacheDir</code> option or the <code>MLCONFGEN_CACHE</code> environment variable).</li>
+<li>If not cached, the file is <strong>downloaded</strong> from the Hugging Face repository into the cache, guarded by the same lock file as in Python.</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="c1">// Default core weights, downloaded on first run</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">gen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span><span class="w"> </span><span class="nx">ort</span><span class="w"> </span><span class="p">});</span>
+
+<span class="c1">// Distilled weights, by name</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">small</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">ort</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"./egnn_chembl_15_39.onnx"</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"./adj_mat_seer_chembl_15_39.onnx"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"small_egnn_chembl_15_39.onnx"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"small_adj_mat_seer_obabel_15_39.onnx"</span><span class="p">,</span>
 <span class="p">});</span>
+
+<span class="k">await</span><span class="w"> </span><span class="nx">gen</span><span class="p">.</span><span class="nx">listWeights</span><span class="p">();</span><span class="w"> </span><span class="c1">// { remote: [...], local: [...] } — .onnx files</span>
+<span class="k">await</span><span class="w"> </span><span class="nx">gen</span><span class="p">.</span><span class="nx">clearCache</span><span class="p">();</span>
 </code></pre></div>
-<p>See <a href="../../javascript/3_browser/">Browser Usage</a> for loading weights from a user's machine without re-hosting them.</p>
+<p>Model bytes (<code>Uint8Array</code>) are accepted as well. In the browser, bare names are fetched from Hugging Face (or your own <code>baseUrl</code>) and cached with the Cache API, while relative paths and URLs go to onnxruntime-web unchanged — see <a href="../../javascript/3_browser/#weights-in-the-browser">Browser Usage</a>.</p>
 
 
 

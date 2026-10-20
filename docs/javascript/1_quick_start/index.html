@@ -832,6 +832,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#random-molecules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Random Molecules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reproducibility" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1271,6 +1282,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#random-molecules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Random Molecules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reproducibility" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1347,11 +1369,7 @@
 <div class="highlight"><pre><span></span><code>npm<span class="w"> </span>install<span class="w"> </span>mlconfgen<span class="w"> </span>onnxruntime-node
 </code></pre></div>
 <p>The package bundles <code>@rdkit/rdkit</code> (used for canonical atom ordering and sanitisation) and expects you to supply the ONNX Runtime. Node 18+.</p>
-<p>Download the ONNX weights from Hugging Face and keep them next to your application (see <a href="../../getting_started/2_model_weights/">Model Weights</a>):</p>
-<ul>
-<li><code>egnn_chembl_15_39.onnx</code></li>
-<li><code>adj_mat_seer_chembl_15_39.onnx</code></li>
-</ul>
+<p>The ONNX weights are not part of the npm package: they are downloaded from Hugging Face on first use and cached in <code>~/.mlconfgen_weights</code>, the same cache the Python package uses (see <a href="../../getting_started/2_model_weights/#javascript-automatic-resolution">Model Weights</a>).</p>
 <hr />
 <h2 id="generate">Generate<a class="headerlink" href="#generate" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">,</span><span class="w"> </span><span class="nx">seed</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s2">"mlconfgen"</span><span class="p">;</span>
@@ -1359,12 +1377,8 @@
 
 <span class="nx">seed</span><span class="p">(</span><span class="mf">42</span><span class="p">);</span>
 
-<span class="kd">const</span><span class="w"> </span><span class="nx">gen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">ort</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"./egnn_chembl_15_39.onnx"</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"./adj_mat_seer_chembl_15_39.onnx"</span><span class="p">,</span>
-<span class="w">  </span><span class="nx">diffusionSteps</span><span class="o">:</span><span class="w"> </span><span class="mf">100</span><span class="p">,</span>
-<span class="p">});</span>
+<span class="c1">// Default weights, downloaded on first run</span>
+<span class="kd">const</span><span class="w"> </span><span class="nx">gen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span><span class="w"> </span><span class="nx">ort</span><span class="p">,</span><span class="w"> </span><span class="nx">diffusionSteps</span><span class="o">:</span><span class="w"> </span><span class="mf">100</span><span class="w"> </span><span class="p">});</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">mols</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">gen</span><span class="p">.</span><span class="nx">generateConformers</span><span class="p">({</span>
 <span class="w">  </span><span class="nx">referenceContext</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="mf">89.87</span><span class="p">,</span><span class="w"> </span><span class="mf">210.78</span><span class="p">,</span><span class="w"> </span><span class="mf">217.78</span><span class="p">],</span><span class="w"> </span><span class="c1">// principal MOI components</span>
@@ -1378,7 +1392,14 @@
 <span class="w">  </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">mol</span><span class="p">.</span><span class="nx">toMolBlock</span><span class="p">());</span>
 <span class="p">}</span>
 </code></pre></div>
-<p><code>createGenerator(options)</code> loads both ONNX sessions and returns an <code>MLConformerGenerator</code>. <code>generateConformers</code> returns an array of <code>Molecule</code> objects that passed validity filtering.</p>
+<p><code>createGenerator(options)</code> resolves the weights, loads both ONNX sessions and returns an <code>MLConformerGenerator</code>. <code>generateConformers</code> returns an array of <code>Molecule</code> objects that passed validity filtering.</p>
+<p>To use the distilled weights, pass their names:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">gen</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">createGenerator</span><span class="p">({</span>
+<span class="w">  </span><span class="nx">ort</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">egnnOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"small_egnn_chembl_15_39.onnx"</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">adjMatSeerOnnx</span><span class="o">:</span><span class="w"> </span><span class="s2">"small_adj_mat_seer_obabel_15_39.onnx"</span><span class="p">,</span>
+<span class="p">});</span>
+</code></pre></div>
 <hr />
 <h2 id="reference-from-coordinates">Reference from Coordinates<a class="headerlink" href="#reference-from-coordinates" title="Permanent link">&para;</a></h2>
 <p>Instead of supplying the MOI context, pass heavy-atom coordinates and let the package compute it:</p>
@@ -1389,8 +1410,15 @@
 </code></pre></div>
 <p><code>positions</code> may be a flat array, a <code>Float32Array</code>, or an array of <code>[x, y, z]</code> triples. <code>nAtoms</code> defaults to the number of points.</p>
 <hr />
+<h2 id="random-molecules">Random Molecules<a class="headerlink" href="#random-molecules" title="Permanent link">&para;</a></h2>
+<p>Generate from a random shape picked from a bundled list of ChEMBL molecules:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">mols</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">gen</span><span class="p">.</span><span class="nx">random</span><span class="p">({</span><span class="w"> </span><span class="nx">size</span><span class="o">:</span><span class="w"> </span><span class="mf">5</span><span class="p">,</span><span class="w"> </span><span class="nx">seed</span><span class="o">:</span><span class="w"> </span><span class="mf">7</span><span class="w"> </span><span class="p">});</span>
+</code></pre></div>
+<p>See <a href="../2_generation/#randomoptions">Generation</a> for details, including why <code>random()</code> seeds differ from the Python package.</p>
+<hr />
 <h2 id="reproducibility">Reproducibility<a class="headerlink" href="#reproducibility" title="Permanent link">&para;</a></h2>
 <p><code>seed(n)</code> seeds a NumPy-compatible <code>RandomState</code> (MT19937) used for all noise draws. With the same seed and weights, <code>randn</code> draws match <code>np.random.seed(n)</code> in Python, so runs are comparable across the two implementations. Unseeded runs are initialised from crypto entropy.</p>
+<p><code>gen.random()</code> needs its own <code>seed</code> as well, since that picks the context: <code>seed(1); await gen.random({ size: 5, seed: 7 })</code> is reproducible.</p>
 <hr />
 <h2 id="run-the-examples">Run the Examples<a class="headerlink" href="#run-the-examples" title="Permanent link">&para;</a></h2>
 <p>From a repository checkout:</p>
@@ -1402,7 +1430,7 @@ npm<span class="w"> </span>run<span class="w"> </span>example<span class="w">   
 <p>Both examples read <code>EGNN_ONNX</code> / <code>ADJ_ONNX</code> environment variables for weight paths.</p>
 <h3 id="tests-and-smoke-ui">Tests and smoke UI<a class="headerlink" href="#tests-and-smoke-ui" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code>npm<span class="w"> </span><span class="nb">test</span><span class="w">          </span><span class="c1"># fast unit tests</span>
-npm<span class="w"> </span>run<span class="w"> </span>test:slow<span class="w"> </span><span class="c1"># ONNX generation (needs weights)</span>
+npm<span class="w"> </span>run<span class="w"> </span>test:slow<span class="w"> </span><span class="c1"># ONNX generation (needs weights in js/, the repo root or ~/.mlconfgen_weights)</span>
 npm<span class="w"> </span>run<span class="w"> </span>test:all
 
 npm<span class="w"> </span>run<span class="w"> </span>smoke<span class="w">     </span><span class="c1"># local trajectory viewer at http://localhost:3847</span>
@@ -1411,7 +1439,7 @@ npm<span class="w"> </span>run<span class="w"> </span>smoke<span class="w">     
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../2_generation/">Generation</a> — all options and the <code>Molecule</code> object</li>
-<li><a href="../3_browser/">Browser Usage</a> — <code>onnxruntime-web</code>, loading weights client-side</li>
+<li><a href="../3_browser/">Browser Usage</a> — <code>onnxruntime-web</code>, weights in the browser</li>
 <li><a href="../4_animation/">Animating Generation</a> — per-step trajectories</li>
 </ul>
 
