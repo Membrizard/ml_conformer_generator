@@ -15,6 +15,7 @@ import {
   standardizeMol,
 } from "./mol.js";
 import { clearRdkitLoader, registerDefaultRdkit, setRdkitLoader } from "./rdkit.js";
+import { WeightsManager } from "./weightsManager.js";
 
 /**
  * ONNX Runtime conformer generator.
@@ -39,6 +40,7 @@ export class MLConformerGenerator {
     maxNNodes = MAX_N_NODES,
     contextNorms = CONTEXT_NORMS,
     atomDecoder = ATOM_DECODER,
+    weightsManager = null,
   }) {
     if (!ort?.Tensor) {
       throw new TypeError(
@@ -54,22 +56,37 @@ export class MLConformerGenerator {
     this.maxNNodes = maxNNodes;
     this.contextNorms = contextNorms;
     this.atomDecoder = atomDecoder;
+    this.weightsManager = weightsManager ?? new WeightsManager();
   }
 
   /**
+   * Weights are given as a file path, a bare file name or model bytes. A bare
+   * name (e.g. `"small_egnn_chembl_15_39.onnx"`) is resolved by the weights
+   * manager: file in the working directory → cache → download from Hugging
+   * Face. See `WeightsManager`.
+   *
    * @param {object} [options]
    * @param {object} options.ort ONNX Runtime namespace (required, e.g. onnxruntime-node)
    * @param {() => Promise<any>} [options.rdkitLoader] custom RDKit loader; defaults to the bundled @rdkit/rdkit
-   * @param {string|Uint8Array} [options.egnnOnnx]
-   * @param {string|Uint8Array} [options.adjMatSeerOnnx]
-   * @param {string|Uint8Array|null} [options.finetuneCheckpointOnnx]
+   * @param {string|Uint8Array} [options.egnnOnnx="egnn_chembl_15_39.onnx"]
+   * @param {string|Uint8Array} [options.adjMatSeerOnnx="adj_mat_seer_chembl_15_39.onnx"]
+   * @param {string|Uint8Array|null} [options.finetuneCheckpointOnnx] passed to
+   *   the ONNX Runtime as is — not resolved through the weights manager
    * @param {number} [options.diffusionSteps]
+   * @param {WeightsManager} [options.weightsManager] manager used to resolve
+   *   weights; when omitted one is built from `cacheDir`, `baseUrl`,
+   *   `cacheName` and `onProgress`
+   * @param {string} [options.cacheDir] see `WeightsManager`
+   * @param {string} [options.baseUrl] see `WeightsManager`
+   * @param {string} [options.cacheName] see `WeightsManager`
+   * @param {(p: { file: string, loaded: number, total: number|null }) => void} [options.onProgress]
+   *   weights download progress; see `WeightsManager`
    */
   static async create({
     ort,
     rdkitLoader,
-    egnnOnnx = "./egnn_chembl_15_39.onnx",
-    adjMatSeerOnnx = "./adj_mat_seer_chembl_15_39.onnx",
+    egnnOnnx = "egnn_chembl_15_39.onnx",
+    adjMatSeerOnnx = "adj_mat_seer_chembl_15_39.onnx",
     finetuneCheckpointOnnx = null,
     diffusionSteps = 100,
     dimension = DIMENSION,
@@ -77,6 +94,11 @@ export class MLConformerGenerator {
     maxNNodes = MAX_N_NODES,
     contextNorms = CONTEXT_NORMS,
     atomDecoder = ATOM_DECODER,
+    weightsManager = null,
+    cacheDir,
+    baseUrl,
+    cacheName,
+    onProgress,
   } = {}) {
     if (!ort?.InferenceSession) {
       throw new TypeError(
@@ -94,9 +116,18 @@ export class MLConformerGenerator {
       registerDefaultRdkit();
     }
 
+    const manager =
+      weightsManager ??
+      new WeightsManager({ cacheDir, baseUrl, cacheName, onProgress });
+
+    // One after the other, as in Python: a failed EGNN lookup must not leave
+    // an AdjMatSeer download running after create() has rejected.
+    const egnnModel = await manager.resolve(egnnOnnx);
+    const adjMatSeerModel = await manager.resolve(adjMatSeerOnnx);
+
     const loads = [
-      EquivariantDiffusion.create(egnnOnnx, ort, { timesteps: diffusionSteps }),
-      ort.InferenceSession.create(adjMatSeerOnnx),
+      EquivariantDiffusion.create(egnnModel, ort, { timesteps: diffusionSteps }),
+      ort.InferenceSession.create(adjMatSeerModel),
     ];
     if (finetuneCheckpointOnnx) {
       loads.push(ort.InferenceSession.create(finetuneCheckpointOnnx));
@@ -115,7 +146,21 @@ export class MLConformerGenerator {
       maxNNodes,
       contextNorms,
       atomDecoder,
+      weightsManager: manager,
     });
+  }
+
+  /**
+   * ONNX weights available on Hugging Face and in the local cache.
+   * @returns {Promise<{ remote: string[], local: string[], remoteError?: Error }>}
+   */
+  async listWeights() {
+    return this.weightsManager.listAvailableWeights({ suffixes: [".onnx"] });
+  }
+
+  /** Delete every cached weights file. */
+  async clearCache() {
+    await this.weightsManager.clearCache();
   }
 
   /**
@@ -284,6 +329,39 @@ export class MLConformerGenerator {
       if (std) valid.push(std);
     }
     return valid;
+  }
+
+  /**
+   * Generate molecules from a random context: a shape picked from a bundled
+   * list of ChEMBL molecule contexts, with the number of heavy atoms fixed to
+   * that molecule's (`variance: 0`). Mirrors Python `random()`, minus
+   * `optimize_geometry` — MMFF is not available in RDKit.js.
+   *
+   * `seed` only fixes which context is picked, and is not cross-compatible
+   * with Python seeds. The diffusion noise follows the global `seed(n)`, as in
+   * Python, so a fully reproducible run needs both.
+   *
+   * @param {object} [options]
+   * @param {number} [options.size=1] molecules to sample; with `filterInvalid`
+   *   (the default) invalid ones are dropped, so fewer may be returned
+   * @param {number|null} [options.seed=null] context seed, integer in [0, 2**32)
+   * @param {number} [options.resampleSteps] forwarded to `generateConformers`,
+   *   as are `filterInvalid` and `keepLargestFragment`
+   * @returns {Promise<object[]>}
+   */
+  async random({ size = 1, seed = null, ...options } = {}) {
+    // Loaded on first use, so bundles that never call random() can leave the
+    // ~200 KB seed list in a separate chunk.
+    const { randomContext } = await import("./randomContext.js");
+    const { context, nAtoms } = randomContext(seed);
+    return this.generateConformers({
+      ...options,
+      referenceConformer: null,
+      referenceContext: context,
+      nAtoms,
+      nSamples: size,
+      variance: 0,
+    });
   }
 
   /**

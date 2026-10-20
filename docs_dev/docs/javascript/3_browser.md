@@ -6,34 +6,74 @@ The package core is runtime-neutral. In the browser (or any WebAssembly environm
 npm install mlconfgen onnxruntime-web
 ```
 
+Node built-ins are only imported dynamically, in Node-only code, and marked for bundlers to skip. Vite and webpack build the package as is, without warnings (verified with Vite 8 and webpack 5). esbuild browser builds need `--external:node:*`.
+
 ---
 
-## Loading Weights Client-Side
+## Weights in the Browser
 
-The weights are not published on npm. A common pattern is to let the user pick the ONNX files from their own machine so that they are never uploaded or re-hosted:
+`egnnOnnx` and `adjMatSeerOnnx` accept a bare file name, a path with a directory part or a URL, or the model bytes:
+
+- **Bare name** (the defaults, e.g. `"egnn_chembl_15_39.onnx"`) → fetched from `baseUrl` (the Hugging Face repo by default) and cached with the Cache API (HTTPS or localhost only; the browser may evict it). Where the Cache API is unavailable the file is fetched on every load.
+- **Path with a directory part (`./…`, `/…`) or URL** → passed to onnxruntime-web unchanged.
+- **`Uint8Array`** → used as is.
+
+A bare name is not page-relative. Before this release, `egnnOnnx: "egnn_chembl_15_39.onnx"` loaded the file from the page's own origin; now it is fetched from `baseUrl`. For weights served by your app, use `"./egnn_chembl_15_39.onnx"` or an absolute path.
 
 ```js
 import { createGenerator, seed } from "mlconfgen";
 import * as ort from "onnxruntime-web";
 
+// Default weights from Hugging Face, cached after the first load
+const gen = await createGenerator({
+  ort,
+  diffusionSteps: 50,
+  onProgress: ({ file, loaded, total }) => console.log(file, loaded, total),
+});
+
+seed(42);
+const mols = await gen.random({ size: 4 });
+```
+
+The core weights are about 185 MB, so the first load takes a while; later loads are served from the cache.
+
+### Self-hosted weights
+
+Serve the ONNX files yourself and pass their paths, or point `baseUrl` at your server so that bare names are fetched (and cached) from there:
+
+```js
+// Paths, loaded by onnxruntime-web directly
+const gen = await createGenerator({
+  ort,
+  egnnOnnx: "/models/egnn_chembl_15_39.onnx",
+  adjMatSeerOnnx: "/models/adj_mat_seer_chembl_15_39.onnx",
+});
+
+// Bare names from your own server, cached with the Cache API
+const gen2 = await createGenerator({ ort, baseUrl: "https://example.org/models" });
+```
+
+If a `baseUrl` server sends `Content-Length`, the download is checked against it and progress reports a `total`; without it the download still works. A cross-origin server must serve the files uncompressed or expose `Content-Encoding` via `Access-Control-Expose-Headers`. Otherwise the page takes the compressed length for the file size, and the check fails. A download that fails the check is not kept in the cache.
+
+### Weights from the user's machine
+
+To let users pick the ONNX files from their own machine, pass the bytes:
+
+```js
 const [egnnFile, adjFile] = fileInput.files;   // <input type="file" multiple>
 
 const gen = await createGenerator({
   ort,
   egnnOnnx: new Uint8Array(await egnnFile.arrayBuffer()),
   adjMatSeerOnnx: new Uint8Array(await adjFile.arrayBuffer()),
-  diffusionSteps: 50,
-});
-
-seed(42);
-const mols = await gen.generateConformers({
-  referenceContext: [89.87, 210.78, 217.78],
-  nAtoms: 20,
-  nSamples: 4,
 });
 ```
 
-`egnnOnnx`, `adjMatSeerOnnx` and `finetuneCheckpointOnnx` accept `Uint8Array` buffers in place of paths. Buffers fetched from your own server (`fetch(url).then(r => r.arrayBuffer())`) work the same way.
+`finetuneCheckpointOnnx` accepts a path or bytes in the same way.
+
+### Cache management
+
+`gen.listWeights()` lists the files on Hugging Face as `remote` and the files in the Cache API cache as `local`. `gen.clearCache()` deletes the cache. Use `cacheName` to keep weights of different apps on the same origin apart.
 
 ---
 

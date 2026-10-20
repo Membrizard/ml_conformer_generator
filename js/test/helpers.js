@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Molecule } from "../src/mol.js";
@@ -7,6 +8,8 @@ import { Molecule } from "../src/mol.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const PACKAGE_ROOT = resolve(__dirname, "..");
 export const REPO_ROOT = resolve(PACKAGE_ROOT, "..");
+/** Default weights cache of the Python package and `WeightsManager`. */
+export const DEFAULT_CACHE_DIR = join(homedir(), ".mlconfgen_weights");
 
 const Z_MAP = {
   H: 1,
@@ -21,19 +24,39 @@ const Z_MAP = {
   I: 53,
 };
 
-/** Resolve ONNX weights from env, package dir, or repo root. */
-export function resolveOnnxPaths() {
+const WEIGHT_SETS = {
+  full: {
+    egnn: "egnn_chembl_15_39.onnx",
+    adj: "adj_mat_seer_chembl_15_39.onnx",
+  },
+  small: {
+    egnn: "small_egnn_chembl_15_39.onnx",
+    adj: "small_adj_mat_seer_obabel_15_39.onnx",
+  },
+};
+
+/**
+ * Resolve ONNX weights from the package dir, the repo root or the default
+ * weights cache. For the full set, the EGNN_ONNX / ADJ_ONNX env vars take
+ * precedence.
+ * @param {"full"|"small"} [variant="full"]
+ */
+export function resolveOnnxPaths(variant = "full") {
+  const names = WEIGHT_SETS[variant];
+  const fromEnv = variant === "full";
   const egnn =
-    process.env.EGNN_ONNX ||
+    (fromEnv && process.env.EGNN_ONNX) ||
     firstExisting([
-      join(PACKAGE_ROOT, "egnn_chembl_15_39.onnx"),
-      join(REPO_ROOT, "egnn_chembl_15_39.onnx"),
+      join(PACKAGE_ROOT, names.egnn),
+      join(REPO_ROOT, names.egnn),
+      join(DEFAULT_CACHE_DIR, names.egnn),
     ]);
   const adj =
-    process.env.ADJ_ONNX ||
+    (fromEnv && process.env.ADJ_ONNX) ||
     firstExisting([
-      join(PACKAGE_ROOT, "adj_mat_seer_chembl_15_39.onnx"),
-      join(REPO_ROOT, "adj_mat_seer_chembl_15_39.onnx"),
+      join(PACKAGE_ROOT, names.adj),
+      join(REPO_ROOT, names.adj),
+      join(DEFAULT_CACHE_DIR, names.adj),
     ]);
   return { egnn, adj, available: Boolean(egnn && adj) };
 }

@@ -74,8 +74,12 @@ const IS_NODE =
  * cannot infer its own location outside a browser.
  */
 async function loadRdkitNode() {
-  const { createRequire } = await import("node:module");
-  const path = await import("node:path");
+  const { createRequire } = await import(
+    /* webpackIgnore: true */ /* @vite-ignore */ "node:module"
+  );
+  const path = await import(
+    /* webpackIgnore: true */ /* @vite-ignore */ "node:path"
+  );
   const require = createRequire(import.meta.url);
   const pkgDir = path.dirname(require.resolve("@rdkit/rdkit/package.json"));
   const initRDKitModule = (await import("@rdkit/rdkit")).default;

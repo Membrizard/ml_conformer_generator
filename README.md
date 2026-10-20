@@ -108,7 +108,7 @@ model.clear_cache()    # wipe ~/.mlconfgen_weights
 
 For a custom cache location use `mlconfgen.utils.WeightsManager(cache_dir=...)`. See [Model Weights](https://ml-conformer-generator.com/getting_started/2_model_weights/) in the docs.
 
-> The JavaScript package does **not** download weights — pass the ONNX files as local paths or `Uint8Array` buffers.
+> The JavaScript package resolves ONNX weights in the same order (path → `~/.mlconfgen_weights` → Hugging Face download); local paths and `Uint8Array` buffers still work.
 
 ---
 

@@ -78,16 +78,27 @@ path = wm.resolve("edm_moi_chembl_15_39.pt", force_download=True)
 
 ---
 
-## JavaScript: Local Files
+## JavaScript: Automatic Resolution
 
-The npm package does not download weights. Download the ONNX files from Hugging Face and pass them to `createGenerator` as file paths (Node) or `Uint8Array` buffers (browser):
+The npm package resolves ONNX weights in the same order through its own `WeightsManager`. In Node:
+
+1. If the value is an existing **local path**, it is used as is.
+2. Otherwise a bare file name is looked up in the **local cache** — `~/.mlconfgen_weights`, shared with the Python package (override with the `cacheDir` option or the `MLCONFGEN_CACHE` environment variable).
+3. If not cached, the file is **downloaded** from the Hugging Face repository into the cache, guarded by the same lock file as in Python.
 
 ```js
-const gen = await createGenerator({
+// Default core weights, downloaded on first run
+const gen = await createGenerator({ ort });
+
+// Distilled weights, by name
+const small = await createGenerator({
   ort,
-  egnnOnnx: "./egnn_chembl_15_39.onnx",
-  adjMatSeerOnnx: "./adj_mat_seer_chembl_15_39.onnx",
+  egnnOnnx: "small_egnn_chembl_15_39.onnx",
+  adjMatSeerOnnx: "small_adj_mat_seer_obabel_15_39.onnx",
 });
+
+await gen.listWeights(); // { remote: [...], local: [...] } — .onnx files
+await gen.clearCache();
 ```
 
-See [Browser Usage](../javascript/3_browser.md) for loading weights from a user's machine without re-hosting them.
+Model bytes (`Uint8Array`) are accepted as well. In the browser, bare names are fetched from Hugging Face (or your own `baseUrl`) and cached with the Cache API, while relative paths and URLs go to onnxruntime-web unchanged — see [Browser Usage](../javascript/3_browser.md#weights-in-the-browser).
