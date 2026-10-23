@@ -1,6 +1,7 @@
 # ML Conformer Generator
 [![DOI](https://img.shields.io/badge/DOI-10.1039%2FD5DD00318K-blue)](https://doi.org/10.1039/D5DD00318K)
 [![Docs](https://img.shields.io/badge/docs-ml_conformer_generator_docs-purple)](https://ml-conformer-generator.com)
+[![Demo](https://img.shields.io/badge/demo-try_in_browser-brightgreen)](https://azatdavliatshin.github.io/mlconfgen-web-demo/)
 
 <img src="https://raw.githubusercontent.com/Membrizard/ml_conformer_generator/main/assets/logo/mlconfgen_logo.png" width="120" style="display: block; margin: 0 10%;">
 
@@ -10,6 +11,8 @@ and a Graph Convolutional Network (GCN). It is designed to generate 3D molecular
 that are both chemically valid and spatially similar to a reference shape.
 
 📖 **Documentation:** https://ml-conformer-generator.com — Python and JavaScript guides, parameter reference, model details.
+
+🧪 **Live demo:** https://azatdavliatshin.github.io/mlconfgen-web-demo/ — generate molecules for a target shape right in the browser and inspect them in a 3D viewer. Runs fully client-side on the `mlconfgen` npm package and ONNX Runtime Web; the weights are downloaded from Hugging Face once and cached.
 
 ---
 
